@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
-import TimelineForm from "./TimelineForm";
+import TimelineForm from "./TimeLineForm";
 
 const CaseTimeline = ({ caseId }) => {
   const [timelineItems, setTimelineItems] = useState([]);
