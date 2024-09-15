@@ -24,10 +24,10 @@ const LoginPage = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, isValid, touchedFields },
   } = useForm({
     resolver: yupResolver(schema),
-    mode: "onChange",
+    mode: "onBlur",
   });
 
   const onSubmit = async (data) => {
@@ -70,52 +70,36 @@ const LoginPage = () => {
         alignItems: "center",
       }}
     >
-      <Card style={{ minWidth: "400px", margin: "auto", padding: "2rem" }}>
+      <Card style={{ width: "400px", margin: "auto", padding: "2rem" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
             <Text size="5" weight="bold">
               로그인
             </Text>
-            <Box>
-              <input
-                type="email"
-                placeholder="이메일"
-                {...register("email")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.email && (
-                <Text color="red" size="1">
-                  {errors.email.message}
-                </Text>
-              )}
-            </Box>
-            <Box>
-              <input
-                type="password"
-                placeholder="비밀번호"
-                {...register("password")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.password && (
-                <Text color="red" size="1">
-                  {errors.password.message}
-                </Text>
-              )}
-            </Box>
+            {["email", "password"].map((field) => (
+              <Box key={field}>
+                <input
+                  type={field === "password" ? "password" : "email"}
+                  placeholder={field === "email" ? "이메일" : "비밀번호"}
+                  {...register(field)}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid var(--gray-6)",
+                    borderRadius: "var(--radius-2)",
+                  }}
+                />
+                {touchedFields[field] && errors[field] && (
+                  <Text color="red" size="1" style={{ minHeight: "20px" }}>
+                    {errors[field].message}
+                  </Text>
+                )}
+              </Box>
+            ))}
             <Button type="submit" disabled={!isValid}>
               로그인
             </Button>
-            <Text>
+            <Text size="2" align="center">
               계정이 없으신가요?{" "}
               <Link href="/signup" style={{ color: "var(--accent-9)" }}>
                 회원가입

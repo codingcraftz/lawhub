@@ -48,11 +48,13 @@ const SignupPage = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, isValid, touchedFields },
   } = useForm({
     resolver: yupResolver(schema),
-    mode: "onChange",
+    mode: "onBlur",
   });
+  console.log(errors);
+  console.log("touchend", touchedFields);
 
   const onSubmit = async (data) => {
     try {
@@ -90,108 +92,50 @@ const SignupPage = () => {
         alignItems: "center",
       }}
     >
-      <Card style={{ minWidth: "400px", margin: "2rem auto", padding: "2rem" }}>
+      <Card style={{ width: "400px", margin: "auto", padding: "2rem" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
-            <Text size="6" weight="bold">
+            <Text size="5" weight="bold">
               회원가입
             </Text>
-            <Box>
-              <input
-                type="email"
-                placeholder="이메일"
-                {...register("email")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.email && (
-                <Text color="red" size="1">
-                  {errors.email.message}
-                </Text>
-              )}
-            </Box>
-            <Box>
-              <input
-                type="text"
-                placeholder="이름"
-                {...register("name")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.name && (
-                <Text color="red" size="1">
-                  {errors.name.message}
-                </Text>
-              )}
-            </Box>
-            <Box>
-              <input
-                type="tel"
-                placeholder="전화번호"
-                {...register("phoneNumber")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.phoneNumber && (
-                <Text color="red" size="1">
-                  {errors.phoneNumber.message}
-                </Text>
-              )}
-            </Box>
-            <Box>
-              <input
-                type="password"
-                placeholder="비밀번호"
-                {...register("password")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.password && (
-                <Text color="red" size="1">
-                  {errors.password.message}
-                </Text>
-              )}
-            </Box>
-            <Box>
-              <input
-                type="password"
-                placeholder="비밀번호 확인"
-                {...register("passwordConfirm")}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              />
-              {errors.passwordConfirm && (
-                <Text color="red" size="1">
-                  {errors.passwordConfirm.message}
-                </Text>
-              )}
-            </Box>
+            {[
+              "email",
+              "name",
+              "phoneNumber",
+              "password",
+              "passwordConfirm",
+            ].map((field) => (
+              <Box key={field}>
+                <input
+                  type={
+                    field.includes("password")
+                      ? "password"
+                      : field === "email"
+                        ? "email"
+                        : "text"
+                  }
+                  placeholder={field === "phoneNumber" ? "전화번호" : field}
+                  {...register(field)}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid var(--gray-6)",
+                    borderRadius: "var(--radius-2)",
+                  }}
+                />
+                {touchedFields[field] && errors[field] && (
+                  <Text color="red" size="1" style={{ minHeight: "20px" }}>
+                    {errors[field].message}
+                  </Text>
+                )}
+              </Box>
+            ))}
             <Flex gap="2" align="center">
-              <Checkbox {...register("agreeTerms")} />
+              <input type="checkbox" {...register("agreeTerms")} />
               <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
             </Flex>
-            {errors.agreeTerms && (
-              <Text color="red" size="1">
+            {touchedFields.agreeTerms && errors.agreeTerms && (
+              <Text color="red" size="1" style={{ minHeight: "20px" }}>
                 {errors.agreeTerms.message}
               </Text>
             )}
