@@ -82,124 +82,133 @@ const SignupPage = () => {
   };
 
   return (
-    <Card style={{ minWidth: "400px", margin: "2rem auto", padding: "2rem" }}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Flex direction="column" gap="3">
-          <Text size="6" weight="bold">
-            회원가입
-          </Text>
-          <Box>
-            <input
-              type="email"
-              placeholder="이메일"
-              {...register("email")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.email && (
-              <Text color="red" size="1">
-                {errors.email.message}
-              </Text>
-            )}
-          </Box>
-          <Box>
-            <input
-              type="text"
-              placeholder="이름"
-              {...register("name")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.name && (
-              <Text color="red" size="1">
-                {errors.name.message}
-              </Text>
-            )}
-          </Box>
-          <Box>
-            <input
-              type="tel"
-              placeholder="전화번호"
-              {...register("phoneNumber")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.phoneNumber && (
-              <Text color="red" size="1">
-                {errors.phoneNumber.message}
-              </Text>
-            )}
-          </Box>
-          <Box>
-            <input
-              type="password"
-              placeholder="비밀번호"
-              {...register("password")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.password && (
-              <Text color="red" size="1">
-                {errors.password.message}
-              </Text>
-            )}
-          </Box>
-          <Box>
-            <input
-              type="password"
-              placeholder="비밀번호 확인"
-              {...register("passwordConfirm")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.passwordConfirm && (
-              <Text color="red" size="1">
-                {errors.passwordConfirm.message}
-              </Text>
-            )}
-          </Box>
-          <Flex gap="2" align="center">
-            <Checkbox {...register("agreeTerms")} />
-            <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
-          </Flex>
-          {errors.agreeTerms && (
-            <Text color="red" size="1">
-              {errors.agreeTerms.message}
+    <Box
+      style={{
+        display: "flex",
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Card style={{ minWidth: "400px", margin: "2rem auto", padding: "2rem" }}>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Flex direction="column" gap="3">
+            <Text size="6" weight="bold">
+              회원가입
             </Text>
-          )}
-          <Button type="submit" disabled={!isValid}>
-            회원가입
-          </Button>
-          <Separator size="4" />
-          <Text size="2" align="center">
-            이미 계정이 있으신가요?{" "}
-            <Link href="/login" style={{ color: "var(--accent-9)" }}>
-              로그인
-            </Link>
-          </Text>
-        </Flex>
-      </form>
-    </Card>
+            <Box>
+              <input
+                type="email"
+                placeholder="이메일"
+                {...register("email")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.email && (
+                <Text color="red" size="1">
+                  {errors.email.message}
+                </Text>
+              )}
+            </Box>
+            <Box>
+              <input
+                type="text"
+                placeholder="이름"
+                {...register("name")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.name && (
+                <Text color="red" size="1">
+                  {errors.name.message}
+                </Text>
+              )}
+            </Box>
+            <Box>
+              <input
+                type="tel"
+                placeholder="전화번호"
+                {...register("phoneNumber")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.phoneNumber && (
+                <Text color="red" size="1">
+                  {errors.phoneNumber.message}
+                </Text>
+              )}
+            </Box>
+            <Box>
+              <input
+                type="password"
+                placeholder="비밀번호"
+                {...register("password")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.password && (
+                <Text color="red" size="1">
+                  {errors.password.message}
+                </Text>
+              )}
+            </Box>
+            <Box>
+              <input
+                type="password"
+                placeholder="비밀번호 확인"
+                {...register("passwordConfirm")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.passwordConfirm && (
+                <Text color="red" size="1">
+                  {errors.passwordConfirm.message}
+                </Text>
+              )}
+            </Box>
+            <Flex gap="2" align="center">
+              <Checkbox {...register("agreeTerms")} />
+              <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
+            </Flex>
+            {errors.agreeTerms && (
+              <Text color="red" size="1">
+                {errors.agreeTerms.message}
+              </Text>
+            )}
+            <Button type="submit" disabled={!isValid}>
+              회원가입
+            </Button>
+            <Separator size="4" />
+            <Text size="2" align="center">
+              이미 계정이 있으신가요?{" "}
+              <Link href="/login" style={{ color: "var(--accent-9)" }}>
+                로그인
+              </Link>
+            </Text>
+          </Flex>
+        </form>
+      </Card>
+    </Box>
   );
 };
 

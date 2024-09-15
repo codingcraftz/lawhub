@@ -62,60 +62,69 @@ const LoginPage = () => {
   };
 
   return (
-    <Card style={{ minWidth: "400px", margin: "0 auto", padding: "2rem" }}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Flex direction="column" gap="3">
-          <Text size="5" weight="bold">
-            로그인
-          </Text>
-          <Box>
-            <input
-              type="email"
-              placeholder="이메일"
-              {...register("email")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.email && (
-              <Text color="red" size="1">
-                {errors.email.message}
-              </Text>
-            )}
-          </Box>
-          <Box>
-            <input
-              type="password"
-              placeholder="비밀번호"
-              {...register("password")}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.password && (
-              <Text color="red" size="1">
-                {errors.password.message}
-              </Text>
-            )}
-          </Box>
-          <Button type="submit" disabled={!isValid}>
-            로그인
-          </Button>
-          <Text>
-            계정이 없으신가요?{" "}
-            <Link href="/signup" style={{ color: "var(--accent-9)" }}>
-              회원가입
-            </Link>
-          </Text>
-        </Flex>
-      </form>
-    </Card>
+    <Box
+      style={{
+        display: "flex",
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Card style={{ minWidth: "400px", margin: "auto", padding: "2rem" }}>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <Flex direction="column" gap="3">
+            <Text size="5" weight="bold">
+              로그인
+            </Text>
+            <Box>
+              <input
+                type="email"
+                placeholder="이메일"
+                {...register("email")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.email && (
+                <Text color="red" size="1">
+                  {errors.email.message}
+                </Text>
+              )}
+            </Box>
+            <Box>
+              <input
+                type="password"
+                placeholder="비밀번호"
+                {...register("password")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                }}
+              />
+              {errors.password && (
+                <Text color="red" size="1">
+                  {errors.password.message}
+                </Text>
+              )}
+            </Box>
+            <Button type="submit" disabled={!isValid}>
+              로그인
+            </Button>
+            <Text>
+              계정이 없으신가요?{" "}
+              <Link href="/signup" style={{ color: "var(--accent-9)" }}>
+                회원가입
+              </Link>
+            </Text>
+          </Flex>
+        </form>
+      </Card>
+    </Box>
   );
 };
 

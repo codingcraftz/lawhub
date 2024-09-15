@@ -33,15 +33,7 @@ export default function RootLayout({ children }) {
               }}
             >
               <Header />
-              <Flex
-                height={"100%"}
-                align={"center"}
-                justify={"center"}
-                flexGrow={1}
-                overflowY={"auto"}
-              >
-                {children}
-              </Flex>
+              {children}
             </Theme>
           </ThemeProvider>
         </UserProvider>
