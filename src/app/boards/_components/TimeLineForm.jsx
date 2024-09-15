@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button, Select, TextArea } from "@radix-ui/themes";
 
 const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
   const [staff, setStaff] = useState([]);
@@ -43,7 +42,9 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
   };
 
   const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     setCurrentUser(user);
   };
 
@@ -110,7 +111,11 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <div>
           <label htmlFor="type">유형</label>
-          <select {...register("type")} id="type" onChange={(e) => setSelectedType(e.target.value)}>
+          <select
+            {...register("type")}
+            id="type"
+            onChange={(e) => setSelectedType(e.target.value)}
+          >
             <option value="">선택하세요</option>
             <option value="요청">요청</option>
             <option value="완료">완료</option>
@@ -130,7 +135,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.role})
                     </option>
-                  )
+                  ),
               )}
             </select>
             {errors.requested_to && (

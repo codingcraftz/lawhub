@@ -16,12 +16,14 @@ const CaseTimeline = ({ caseId }) => {
   }, [caseId]);
 
   const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
         .single();
       if (!error && data) {
         setCurrentUser({ ...user, role: data.role });
@@ -32,11 +34,13 @@ const CaseTimeline = ({ caseId }) => {
   const fetchTimelineItems = async () => {
     const { data, error } = await supabase
       .from("case_timelines")
-      .select(`
+      .select(
+        `
         *,
         manager:profiles!manager(name),
         handler:profiles!handler(name)
-      `)
+      `,
+      )
       .eq("case_id", caseId)
       .order("created_at", { ascending: true });
 
@@ -74,7 +78,7 @@ const CaseTimeline = ({ caseId }) => {
     setEditingItem(null);
   };
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === "admin";
 
   return (
     <Box>
