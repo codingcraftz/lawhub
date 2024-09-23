@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex, Text, IconButton } from "@radix-ui/themes";
+import { Box, Flex, Text, IconButton, Button } from "@radix-ui/themes";
 import { Cross1Icon } from "@radix-ui/react-icons";
 
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -13,7 +13,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backgroundColor: "rgba(0, 0, 0, 0.7)", // 배경의 투명도 수정
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -22,24 +22,33 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     >
       <Box
         style={{
-          backgroundColor: "var(--slate-7)",
-          borderRadius: "8px",
-          padding: "20px",
-          maxWidth: "600px",
+          backgroundColor: "#1f2937", // 더 부드러운 어두운 색
+          borderRadius: "10px",
+          padding: "30px", // 패딩 조정
+          maxWidth: "400px",
           width: "100%",
-          maxHeight: "80vh",
-          overflowY: "auto",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", // 그림자 효과 추가
         }}
       >
         <Flex justify="between" align="center" mb="4">
-          <Text size="5" weight="bold">
+          <Text size="6" weight="bold" color="white">
             {title}
           </Text>
           <IconButton variant="ghost" onClick={onClose}>
-            <Cross1Icon />
+            <Cross1Icon color="white" />
           </IconButton>
         </Flex>
-        {children}
+        <Box mb="4">
+          <Text color="white">{children}</Text>
+        </Box>
+        <Flex justify="end">
+          <Button
+            onClick={onClose}
+            style={{ backgroundColor: "#3b82f6", color: "white" }}
+          >
+            확인
+          </Button>
+        </Flex>
       </Box>
     </Box>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -9,6 +9,7 @@ import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
+import Modal from "@/components/Modal"; // 위에서 정의한 Modal
 
 const schema = yup.object().shape({
   email: yup
@@ -24,11 +25,21 @@ const LoginPage = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isValid, touchedFields },
   } = useForm({
     resolver: yupResolver(schema),
     mode: "onBlur",
   });
+
+  const [modalMessage, setModalMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEmailNotConfirmed, setIsEmailNotConfirmed] = useState(false);
+
+  const onCloseModal = () => {
+    setIsModalOpen(false);
+    reset(); // 폼 초기화
+  };
 
   const onSubmit = async (data) => {
     try {
@@ -56,8 +67,25 @@ const LoginPage = () => {
       await fetchUserData();
       router.push("/");
     } catch (error) {
-      console.error("Login error:", error);
-      alert(error.message);
+      if (error.message.includes("이메일 확인")) {
+        setIsEmailNotConfirmed(true);
+      } else {
+        setIsEmailNotConfirmed(false);
+      }
+      setModalMessage(error.message);
+      setIsModalOpen(true);
+    }
+  };
+
+  const resendEmailVerification = async () => {
+    try {
+      const { error } = await supabase.auth.api.resendEmailConfirmation(
+        data.email,
+      );
+      if (error) throw error;
+      alert("인증 이메일이 재전송되었습니다. 메일을 확인해주세요.");
+    } catch (error) {
+      alert("인증 이메일 재전송 중 문제가 발생했습니다.");
     }
   };
 
@@ -108,6 +136,14 @@ const LoginPage = () => {
           </Flex>
         </form>
       </Card>
+
+      {/* 모달 컴포넌트 */}
+      <Modal isOpen={isModalOpen} onClose={onCloseModal} title="알림">
+        <Text>{modalMessage}</Text>
+        {isEmailNotConfirmed && (
+          <Button onClick={resendEmailVerification}>이메일 인증 재전송</Button>
+        )}
+      </Modal>
     </Box>
   );
 };
