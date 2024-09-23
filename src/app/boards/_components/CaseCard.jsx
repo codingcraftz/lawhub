@@ -10,14 +10,13 @@ const categoryColors = {
 };
 
 const CaseCard = ({ caseItem, onClick }) => {
-  if (
-    !caseItem ||
-    !caseItem.client ||
-    !caseItem.assigned_to ||
-    !caseItem.category
-  ) {
+  if (!caseItem || !caseItem.clients || !caseItem.staff || !caseItem.category) {
     return null;
   }
+  console.log(caseItem);
+
+  const clientNames = caseItem.clients.map((c) => c.profiles.name).join(", ");
+  const staffNames = caseItem.staff.map((s) => s.profiles.name).join(", ");
 
   return (
     <Card style={{ width: "300px", cursor: "pointer" }} onClick={onClick}>
@@ -30,10 +29,8 @@ const CaseCard = ({ caseItem, onClick }) => {
             {caseItem.category.name}
           </Badge>
         </Flex>
-        <Text>
-          {caseItem.client.name} - {caseItem.client.phone_number}
-        </Text>
-        <Text>담당자: {caseItem.assigned_to.name}</Text>
+        <Text>의뢰인: {clientNames}</Text>
+        <Text>담당자: {staffNames}</Text>
         <Text>
           시작일: {new Date(caseItem.start_date).toLocaleDateString()}
         </Text>
@@ -41,5 +38,4 @@ const CaseCard = ({ caseItem, onClick }) => {
     </Card>
   );
 };
-
 export default CaseCard;

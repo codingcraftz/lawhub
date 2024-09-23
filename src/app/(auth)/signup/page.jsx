@@ -7,15 +7,7 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
-import {
-  Box,
-  Flex,
-  Text,
-  Button,
-  Checkbox,
-  Separator,
-  Card,
-} from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Card, Separator } from "@radix-ui/themes";
 
 const schema = yup.object().shape({
   email: yup
@@ -38,6 +30,15 @@ const schema = yup.object().shape({
     .string()
     .oneOf([yup.ref("password"), null], "비밀번호가 일치하지 않습니다")
     .required("비밀번호 확인은 필수입니다"),
+  birthDate: yup
+    .date()
+    .nullable()
+    .typeError("유효한 날짜를 입력해주세요")
+    .required("생년월일은 필수입니다"),
+  gender: yup
+    .string()
+    .oneOf(["male", "female", "other"], "유효한 성별을 선택해주세요")
+    .required("성별은 필수입니다"),
   agreeTerms: yup
     .boolean()
     .oneOf([true], "이용약관 및 개인정보 처리방침에 동의해야 합니다"),
@@ -53,23 +54,33 @@ const SignupPage = () => {
     resolver: yupResolver(schema),
     mode: "onBlur",
   });
-  console.log(errors);
-  console.log("touchend", touchedFields);
 
   const onSubmit = async (data) => {
     try {
+      // 회원가입 요청
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
       });
+
       if (error) throw error;
 
+      // authData.user가 정상적으로 반환되었는지 확인
+      if (!authData.user) {
+        throw new Error("회원가입 중 문제가 발생했습니다. 다시 시도해주세요.");
+      }
+
+      // 프로필 테이블에 사용자 정보 삽입
       const { error: profileError } = await supabase.from("profiles").insert([
         {
-          id: authData.user.id,
+          id: authData.user.id, // Supabase가 반환한 유저 ID
+          email: authData.user.email, // 회원가입 시 이메일 추가
           name: data.name,
           phone_number: data.phoneNumber,
-          is_active: false,
+          birth_date: data.birthDate, // 생년월일
+          gender: data.gender, // 성별
+          role: "client", // 기본값으로 'client' 역할
+          is_active: false, // 기본적으로 비활성화 상태
         },
       ]);
 
@@ -130,6 +141,49 @@ const SignupPage = () => {
                 )}
               </Box>
             ))}
+            {/* 생년월일 필드 */}
+            <Box>
+              <input
+                type="date"
+                {...register("birthDate")}
+                placeholder="생년월일"
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                  color: touchedFields.birthDate ? "black" : "#9ca3af",
+                }}
+              />
+              {errors.birthDate && (
+                <Text color="red" size="1">
+                  {errors.birthDate.message}
+                </Text>
+              )}
+            </Box>
+            {/* 성별 필드 */}
+            <Box>
+              <select
+                {...register("gender")}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "1px solid var(--gray-6)",
+                  borderRadius: "var(--radius-2)",
+                  color: touchedFields.gender ? "black" : "#9ca3af",
+                }}
+              >
+                <option value="">성별 선택</option>
+                <option value="male">남성</option>
+                <option value="female">여성</option>
+                <option value="other">기타</option>
+              </select>
+              {errors.gender && (
+                <Text color="red" size="1">
+                  {errors.gender.message}
+                </Text>
+              )}
+            </Box>
             <Flex gap="2" align="center">
               <input type="checkbox" {...register("agreeTerms")} />
               <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>

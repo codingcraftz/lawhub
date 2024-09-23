@@ -26,22 +26,28 @@ const BoardsPage = () => {
         .from("cases")
         .select(
           `
-          *,
-          client:clients(name, phone_number),
-          assigned_to:profiles(name),
-          category:case_categories(name)
-        `,
+        *,
+        clients:case_clients(
+          profiles(
+            id,
+            name,
+            phone_number
+          )
+        ),
+        staff:case_staff(
+          profiles(
+            id,
+            name
+          )
+        ),
+        category:case_categories(name)
+      `,
         )
         .order("start_date", { ascending: false });
+
       if (error) throw error;
-      const validCases = data.filter(
-        (caseItem) =>
-          caseItem &&
-          caseItem.client &&
-          caseItem.assigned_to &&
-          caseItem.category,
-      );
-      setCases(validCases);
+
+      setCases(data);
     } catch (error) {
       console.error("Error fetching cases:", error);
       setCases([]);
@@ -56,6 +62,7 @@ const BoardsPage = () => {
   const closedCases = cases.filter((c) => c.status === "closed");
   const hasCases = cases.length > 0;
 
+  console.log(cases);
   return (
     <Box
       p="4"

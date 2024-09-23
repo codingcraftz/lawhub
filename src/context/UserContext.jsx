@@ -1,79 +1,51 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { createContext } from "react";
+import React, { createContext, useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 
-export const UserContext = createContext(null);
+export const UserContext = createContext(); // UserContext를 내보냅니다.
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  }, []);
+  // 사용자 정보 가져오기
+  const fetchUser = async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
 
-  const fetchUserData = useCallback(async () => {
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) throw sessionError;
+    if (authUser) {
+      const { data: profileData, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authUser.id)
+        .single();
 
-      if (session?.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        if (profileError) {
-          if (profileError.code === 'PGRST116') {
-            console.log("Profile not found, user might be inactive");
-            setUser(null);
-          } else {
-            throw profileError;
-          }
-        } else {
-          if (profileData.is_active) {
-            setUser({ ...session.user, ...profileData });
-          } else {
-            console.log("User is not active");
-            setUser(null);
-          }
-        }
+      if (error) {
+        console.error("Error fetching profile:", error);
       } else {
-        setUser(null);
+        setUser({ ...authUser, ...profileData });
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
+    } else {
       setUser(null);
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchUserData();
+    fetchUser();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event);
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        fetchUserData();
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setLoading(false);
-      }
+    // Auth 상태 변화 감지하여 사용자 정보 갱신
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      fetchUser();
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, []);
 
   return (
-    <UserContext.Provider value={{ user, setUser, loading, logout, fetchUserData }}>
+    <UserContext.Provider value={{ user, setUser, fetchUser }}>
       {children}
     </UserContext.Provider>
   );

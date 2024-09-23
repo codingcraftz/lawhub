@@ -1,3 +1,5 @@
+// pages/login.js
+
 "use client";
 
 import React, { useState } from "react";
@@ -7,9 +9,9 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/contexts/UserContext"; // 경로 수정
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
-import Modal from "@/components/Modal"; // 위에서 정의한 Modal
+import Modal from "@/components/Modal";
 
 const schema = yup.object().shape({
   email: yup
@@ -21,7 +23,7 @@ const schema = yup.object().shape({
 
 const LoginPage = () => {
   const router = useRouter();
-  const { setUser, fetchUserData } = useUser();
+  const { fetchUser } = useUser(); // fetchUser를 사용하여 사용자 정보 갱신
   const {
     register,
     handleSubmit,
@@ -64,7 +66,7 @@ const LoginPage = () => {
         );
       }
 
-      await fetchUserData();
+      await fetchUser(); // 사용자 정보 갱신하여 Context에 저장
       router.push("/");
     } catch (error) {
       if (error.message.includes("이메일 확인")) {

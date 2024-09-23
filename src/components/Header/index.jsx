@@ -1,35 +1,37 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
+import { supabase } from "@/utils/supabase";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
-import { Flex, Button, Text, Avatar, Box, TabNav } from "@radix-ui/themes";
+import { Flex, Button, Text, Avatar, Box } from "@radix-ui/themes";
 import { useTheme } from "next-themes";
 
 const NAV_LIST = [
   { title: "Boards", path: "boards" },
-  { title: "Todos", path: "tods" },
+  { title: "Todos", path: "todos" }, // 'tods'에서 'todos'로 수정
   { title: "Clients", path: "clients" },
 ];
 
 const Header = () => {
-  const [nav, setNav] = useState(0);
-  const { user, logout, fetchUserData } = useUser();
+  const { user, setUser, fetchUser } = useUser(); // useUser 훅을 한 번만 호출
   const router = useRouter();
   const { theme, setTheme } = useTheme();
 
+  // 컴포넌트 마운트 시 사용자 정보 가져오기
   useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
+    fetchUser();
+  }, [fetchUser]);
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
   };
 
   const handleLogout = async () => {
-    await logout();
+    await supabase.auth.signOut();
+    setUser(null); // Context의 사용자 정보 초기화
     router.push("/login");
   };
 
@@ -45,7 +47,7 @@ const Header = () => {
           <Flex gap="1rem" align="center">
             {NAV_LIST.map((nav) => (
               <Link
-                href={nav.path}
+                href={`/${nav.path}`}
                 key={nav.path}
                 style={{ display: "inline-flex" }}
               >
@@ -62,10 +64,10 @@ const Header = () => {
             {theme === "light" ? <MoonIcon /> : <SunIcon />}
           </Button>
           {user ? (
-            <Flex gap="1rem">
+            <Flex gap="1rem" align="center">
               <Avatar
                 src={user.avatar_url}
-                fallback={user.email[0].toUpperCase()}
+                fallback={user.email ? user.email[0].toUpperCase() : "U"}
                 size="2"
                 radius="full"
                 style={{ cursor: "pointer" }}
@@ -75,12 +77,18 @@ const Header = () => {
           ) : (
             <Flex gap="1rem">
               <Button color="blue">
-                <Link href="/login" style={{ textDecoration: "none" }}>
+                <Link
+                  href="/login"
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
                   로그인
                 </Link>
               </Button>
               <Button>
-                <Link href="/signup" style={{ textDecoration: "none" }}>
+                <Link
+                  href="/signup"
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
                   회원가입
                 </Link>
               </Button>
