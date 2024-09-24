@@ -1,7 +1,7 @@
 import "@radix-ui/themes/styles.css";
 import { Flex, Theme } from "@radix-ui/themes";
 import Header from "@/components/Header";
-import { UserProvider } from "@/context/UserContext";
+import { UserProvider } from "@/contexts/UserContext";
 import { ThemeProvider } from "next-themes";
 import "./layout.css";
 import { Nanum_Gothic } from "next/font/google";

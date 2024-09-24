@@ -1,6 +1,6 @@
 // hooks/useUser.js
 
-import { UserContext } from "@/context/UserContext";
+import { UserContext } from "@/contexts/UserContext";
 import { useContext } from "react";
 
 export const useUser = () => {

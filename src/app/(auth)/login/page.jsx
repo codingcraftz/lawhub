@@ -9,7 +9,7 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
-import { useUser } from "@/contexts/UserContext"; // 경로 수정
+import { useUser } from "@/hooks/useUser";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
 import Modal from "@/components/Modal";
 
