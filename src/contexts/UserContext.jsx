@@ -1,15 +1,21 @@
 "use client";
 
-import React, { createContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { supabase } from "@/utils/supabase";
 
-export const UserContext = createContext(); // UserContext를 내보냅니다.
+export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  // 사용자 정보 가져오기
-  const fetchUser = async () => {
+  // fetchUser를 useCallback으로 메모이제이션
+  const fetchUser = useCallback(async () => {
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
@@ -29,12 +35,12 @@ export const UserProvider = ({ children }) => {
     } else {
       setUser(null);
     }
-  };
+  }, []);
 
+  // 의존성 배열에서 fetchUser는 이제 안전합니다.
   useEffect(() => {
     fetchUser();
 
-    // Auth 상태 변화 감지하여 사용자 정보 갱신
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       fetchUser();
     });
@@ -42,7 +48,7 @@ export const UserProvider = ({ children }) => {
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUser]);
 
   return (
     <UserContext.Provider value={{ user, setUser, fetchUser }}>

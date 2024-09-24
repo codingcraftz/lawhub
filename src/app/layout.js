@@ -1,5 +1,5 @@
 import "@radix-ui/themes/styles.css";
-import { Flex, Theme } from "@radix-ui/themes";
+import { Theme } from "@radix-ui/themes";
 import Header from "@/components/Header";
 import { UserProvider } from "@/contexts/UserContext";
 import { ThemeProvider } from "next-themes";

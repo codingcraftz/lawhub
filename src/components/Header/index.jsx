@@ -16,14 +16,9 @@ const NAV_LIST = [
 ];
 
 const Header = () => {
-  const { user, setUser, fetchUser } = useUser(); // useUser 훅을 한 번만 호출
   const router = useRouter();
+  const { user, setUser } = useUser();
   const { theme, setTheme } = useTheme();
-
-  // 컴포넌트 마운트 시 사용자 정보 가져오기
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
