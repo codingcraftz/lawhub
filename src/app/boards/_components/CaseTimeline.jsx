@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
-import TimelineForm from "./TimeLineForm";
+import TimelineForm from "./TimelineForm";
 
 const CaseTimeline = ({ caseId }) => {
   const [timelineItems, setTimelineItems] = useState([]);
@@ -36,10 +36,10 @@ const CaseTimeline = ({ caseId }) => {
       .from("case_timelines")
       .select(
         `
-        *,
-        manager:profiles!manager(name),
-        handler:profiles!handler(name)
-      `,
+          *,
+          manager:profiles!case_timelines_manager_fkey(name),
+          handler:profiles!case_timelines_handler_fkey(name)
+        `,
       )
       .eq("case_id", caseId)
       .order("created_at", { ascending: true });

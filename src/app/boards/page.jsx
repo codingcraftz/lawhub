@@ -20,28 +20,30 @@ const BoardsPage = () => {
     fetchCases();
   }, []);
 
+  // ... 생략 ...
+
   const fetchCases = async () => {
     try {
       const { data, error } = await supabase
         .from("cases")
         .select(
           `
-        *,
-        clients:case_clients(
-          profiles(
-            id,
-            name,
-            phone_number
+          *,
+          category:case_categories(name),
+          clients:case_clients(
+            profiles:profiles!case_clients_client_id_fkey(
+              id,
+              name,
+              phone_number
+            )
+          ),
+          staff:case_staff(
+            profiles:profiles!case_staff_staff_id_fkey(
+              id,
+              name
+            )
           )
-        ),
-        staff:case_staff(
-          profiles(
-            id,
-            name
-          )
-        ),
-        category:case_categories(name)
-      `,
+        `,
         )
         .order("start_date", { ascending: false });
 
@@ -55,6 +57,8 @@ const BoardsPage = () => {
       setIsLoading(false);
     }
   };
+
+  // ... 생략 ...
 
   if (isLoading) return <Text>Loading...</Text>;
 

@@ -10,13 +10,17 @@ const categoryColors = {
 };
 
 const CaseCard = ({ caseItem, onClick }) => {
-  if (!caseItem || !caseItem.clients || !caseItem.staff || !caseItem.category) {
+  if (!caseItem || !caseItem.category) {
     return null;
   }
-  console.log(caseItem);
 
-  const clientNames = caseItem.clients.map((c) => c.profiles.name).join(", ");
-  const staffNames = caseItem.staff.map((s) => s.profiles.name).join(", ");
+  const clientNames = caseItem.clients
+    ? caseItem.clients.map((c) => c.profiles.name).join(", ")
+    : "없음";
+
+  const staffNames = caseItem.staff
+    ? caseItem.staff.map((s) => s.profiles.name).join(", ")
+    : "없음";
 
   return (
     <Card style={{ width: "300px", cursor: "pointer" }} onClick={onClick}>
@@ -38,4 +42,5 @@ const CaseCard = ({ caseItem, onClick }) => {
     </Card>
   );
 };
+
 export default CaseCard;

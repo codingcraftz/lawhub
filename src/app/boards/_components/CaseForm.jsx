@@ -1,6 +1,8 @@
+// components/CaseForm.js
+
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, IconButton } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
@@ -14,6 +16,7 @@ const schema = yup.object().shape({
   title: yup.string().required("제목은 필수입니다"),
   description: yup.string(),
   start_date: yup.date().required("시작일을 입력해주세요"),
+  category_id: yup.string().required("카테고리를 선택해주세요"),
 });
 
 const CaseForm = ({ caseData, onSuccess }) => {
@@ -24,13 +27,73 @@ const CaseForm = ({ caseData, onSuccess }) => {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
 
+  // 카테고리 상태 관리
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase
+        .from("case_categories")
+        .select("*");
+      if (error) {
+        console.error("Error fetching categories:", error);
+      } else {
+        setCategories(data);
+      }
+    };
+
+    fetchCategories();
+
+    // 편집 모드일 경우 의뢰인 및 담당자 데이터 가져오기
+    if (caseData) {
+      fetchCaseRelations();
+    }
+  }, [caseData]);
+
+  const fetchCaseRelations = async () => {
+    // 의뢰인 가져오기
+    const { data: clientData, error: clientError } = await supabase
+      .from("case_clients")
+      .select("client_id, client:profiles(name)")
+      .eq("case_id", caseData.id);
+
+    if (clientError) {
+      console.error("Error fetching clients:", clientError);
+    } else {
+      const clients = clientData.map((item) => ({
+        id: item.client_id,
+        name: item.client.name,
+      }));
+      setSelectedClients(clients);
+    }
+
+    // 담당자 가져오기
+    const { data: staffData, error: staffError } = await supabase
+      .from("case_staff")
+      .select("staff_id, staff:profiles(name)")
+      .eq("case_id", caseData.id);
+
+    if (staffError) {
+      console.error("Error fetching staff:", staffError);
+    } else {
+      const staff = staffData.map((item) => ({
+        id: item.staff_id,
+        name: item.staff.name,
+      }));
+      setSelectedStaff(staff);
+    }
+  };
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: caseData || {},
+    defaultValues: {
+      ...caseData,
+      category_id: caseData?.category_id || "",
+    },
   });
 
   // 의뢰인 또는 담당자 제거 함수
@@ -47,12 +110,16 @@ const CaseForm = ({ caseData, onSuccess }) => {
   const onSubmit = async (data) => {
     try {
       let casePayload = {
-        ...data,
+        title: data.title,
+        description: data.description,
+        start_date: data.start_date,
+        category_id: data.category_id,
       };
 
       let insertedCase;
 
       if (caseData) {
+        // 기존 사건 수정
         const { data: updatedCase, error } = await supabase
           .from("cases")
           .update(casePayload)
@@ -66,6 +133,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
         await supabase.from("case_clients").delete().eq("case_id", caseData.id);
         await supabase.from("case_staff").delete().eq("case_id", caseData.id);
       } else {
+        // 새로운 사건 생성
         const { data: newCase, error } = await supabase
           .from("cases")
           .insert([casePayload])
@@ -86,17 +154,29 @@ const CaseForm = ({ caseData, onSuccess }) => {
         staff_id: staff.id,
       }));
 
-      const { error: clientInsertError } = await supabase
-        .from("case_clients")
-        .insert(clientEntries);
+      // 연결 테이블에 데이터 삽입 시 에러 처리 강화
+      if (clientEntries.length > 0) {
+        const { data: clientInsertData, error: clientInsertError } =
+          await supabase.from("case_clients").insert(clientEntries);
 
-      if (clientInsertError) throw clientInsertError;
+        if (clientInsertError) {
+          console.error(
+            "Error inserting into case_clients:",
+            clientInsertError,
+          );
+          throw clientInsertError;
+        }
+      }
 
-      const { error: staffInsertError } = await supabase
-        .from("case_staff")
-        .insert(staffEntries);
+      if (staffEntries.length > 0) {
+        const { data: staffInsertData, error: staffInsertError } =
+          await supabase.from("case_staff").insert(staffEntries);
 
-      if (staffInsertError) throw staffInsertError;
+        if (staffInsertError) {
+          console.error("Error inserting into case_staff:", staffInsertError);
+          throw staffInsertError;
+        }
+      }
 
       onSuccess();
     } catch (error) {
@@ -124,6 +204,31 @@ const CaseForm = ({ caseData, onSuccess }) => {
             {errors.title && (
               <Text color="red" size="2">
                 {errors.title.message}
+              </Text>
+            )}
+          </Box>
+
+          {/* 카테고리 선택 */}
+          <Box>
+            <select
+              {...register("category_id")}
+              style={{
+                width: "100%",
+                padding: "1.5rem",
+                border: "2px solid var(--gray-6)",
+                borderRadius: "var(--radius-1)",
+              }}
+            >
+              <option value="">카테고리 선택</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            {errors.category_id && (
+              <Text color="red" size="2">
+                {errors.category_id.message}
               </Text>
             )}
           </Box>
