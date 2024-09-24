@@ -152,7 +152,6 @@ const SignupPage = () => {
                   padding: "0.5rem",
                   border: "1px solid var(--gray-6)",
                   borderRadius: "var(--radius-2)",
-                  color: touchedFields.birthDate ? "black" : "#9ca3af",
                 }}
               />
               {errors.birthDate && (
@@ -170,7 +169,6 @@ const SignupPage = () => {
                   padding: "0.5rem",
                   border: "1px solid var(--gray-6)",
                   borderRadius: "var(--radius-2)",
-                  color: touchedFields.gender ? "black" : "#9ca3af",
                 }}
               >
                 <option value="">성별 선택</option>
