@@ -41,14 +41,6 @@ const Modal = ({ isOpen, onClose, title, children }) => {
         <Box mb="4">
           <Text color="white">{children}</Text>
         </Box>
-        <Flex justify="end">
-          <Button
-            onClick={onClose}
-            style={{ backgroundColor: "#3b82f6", color: "white" }}
-          >
-            확인
-          </Button>
-        </Flex>
       </Box>
     </Box>
   );

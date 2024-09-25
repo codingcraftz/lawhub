@@ -9,9 +9,9 @@ import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
-import { useUser } from "@/hooks/useUser";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
 import Modal from "@/components/Modal";
+import { useUser } from "@/hooks/useUser";
 
 const schema = yup.object().shape({
   email: yup
@@ -31,7 +31,7 @@ const LoginPage = () => {
     formState: { errors, isValid, touchedFields },
   } = useForm({
     resolver: yupResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const [modalMessage, setModalMessage] = useState("");
@@ -90,7 +90,6 @@ const LoginPage = () => {
       alert("인증 이메일 재전송 중 문제가 발생했습니다.");
     }
   };
-
   return (
     <Box
       style={{
@@ -119,11 +118,13 @@ const LoginPage = () => {
                     borderRadius: "var(--radius-2)",
                   }}
                 />
-                {touchedFields[field] && errors[field] && (
-                  <Text color="red" size="1" style={{ minHeight: "20px" }}>
-                    {errors[field].message}
-                  </Text>
-                )}
+                <Text
+                  color="red"
+                  size="1"
+                  style={{ minHeight: "20px", marginTop: "4px" }} // 최소 높이 설정
+                >
+                  {errors[field]?.message || " "}
+                </Text>
               </Box>
             ))}
             <Button type="submit" disabled={!isValid}>

@@ -196,7 +196,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
               {...register("title")}
               style={{
                 width: "100%",
-                padding: "1.5rem",
+                padding: "0.6rem 0.8rem",
                 border: "2px solid var(--gray-6)",
                 borderRadius: "var(--radius-1)",
               }}
@@ -214,7 +214,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
               {...register("category_id")}
               style={{
                 width: "100%",
-                padding: "1.5rem",
+                padding: "0.6rem 0.8rem",
                 border: "2px solid var(--gray-6)",
                 borderRadius: "var(--radius-1)",
               }}
@@ -286,7 +286,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
               {...register("description")}
               style={{
                 width: "100%",
-                padding: "1.5rem",
+                padding: "0.6rem 0.8rem",
                 border: "2px solid var(--gray-6)",
                 borderRadius: "var(--radius-1)",
                 minHeight: "100px",
@@ -301,7 +301,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
               {...register("start_date")}
               style={{
                 width: "100%",
-                padding: "1.5rem",
+                padding: "0.6rem 0.8rem",
                 border: "2px solid var(--gray-6)",
                 borderRadius: "var(--radius-1)",
               }}

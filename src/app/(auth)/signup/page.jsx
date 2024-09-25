@@ -52,7 +52,7 @@ const SignupPage = () => {
     formState: { errors, isValid, touchedFields },
   } = useForm({
     resolver: yupResolver(schema),
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const onSubmit = async (data) => {
@@ -125,7 +125,13 @@ const SignupPage = () => {
                         ? "email"
                         : "text"
                   }
-                  placeholder={field === "phoneNumber" ? "전화번호" : field}
+                  placeholder={
+                    field === "phoneNumber"
+                      ? "전화번호"
+                      : field === "passwordConfirm"
+                        ? "비밀번호 확인"
+                        : field
+                  }
                   {...register(field)}
                   style={{
                     width: "100%",
@@ -134,14 +140,15 @@ const SignupPage = () => {
                     borderRadius: "var(--radius-2)",
                   }}
                 />
-                {touchedFields[field] && errors[field] && (
-                  <Text color="red" size="1" style={{ minHeight: "20px" }}>
-                    {errors[field].message}
-                  </Text>
-                )}
+                <Text
+                  color="red"
+                  size="1"
+                  style={{ minHeight: "20px", marginTop: "4px" }} // 최소 높이 설정
+                >
+                  {errors[field]?.message || " "}
+                </Text>
               </Box>
             ))}
-            {/* 생년월일 필드 */}
             <Box>
               <input
                 type="date"
@@ -154,13 +161,14 @@ const SignupPage = () => {
                   borderRadius: "var(--radius-2)",
                 }}
               />
-              {errors.birthDate && (
-                <Text color="red" size="1">
-                  {errors.birthDate.message}
-                </Text>
-              )}
+              <Text
+                color="red"
+                size="1"
+                style={{ minHeight: "20px", marginTop: "4px" }}
+              >
+                {errors.birthDate?.message || " "}
+              </Text>
             </Box>
-            {/* 성별 필드 */}
             <Box>
               <select
                 {...register("gender")}
@@ -176,21 +184,26 @@ const SignupPage = () => {
                 <option value="female">여성</option>
                 <option value="other">기타</option>
               </select>
-              {errors.gender && (
-                <Text color="red" size="1">
-                  {errors.gender.message}
-                </Text>
-              )}
+              <Text
+                color="red"
+                size="1"
+                style={{ minHeight: "20px", marginTop: "4px" }}
+              >
+                {errors.gender?.message || " "}
+              </Text>
             </Box>
+            {/* 이용약관 동의 */}
             <Flex gap="2" align="center">
               <input type="checkbox" {...register("agreeTerms")} />
               <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
             </Flex>
-            {touchedFields.agreeTerms && errors.agreeTerms && (
-              <Text color="red" size="1" style={{ minHeight: "20px" }}>
-                {errors.agreeTerms.message}
-              </Text>
-            )}
+            <Text
+              color="red"
+              size="1"
+              style={{ minHeight: "20px", marginTop: "4px" }}
+            >
+              {errors.agreeTerms?.message || " "}
+            </Text>
             <Button type="submit" disabled={!isValid}>
               회원가입
             </Button>

@@ -71,7 +71,7 @@ const Header = () => {
             </Flex>
           ) : (
             <Flex gap="1rem">
-              <Button color="blue">
+              <Button>
                 <Link
                   href="/login"
                   style={{ textDecoration: "none", color: "inherit" }}
