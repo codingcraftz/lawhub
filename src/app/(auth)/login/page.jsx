@@ -1,4 +1,4 @@
-// pages/login.js
+// src/app/(auth)/login/page.jsx
 
 "use client";
 
@@ -10,8 +10,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
-import Modal from "@/components/Modal";
 import { useUser } from "@/hooks/useUser";
+import * as Dialog from "@radix-ui/react-dialog"; // Radix UI Dialog import
+import { Cross2Icon } from "@radix-ui/react-icons"; // Close icon
 
 const schema = yup.object().shape({
   email: yup
@@ -23,12 +24,12 @@ const schema = yup.object().shape({
 
 const LoginPage = () => {
   const router = useRouter();
-  const { fetchUser } = useUser(); // fetchUser를 사용하여 사용자 정보 갱신
+  const { fetchUser } = useUser();
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isValid, touchedFields },
+    formState: { errors, isValid },
   } = useForm({
     resolver: yupResolver(schema),
     mode: "onChange",
@@ -36,70 +37,41 @@ const LoginPage = () => {
 
   const [modalMessage, setModalMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEmailNotConfirmed, setIsEmailNotConfirmed] = useState(false);
 
   const onCloseModal = () => {
     setIsModalOpen(false);
-    reset(); // 폼 초기화
+    reset();
   };
 
   const onSubmit = async (data) => {
     try {
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
+
       if (error) throw error;
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      if (!profileData.is_active) {
-        await supabase.auth.signOut();
-        throw new Error(
-          "계정이 아직 활성화되지 않았습니다. 관리자의 승인을 기다려주세요.",
-        );
-      }
-
-      await fetchUser(); // 사용자 정보 갱신하여 Context에 저장
-      router.push("/");
+      router.push("/boards");
     } catch (error) {
-      if (error.message.includes("이메일 확인")) {
-        setIsEmailNotConfirmed(true);
-      } else {
-        setIsEmailNotConfirmed(false);
-      }
-      setModalMessage(error.message);
+      console.error("Login error:", error);
+      setModalMessage(
+        "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.",
+      );
       setIsModalOpen(true);
     }
   };
 
-  const resendEmailVerification = async () => {
-    try {
-      const { error } = await supabase.auth.api.resendEmailConfirmation(
-        data.email,
-      );
-      if (error) throw error;
-      alert("인증 이메일이 재전송되었습니다. 메일을 확인해주세요.");
-    } catch (error) {
-      alert("인증 이메일 재전송 중 문제가 발생했습니다.");
-    }
-  };
   return (
     <Box
       style={{
         display: "flex",
-        flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        height: "100vh",
       }}
     >
-      <Card style={{ width: "400px", margin: "auto", padding: "2rem" }}>
+      <Card style={{ width: "400px", padding: "2rem" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
             <Text size="5" weight="bold">
@@ -121,7 +93,7 @@ const LoginPage = () => {
                 <Text
                   color="red"
                   size="1"
-                  style={{ minHeight: "20px", marginTop: "4px" }} // 최소 높이 설정
+                  style={{ minHeight: "20px", marginTop: "4px" }}
                 >
                   {errors[field]?.message || " "}
                 </Text>
@@ -140,13 +112,31 @@ const LoginPage = () => {
         </form>
       </Card>
 
-      {/* 모달 컴포넌트 */}
-      <Modal isOpen={isModalOpen} onClose={onCloseModal} title="알림">
-        <Text>{modalMessage}</Text>
-        {isEmailNotConfirmed && (
-          <Button onClick={resendEmailVerification}>이메일 인증 재전송</Button>
-        )}
-      </Modal>
+      {/* Radix UI Dialog Component for Error Messages */}
+      <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
+          <Dialog.Content
+            className="fixed top-1/2 left-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 transform -translate-x-1/2 -translate-y-1/2 max-w-md w-full"
+            style={{ zIndex: 1000 }}
+          >
+            <Dialog.Title className="text-lg font-bold mb-4">오류</Dialog.Title>
+            <Dialog.Description>{modalMessage}</Dialog.Description>
+            <Dialog.Close asChild>
+              <Button
+                variant="ghost"
+                size="1"
+                style={{ position: "absolute", top: 8, right: 8 }}
+              >
+                <Cross2Icon />
+              </Button>
+            </Dialog.Close>
+            <Flex justify="end" mt="4">
+              <Button onClick={onCloseModal}>확인</Button>
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </Box>
   );
 };

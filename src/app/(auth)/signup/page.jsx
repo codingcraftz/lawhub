@@ -1,6 +1,8 @@
+// src/app/(auth)/signup/page.jsx
+
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -8,6 +10,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card, Separator } from "@radix-ui/themes";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 const schema = yup.object().shape({
   email: yup
@@ -49,61 +53,73 @@ const SignupPage = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid, touchedFields },
+    formState: { errors, isValid },
   } = useForm({
     resolver: yupResolver(schema),
     mode: "onChange",
   });
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+
   const onSubmit = async (data) => {
     try {
-      // 회원가입 요청
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
+      const { data: authData, error: signUpError } = await supabase.auth.signUp(
+        {
+          email: data.email,
+          password: data.password,
+        },
+      );
 
-      if (error) throw error;
+      if (signUpError) throw signUpError;
 
-      // authData.user가 정상적으로 반환되었는지 확인
       if (!authData.user) {
         throw new Error("회원가입 중 문제가 발생했습니다. 다시 시도해주세요.");
       }
 
-      // 프로필 테이블에 사용자 정보 삽입
-      const { error: profileError } = await supabase.from("profiles").insert([
-        {
-          id: authData.user.id, // Supabase가 반환한 유저 ID
-          email: authData.user.email, // 회원가입 시 이메일 추가
-          name: data.name,
-          phone_number: data.phoneNumber,
-          birth_date: data.birthDate, // 생년월일
-          gender: data.gender, // 성별
-          role: "client", // 기본값으로 'client' 역할
-          is_active: false, // 기본적으로 비활성화 상태
-        },
-      ]);
+      const { error: userError } = await supabase.from("users").insert({
+        id: authData.user.id,
+        email: data.email,
+        name: data.name,
+        phone_number: data.phoneNumber,
+        birth_date: data.birthDate,
+        gender: data.gender,
+        role: "client",
+        is_active: false,
+      });
 
-      if (profileError) throw profileError;
+      if (userError) {
+        console.error("User insertion error:", userError);
+        await supabase.auth.signOut();
+        throw userError;
+      }
 
-      alert("회원가입이 완료되었습니다. 관리자의 승인을 기다려주세요.");
-      router.push("/login");
+      setModalMessage(
+        "회원가입이 완료되었습니다. 관리자의 승인을 기다려주세요.",
+      );
+      setIsModalOpen(true);
     } catch (error) {
       console.error("Signup error:", error);
-      alert(error.message);
+      setModalMessage(error.message || "회원가입 중 오류가 발생했습니다.");
+      setIsModalOpen(true);
     }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    router.push("/login");
   };
 
   return (
     <Box
       style={{
         display: "flex",
-        flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        height: "100vh", // 높이 수정
       }}
     >
-      <Card style={{ width: "400px", margin: "auto", padding: "2rem" }}>
+      <Card style={{ width: "400px", padding: "2rem" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
             <Text size="5" weight="bold">
@@ -143,7 +159,7 @@ const SignupPage = () => {
                 <Text
                   color="red"
                   size="1"
-                  style={{ minHeight: "20px", marginTop: "4px" }} // 최소 높이 설정
+                  style={{ minHeight: "20px", marginTop: "4px" }}
                 >
                   {errors[field]?.message || " "}
                 </Text>
@@ -217,6 +233,32 @@ const SignupPage = () => {
           </Flex>
         </form>
       </Card>
+
+      {/* Radix UI Dialog for messages */}
+      <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
+          <Dialog.Content
+            className="fixed top-1/2 left-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 transform -translate-x-1/2 -translate-y-1/2 max-w-md w-full"
+            style={{ zIndex: 1000 }}
+          >
+            <Dialog.Title className="text-lg font-bold mb-4">알림</Dialog.Title>
+            <Dialog.Description>{modalMessage}</Dialog.Description>
+            <Dialog.Close asChild>
+              <Button
+                variant="ghost"
+                size="1"
+                style={{ position: "absolute", top: 8, right: 8 }}
+              >
+                <Cross2Icon />
+              </Button>
+            </Dialog.Close>
+            <Flex justify="end" mt="4">
+              <Button onClick={closeModal}>확인</Button>
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </Box>
   );
 };

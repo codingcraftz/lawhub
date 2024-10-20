@@ -11,7 +11,7 @@ export async function middleware(req) {
 
   if (session) {
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("users")
       .select("role")
       .eq("id", session.user.id)
       .single();

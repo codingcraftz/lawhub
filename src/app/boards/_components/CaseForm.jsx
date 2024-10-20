@@ -1,16 +1,13 @@
-// components/CaseForm.js
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button, IconButton } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { Box, Flex, Text, Button, Dialog } from "@radix-ui/themes";
 import * as yup from "yup";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import Modal from "@/components/Modal";
 import UserSelectionModalContent from "./UserSelectionModalContent";
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 const schema = yup.object().shape({
   title: yup.string().required("제목은 필수입니다"),
@@ -19,42 +16,44 @@ const schema = yup.object().shape({
   category_id: yup.string().required("카테고리를 선택해주세요"),
 });
 
-const CaseForm = ({ caseData, onSuccess }) => {
+const CaseForm = ({ caseData, onSuccess, onClose }) => {
+  const [categories, setCategories] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState([]);
-
-  // 모달 상태 관리
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
 
-  // 카테고리 상태 관리
-  const [categories, setCategories] = useState([]);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    control,
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: caseData || {},
+  });
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      const { data, error } = await supabase
-        .from("case_categories")
-        .select("*");
-      if (error) {
-        console.error("Error fetching categories:", error);
-      } else {
-        setCategories(data);
-      }
-    };
-
     fetchCategories();
-
-    // 편집 모드일 경우 의뢰인 및 담당자 데이터 가져오기
     if (caseData) {
       fetchCaseRelations();
     }
   }, [caseData]);
 
+  const fetchCategories = async () => {
+    const { data, error } = await supabase.from("case_categories").select("*");
+    if (error) {
+      console.error("Error fetching categories:", error);
+    } else {
+      setCategories(data);
+    }
+  };
+
   const fetchCaseRelations = async () => {
     // 의뢰인 가져오기
     const { data: clientData, error: clientError } = await supabase
       .from("case_clients")
-      .select("client_id, client:profiles(name)")
+      .select("client_id, client:users(name)")
       .eq("case_id", caseData.id);
 
     if (clientError) {
@@ -70,7 +69,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
     // 담당자 가져오기
     const { data: staffData, error: staffError } = await supabase
       .from("case_staff")
-      .select("staff_id, staff:profiles(name)")
+      .select("staff_id, staff:users(name)")
       .eq("case_id", caseData.id);
 
     if (staffError) {
@@ -84,29 +83,6 @@ const CaseForm = ({ caseData, onSuccess }) => {
     }
   };
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      ...caseData,
-      category_id: caseData?.category_id || "",
-    },
-  });
-
-  // 의뢰인 또는 담당자 제거 함수
-  const handleRemoveClient = (clientId) => {
-    setSelectedClients((prev) =>
-      prev.filter((client) => client.id !== clientId),
-    );
-  };
-
-  const handleRemoveStaff = (staffId) => {
-    setSelectedStaff((prev) => prev.filter((staff) => staff.id !== staffId));
-  };
-
   const onSubmit = async (data) => {
     try {
       let casePayload = {
@@ -114,6 +90,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
         description: data.description,
         start_date: data.start_date,
         category_id: data.category_id,
+        status: data.status || "ongoing", // 기본값을 'ongoing'으로 설정
       };
 
       let insertedCase;
@@ -143,7 +120,7 @@ const CaseForm = ({ caseData, onSuccess }) => {
         insertedCase = newCase[0];
       }
 
-      // 연결 테이블에 데이터 삽입
+      // 연결 테이블 데이터 삽입
       const clientEntries = selectedClients.map((client) => ({
         case_id: insertedCase.id,
         client_id: client.id,
@@ -178,6 +155,23 @@ const CaseForm = ({ caseData, onSuccess }) => {
         }
       }
 
+      // 담당자에게 알림 생성
+      for (const staff of selectedStaff) {
+        try {
+          const { data, error } = await supabase.from("notifications").insert({
+            user_id: staff.id,
+            message: `새로운 사건에 배정되었습니다: ${insertedCase.title}`,
+            case_timeline_id: null,
+            is_read: false,
+          });
+
+          if (error) throw error;
+        } catch (error) {
+          console.error("Error inserting notification:", error);
+          // 여기서 적절한 오류 처리를 수행합니다.
+        }
+      }
+
       onSuccess();
     } catch (error) {
       console.error("Error saving case:", error);
@@ -186,170 +180,163 @@ const CaseForm = ({ caseData, onSuccess }) => {
   };
 
   return (
-    <>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Flex direction="column" gap="4">
-          {/* 사건 제목 입력 */}
-          <Box>
-            <input
-              placeholder="사건 제목"
-              {...register("title")}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.8rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            {errors.title && (
-              <Text color="red" size="2">
-                {errors.title.message}
-              </Text>
-            )}
-          </Box>
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Flex direction="column" gap="4">
+        {/* 사건 제목 입력 */}
+        <Box>
+          <input
+            placeholder="사건 제목"
+            {...register("title")}
+            style={{
+              width: "100%",
+              padding: "0.6rem 0.8rem",
+              border: "2px solid var(--gray-6)",
+              borderRadius: "var(--radius-1)",
+            }}
+          />
+          {errors.title && (
+            <Text color="red" size="2">
+              {errors.title.message}
+            </Text>
+          )}
+        </Box>
 
-          {/* 카테고리 선택 */}
-          <Box>
-            <select
-              {...register("category_id")}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.8rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            >
-              <option value="">카테고리 선택</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            {errors.category_id && (
-              <Text color="red" size="2">
-                {errors.category_id.message}
-              </Text>
-            )}
-          </Box>
+        {/* 카테고리 선택 */}
+        <Box>
+          <select
+            {...register("category_id")}
+            style={{
+              width: "100%",
+              padding: "0.6rem 0.8rem",
+              border: "2px solid var(--gray-6)",
+              borderRadius: "var(--radius-1)",
+            }}
+          >
+            <option value="">카테고리 선택</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          {errors.category_id && (
+            <Text color="red" size="2">
+              {errors.category_id.message}
+            </Text>
+          )}
+        </Box>
 
-          {/* 의뢰인 선택 */}
-          <Box>
-            <Button type="button" onClick={() => setIsClientModalOpen(true)}>
-              의뢰인 선택
-            </Button>
-            {selectedClients.length > 0 && (
-              <Box mt="3">
-                <Text>선택된 의뢰인:</Text>
-                {selectedClients.map((client) => (
-                  <Flex key={client.id} align="center" mt="2">
-                    <Text>{client.name}</Text>
-                    <IconButton
-                      variant="ghost"
-                      onClick={() => handleRemoveClient(client.id)}
-                    >
-                      <Cross2Icon />
-                    </IconButton>
-                  </Flex>
-                ))}
-              </Box>
-            )}
-          </Box>
+        {/* 사건 설명 */}
+        <Box>
+          <textarea
+            placeholder="사건 설명"
+            {...register("description")}
+            style={{
+              width: "100%",
+              padding: "0.6rem 0.8rem",
+              border: "2px solid var(--gray-6)",
+              borderRadius: "var(--radius-1)",
+              minHeight: "100px",
+            }}
+          />
+        </Box>
 
-          {/* 담당자 선택 */}
-          <Box>
-            <Button type="button" onClick={() => setIsStaffModalOpen(true)}>
-              담당자 선택
-            </Button>
-            {selectedStaff.length > 0 && (
-              <Box mt="3">
-                <Text>선택된 담당자:</Text>
-                {selectedStaff.map((staff) => (
-                  <Flex key={staff.id} align="center" mt="2">
-                    <Text>{staff.name}</Text>
-                    <IconButton
-                      variant="ghost"
-                      onClick={() => handleRemoveStaff(staff.id)}
-                    >
-                      <Cross2Icon />
-                    </IconButton>
-                  </Flex>
-                ))}
-              </Box>
-            )}
-          </Box>
+        {/* 사건 시작일 */}
+        <Box>
+          <input
+            type="date"
+            {...register("start_date")}
+            style={{
+              width: "100%",
+              padding: "0.6rem 0.8rem",
+              border: "2px solid var(--gray-6)",
+              borderRadius: "var(--radius-1)",
+            }}
+          />
+          {errors.start_date && (
+            <Text color="red" size="2">
+              {errors.start_date.message}
+            </Text>
+          )}
+        </Box>
 
-          {/* 사건 설명 */}
-          <Box>
-            <textarea
-              placeholder="사건 설명"
-              {...register("description")}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.8rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-                minHeight: "100px",
-              }}
-            />
-          </Box>
+        {/* 의뢰인 선택 */}
+        <Box>
+          <Button type="button" onClick={() => setIsClientModalOpen(true)}>
+            의뢰인 선택
+          </Button>
+          {selectedClients.length > 0 && (
+            <Text>
+              선택된 의뢰인: {selectedClients.map((c) => c.name).join(", ")}
+            </Text>
+          )}
+        </Box>
 
-          {/* 사건 시작일 */}
-          <Box>
-            <input
-              type="date"
-              {...register("start_date")}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.8rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            {errors.start_date && (
-              <Text color="red" size="2">
-                {errors.start_date.message}
-              </Text>
-            )}
-          </Box>
-
-          {/* 제출 버튼 */}
-          <Button type="submit">{caseData ? "수정" : "등록"}</Button>
+        {/* 담당자 선택 */}
+        <Box>
+          <Button type="button" onClick={() => setIsStaffModalOpen(true)}>
+            담당자 선택
+          </Button>
+          {selectedStaff.length > 0 && (
+            <Text>
+              선택된 담당자: {selectedStaff.map((s) => s.name).join(", ")}
+            </Text>
+          )}
+        </Box>
+        <Flex gap="3" mt="4" justify="end">
+          <Button variant="soft" color="gray" onClick={onClose}>
+            취소
+          </Button>
+          <Button type="submit">등록</Button>
         </Flex>
-      </form>
+      </Flex>
 
       {/* 의뢰인 선택 모달 */}
-      {isClientModalOpen && (
-        <Modal
-          isOpen={isClientModalOpen}
-          onClose={() => setIsClientModalOpen(false)}
-          title="의뢰인 선택"
-        >
+      <Dialog.Root open={isClientModalOpen} onOpenChange={setIsClientModalOpen}>
+        <Dialog.Content style={{ maxWidth: 450 }}>
+          <Dialog.Title>의뢰인 선택</Dialog.Title>
+          <Dialog.Close asChild>
+            <Button
+              variant="ghost"
+              color="gray"
+              size="1"
+              style={{ position: "absolute", top: 8, right: 8 }}
+            >
+              <Cross2Icon />
+            </Button>
+          </Dialog.Close>
           <UserSelectionModalContent
             userType="client"
             selectedUsers={selectedClients}
             setSelectedUsers={setSelectedClients}
             onClose={() => setIsClientModalOpen(false)}
           />
-        </Modal>
-      )}
+        </Dialog.Content>
+      </Dialog.Root>
 
       {/* 담당자 선택 모달 */}
-      {isStaffModalOpen && (
-        <Modal
-          isOpen={isStaffModalOpen}
-          onClose={() => setIsStaffModalOpen(false)}
-          title="담당자 선택"
-        >
+      <Dialog.Root open={isStaffModalOpen} onOpenChange={setIsStaffModalOpen}>
+        <Dialog.Content style={{ maxWidth: 450 }}>
+          <Dialog.Title>담당자 선택</Dialog.Title>
+          <Dialog.Close asChild>
+            <Button
+              variant="ghost"
+              color="gray"
+              size="1"
+              style={{ position: "absolute", top: 8, right: 8 }}
+            >
+              <Cross2Icon />
+            </Button>
+          </Dialog.Close>
           <UserSelectionModalContent
             userType="staff"
             selectedUsers={selectedStaff}
             setSelectedUsers={setSelectedStaff}
             onClose={() => setIsStaffModalOpen(false)}
           />
-        </Modal>
-      )}
-    </>
+        </Dialog.Content>
+      </Dialog.Root>
+    </form>
   );
 };
 

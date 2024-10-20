@@ -1,6 +1,8 @@
+// src/components/Header/index.jsx
+
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
@@ -8,11 +10,11 @@ import { supabase } from "@/utils/supabase";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { Flex, Button, Text, Avatar, Box } from "@radix-ui/themes";
 import { useTheme } from "next-themes";
+import NotificationDropdown from "./NotificationDropdown";
 
 const NAV_LIST = [
-  { title: "Boards", path: "boards" },
-  { title: "Todos", path: "todos" }, // 'tods'에서 'todos'로 수정
-  { title: "Clients", path: "clients" },
+  { title: "Boards", path: "/boards" },
+  { title: "Todos", path: "/todos" },
 ];
 
 const Header = () => {
@@ -26,7 +28,7 @@ const Header = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null); // Context의 사용자 정보 초기화
+    setUser(null);
     router.push("/login");
   };
 
@@ -41,16 +43,20 @@ const Header = () => {
           </Link>
           <Flex gap="1rem" align="center">
             {NAV_LIST.map((nav) => (
-              <Link
-                href={`/${nav.path}`}
-                key={nav.path}
-                style={{ display: "inline-flex" }}
-              >
+              <Link href={nav.path} key={nav.path}>
                 <Button variant="ghost" color="gray">
                   {nav.title}
                 </Button>
               </Link>
             ))}
+            {/* 관리자일 경우에만 관리자 페이지 링크 표시 */}
+            {user && user.role === "admin" && (
+              <Link href="/admin">
+                <Button variant="ghost" color="red">
+                  관리자
+                </Button>
+              </Link>
+            )}
           </Flex>
         </Flex>
 
@@ -58,6 +64,7 @@ const Header = () => {
           <Button variant="ghost" onClick={toggleTheme}>
             {theme === "light" ? <MoonIcon /> : <SunIcon />}
           </Button>
+          <NotificationDropdown />
           {user ? (
             <Flex gap="1rem" align="center">
               <Avatar
@@ -65,28 +72,17 @@ const Header = () => {
                 fallback={user.email ? user.email[0].toUpperCase() : "U"}
                 size="2"
                 radius="full"
-                style={{ cursor: "pointer" }}
               />
               <Button onClick={handleLogout}>로그아웃</Button>
             </Flex>
           ) : (
             <Flex gap="1rem">
-              <Button>
-                <Link
-                  href="/login"
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  로그인
-                </Link>
-              </Button>
-              <Button>
-                <Link
-                  href="/signup"
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  회원가입
-                </Link>
-              </Button>
+              <Link href="/login">
+                <Button>로그인</Button>
+              </Link>
+              <Link href="/signup">
+                <Button>회원가입</Button>
+              </Link>
             </Flex>
           )}
         </Flex>

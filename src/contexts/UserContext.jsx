@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
 
 export const UserContext = createContext();
@@ -21,8 +15,8 @@ export const UserProvider = ({ children }) => {
     } = await supabase.auth.getUser();
 
     if (authUser) {
-      const { data: profileData, error } = await supabase
-        .from("profiles")
+      const { data: profile, error } = await supabase
+        .from("users")
         .select("*")
         .eq("id", authUser.id)
         .single();
@@ -30,7 +24,7 @@ export const UserProvider = ({ children }) => {
       if (error) {
         console.error("Error fetching profile:", error);
       } else {
-        setUser({ ...authUser, ...profileData });
+        setUser({ ...authUser, ...profile });
       }
     } else {
       setUser(null);

@@ -5,13 +5,15 @@
 import React from "react";
 import { Card, Flex, Text, Badge } from "@radix-ui/themes";
 
-// 카테고리별 색상 매핑
-const categoryColors = {
-  민사: "blue",
-  형사: "red",
-  집행: "green",
-  파산: "orange",
-  회생: "purple",
+const getCategoryColor = (category) => {
+  const colors = {
+    민사: "bg-blue-200 text-blue-800",
+    형사: "bg-red-200 text-red-800",
+    집행: "bg-green-200 text-green-800",
+    파산: "bg-orange-200 text-orange-800",
+    회생: "bg-purple-200 text-purple-800",
+  };
+  return colors[category] || "bg-gray-200 text-gray-800";
 };
 
 const CaseCard = ({ caseItem, onClick }) => {
@@ -28,8 +30,8 @@ const CaseCard = ({ caseItem, onClick }) => {
   const clientNames =
     caseItem.case_clients && caseItem.case_clients.length > 0
       ? caseItem.case_clients
-          .map((c) => c.profiles && c.profiles.name)
-          .filter((name) => name) // 이름이 존재하는지 확인
+          .map((c) => c.client && c.client.name)
+          .filter((name) => name)
           .join(", ")
       : "없음";
 
@@ -37,37 +39,23 @@ const CaseCard = ({ caseItem, onClick }) => {
   const staffNames =
     caseItem.case_staff && caseItem.case_staff.length > 0
       ? caseItem.case_staff
-          .map((s) => s.profiles && s.profiles.name)
-          .filter((name) => name) // 이름이 존재하는지 확인
+          .map((s) => s.staff && s.staff.name)
+          .filter((name) => name)
           .join(", ")
       : "없음";
 
   return (
     <Card
-      style={{
-        width: "100%", // 부모 요소의 너비에 맞춤
-        cursor: "pointer",
-        padding: "1rem",
-        borderRadius: "8px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        transition: "box-shadow 0.3s",
-      }}
+      className="w-full cursor-pointer p-4 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-lg"
       onClick={onClick}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
-      }}
     >
       <Flex direction="column" gap="2">
-        <Flex justify="space-between" align="center">
+        <Flex justify="between" align="center">
           <Text size="5" weight="bold">
             {caseItem.title}
           </Text>
           <Badge
-            color={categoryColors[caseItem.case_categories.name] || "gray"}
-            style={{ textTransform: "uppercase" }}
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(caseItem.case_categories.name)}`}
           >
             {caseItem.case_categories.name}
           </Badge>

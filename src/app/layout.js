@@ -1,3 +1,5 @@
+// src/app/layout.js
+
 import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
 import Header from "@/components/Header";
@@ -18,19 +20,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko" className={nanumGothic.className}>
-      <body>
+    <html lang="ko">
+      <body className={nanumGothic.className}>
         <UserProvider>
           <ThemeProvider attribute="class">
             <Theme
               accentColor="blue"
               grayColor="sand"
               radius="medium"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100vh",
-              }}
+              style={{ minHeight: "100vh" }}
             >
               <Header />
               {children}

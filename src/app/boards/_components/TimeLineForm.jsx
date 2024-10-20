@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/utils/supabase";
+import { Box, Button, Flex, Select, TextArea,Text, Dialog } from "@radix-ui/themes";
+import { Cross2Icon } from "@radix-ui/react-icons";
+import { Controller } from "react-hook-form";
 
-const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
+const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
   const [staff, setStaff] = useState([]);
-  const [selectedType, setSelectedType] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
     setValue,
   } = useForm({
@@ -24,20 +27,20 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
       Object.keys(editingItem).forEach((key) => {
         setValue(key, editingItem[key]);
       });
-      setSelectedType(editingItem.type);
     }
   }, [editingItem, setValue]);
 
   const fetchStaff = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, name, role")
-      .in("role", ["admin", "staff"]);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, name, role")
+        .in("role", ["admin", "staff"]);
 
-    if (error) {
-      console.error("Error fetching staff:", error);
-    } else {
+      if (error) throw error;
       setStaff(data);
+    } catch (error) {
+      console.error("Error fetching staff:", error);
     }
   };
 
@@ -56,14 +59,10 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
         case_id: caseId,
         status: "대기중",
         manager: currentUser.id,
+        handler: currentUser.id,
       };
 
-      if (
-        data.type === "요청" &&
-        data.requested_to &&
-        data.requested_to !== "none"
-      ) {
-        timelineData.handler = data.requested_to;
+      if (data.type === "요청" && data.requested_to && data.requested_to !== "none") {
         timelineData.requested_to = data.requested_to;
       }
 
@@ -91,11 +90,18 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
         data.requested_to &&
         data.requested_to !== "none"
       ) {
+        await supabase.from("requests").insert({
+          case_timeline_id: result.data[0].id,
+          requester_id: currentUser.id,
+          receiver_id: data.requested_to,
+          status: "pending"
+        });
+
         await supabase.from("notifications").insert({
           user_id: data.requested_to,
           case_timeline_id: result.data[0].id,
           message: `새로운 요청이 있습니다: ${data.description}`,
-          is_read: false,
+          is_read: false
         });
       }
 
@@ -107,62 +113,88 @@ const TimelineForm = ({ caseId, onSuccess, editingItem }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <div>
-          <label htmlFor="type">유형</label>
-          <select
-            {...register("type")}
-            id="type"
-            onChange={(e) => setSelectedType(e.target.value)}
-          >
-            <option value="">선택하세요</option>
-            <option value="요청">요청</option>
-            <option value="완료">완료</option>
-            <option value="상담">상담</option>
-            <option value="접수">접수</option>
-          </select>
-          {errors.type && <p style={{ color: "red" }}>{errors.type.message}</p>}
-        </div>
-        {selectedType === "요청" && (
-          <div>
-            <label htmlFor="requested_to">요청 대상</label>
-            <select {...register("requested_to")} id="requested_to">
-              <option value="none">선택 안함</option>
-              {staff.map(
-                (s) =>
-                  s.id && (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.role})
-                    </option>
-                  ),
+    <Box>
+      <Dialog.Close>
+        <Button variant="ghost" color="gray" size="1" style={{ position: 'absolute', top: 8, right: 8 }}>
+          <Cross2Icon />
+        </Button>
+      </Dialog.Close>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Flex direction="column" gap="3">
+          <Box>
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select.Root onValueChange={field.onChange} value={field.value}>
+                  <Select.Trigger placeholder="유형 선택" />
+                  <Select.Content>
+                    <Select.Group>
+                      <Select.Label>유형</Select.Label>
+                      <Select.Item value="요청">요청</Select.Item>
+                      <Select.Item value="완">완료</Select.Item>
+                      <Select.Item value="상담">상담</Select.Item>
+                      <Select.Item value="접수">접수</Select.Item>
+                    </Select.Group>
+                  </Select.Content>
+                </Select.Root>
               )}
-            </select>
-            {errors.requested_to && (
-              <p style={{ color: "red" }}>{errors.requested_to.message}</p>
+            />
+            {errors.type && <Text color="red" size="1">{errors.type.message}</Text>}
+          </Box>
+          
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              field.value === "요청" && (
+                <Box>
+                  <Controller
+                    name="requested_to"
+                    control={control}
+                    render={({ field }) => (
+                      <Select.Root onValueChange={field.onChange} value={field.value}>
+                        <Select.Trigger placeholder="요청 대상 선택" />
+                        <Select.Content>
+                          <Select.Group>
+                            <Select.Label>요청 대상</Select.Label>
+                            <Select.Item value="none">선택 안함</Select.Item>
+                            {staff.map((s) => s.id && (
+                              <Select.Item key={s.id} value={s.id}>
+                                {s.name} ({s.role})
+                              </Select.Item>
+                            ))}
+                          </Select.Group>
+                        </Select.Content>
+                      </Select.Root>
+                    )}
+                  />
+                  {errors.requested_to && <Text color="red" size="1">{errors.requested_to.message}</Text>}
+                </Box>
+              )
             )}
-          </div>
-        )}
-        <div>
-          <label htmlFor="description">설명</label>
-          <textarea
-            {...register("description")}
-            id="description"
-            style={{
-              width: "100%",
-              padding: "0.5rem",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              minHeight: "100px",
-            }}
           />
-          {errors.description && (
-            <p style={{ color: "red" }}>{errors.description.message}</p>
-          )}
-        </div>
-        <button type="submit">{editingItem ? "수정" : "저장"}</button>
-      </div>
-    </form>
+          
+          <Box>
+            <TextArea 
+              placeholder="설명"
+              {...register("description")}
+              style={{ minHeight: "100px" }}
+            />
+            {errors.description && <Text color="red" size="1">{errors.description.message}</Text>}
+          </Box>
+          
+          <Flex gap="3" mt="4" justify="end">
+            <Button variant="soft" color="gray" onClick={onClose}>
+              취소
+            </Button>
+            <Button type="submit">
+              {editingItem ? "수정" : "등록"}
+            </Button>
+          </Flex>
+        </Flex>
+      </form>
+    </Box>
   );
 };
 

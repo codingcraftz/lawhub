@@ -20,19 +20,22 @@ const UserSelectionModalContent = ({
 
   useEffect(() => {
     const fetchAllUsers = async () => {
-      let query = supabase.from("profiles").select("id, name");
-      const test = await query;
-      setTest(test);
+      console.log("Fetching users for userType:", userType);
+      let query = supabase.from("users").select("id, name, role, is_active");
+
       if (userType === "client") {
-        query = query.eq("role", "client");
+        query = query.eq("role", "client").eq("is_active", true);
       } else if (userType === "staff") {
-        query = query.in("role", ["staff", "admin"]);
+        query = query.in("role", ["staff", "admin"]).eq("is_active", true);
       }
 
       const { data, error } = await query;
+      console.log("Query result:", { data, error });
+
       if (error) {
         console.error("Error fetching users:", error);
       } else {
+        console.log("Fetched users:", data);
         setAllUsers(data || []);
         setFilteredUsers(data || []);
       }
