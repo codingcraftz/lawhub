@@ -26,7 +26,7 @@ const schema = yup.object().shape({
   password: yup
     .string()
     .matches(
-      /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/,
+      /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d가-힣!@#$%^&*]{8,}$/,
       "비밀번호는 최소 8자 이상이며, 영문자와 숫자를 포함해야 합니다",
     )
     .required("비밀번호는 필수입니다"),
