@@ -1,4 +1,4 @@
-// hooks/useUser.js
+// src/hooks/useUser.js
 
 import { UserContext } from "@/contexts/UserContext";
 import { useContext } from "react";

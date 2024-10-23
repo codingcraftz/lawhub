@@ -27,6 +27,7 @@ const UserApproval = () => {
     fetchPendingUsers();
   }, []);
 
+  console.log(pendingUsers);
   const handleApprove = async (userId) => {
     const { error } = await supabase
       .from("users")

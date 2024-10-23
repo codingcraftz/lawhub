@@ -17,9 +17,7 @@ const AdminDashboard = () => {
       <Tabs.Root defaultValue="users">
         <Tabs.List>
           <Tabs.Trigger value="users">사용자 관리</Tabs.Trigger>
-          {/* <Tabs.Trigger value="categories">카테고리 관리</Tabs.Trigger> */}
           <Tabs.Trigger value="approvals">회원 승인</Tabs.Trigger>{" "}
-          {/* 추가된 부분 */}
         </Tabs.List>
 
         <Tabs.Content value="users">
@@ -31,7 +29,7 @@ const AdminDashboard = () => {
         </Tabs.Content>
 
         <Tabs.Content value="approvals">
-          <UserApproval /> {/* 추가된 부분 */}
+          <UserApproval />
         </Tabs.Content>
       </Tabs.Root>
     </Box>

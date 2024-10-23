@@ -1,3 +1,5 @@
+// src/app/admin/_components/UserForm.jsx
+
 "use client";
 
 import React, { useEffect } from "react";
@@ -73,7 +75,7 @@ const UserForm = ({ editingUser, onSuccess, onClose }) => {
 
         if (!response.ok) {
           throw new Error(
-            result.error || "사용자 업데이트 중 오류가 발생했습니다."
+            result.error || "사용자 업데이트 중 오류가 발생했습니다.",
           );
         }
       } else {
@@ -98,7 +100,7 @@ const UserForm = ({ editingUser, onSuccess, onClose }) => {
 
         if (!response.ok) {
           throw new Error(
-            result.error || "사용자 생성 중 오류가 발생했습니다."
+            result.error || "사용자 생성 중 오류가 발생했습니다.",
           );
         }
       }

@@ -1,3 +1,5 @@
+// src/app/boards/_components/CaseTimelind.jsx
+
 import React, { useState, useEffect } from "react";
 import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
@@ -42,7 +44,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
         manager:users!fk_manager(id, name),
         handler:users!fk_handler(id, name),
         requested_to:users!fk_requested_to(id, name)
-        `
+        `,
       )
       .eq("case_id", caseId)
       .order("created_at", { ascending: true });
@@ -85,7 +87,11 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const isAdmin = currentUser?.role === "admin";
 
   const handleCaseCompletion = async () => {
-    if (window.confirm("정말로 이 사건을 완료하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+    if (
+      window.confirm(
+        "정말로 이 사건을 완료하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      )
+    ) {
       try {
         const { error } = await supabase
           .from("cases")
@@ -130,7 +136,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
             </Dialog.Root>
           )}
         </Flex>
-        
+
         {/* 타임라인 항목들 */}
         <Flex direction="column" gap="3">
           {timelineItems.map((item) => (
@@ -185,7 +191,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
               </Text>
               <Text size="2" color="gray" mt="1">
                 담당자: {item.manager?.name || "없음"}
-                {item.handler &&  `| 처리자: ${item.handler.name}`}
+                {item.handler && `| 처리자: ${item.handler.name}`}
               </Text>
             </Box>
           ))}
