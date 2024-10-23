@@ -17,11 +17,13 @@ const UserManagement = () => {
     const { data, error } = await supabase
       .from("users")
       .select("*")
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching users:", error);
     } else {
+      console.log(data);
       setUsers(data);
     }
   };
@@ -50,7 +52,7 @@ const UserManagement = () => {
 
         if (!response.ok) {
           throw new Error(
-            result.error || "사용자 삭제 중 오류가 발생했습니다."
+            result.error || "사용자 삭제 중 오류가 발생했습니다.",
           );
         }
 
@@ -111,10 +113,19 @@ const UserManagement = () => {
               <Table.Cell>{user.is_active ? "활성화" : "비활성화"}</Table.Cell>
               <Table.Cell>
                 <Flex gap="2">
-                  <Button size="1" variant="soft" onClick={() => handleEdit(user)}>
+                  <Button
+                    size="1"
+                    variant="soft"
+                    onClick={() => handleEdit(user)}
+                  >
                     수정
                   </Button>
-                  <Button size="1" variant="soft" color="red" onClick={() => handleDelete(user.id)}>
+                  <Button
+                    size="1"
+                    variant="soft"
+                    color="red"
+                    onClick={() => handleDelete(user.id)}
+                  >
                     삭제
                   </Button>
                 </Flex>
@@ -150,3 +161,4 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+

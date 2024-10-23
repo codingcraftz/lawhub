@@ -1,3 +1,5 @@
+// src/utils/debounce.js
+
 const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {

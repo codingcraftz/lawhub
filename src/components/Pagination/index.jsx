@@ -1,9 +1,9 @@
-// components/Pagination.js
+// src/components/Pagination/index.jsx
 
 "use client";
 
 import React from "react";
-import { Flex, Button, Text } from "@radix-ui/themes";
+import { Flex, Button } from "@radix-ui/themes";
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   const handlePrev = () => {

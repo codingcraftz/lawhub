@@ -1,7 +1,17 @@
+// src/app/_components/TimeLineForm.jsx
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/utils/supabase";
-import { Box, Button, Flex, Select, TextArea,Text, Dialog } from "@radix-ui/themes";
+import {
+  Box,
+  Button,
+  Flex,
+  Select,
+  TextArea,
+  Text,
+  Dialog,
+} from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { Controller } from "react-hook-form";
 
@@ -62,7 +72,11 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         handler: currentUser.id,
       };
 
-      if (data.type === "요청" && data.requested_to && data.requested_to !== "none") {
+      if (
+        data.type === "요청" &&
+        data.requested_to &&
+        data.requested_to !== "none"
+      ) {
         timelineData.requested_to = data.requested_to;
       }
 
@@ -94,14 +108,14 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
           case_timeline_id: result.data[0].id,
           requester_id: currentUser.id,
           receiver_id: data.requested_to,
-          status: "pending"
+          status: "pending",
         });
 
         await supabase.from("notifications").insert({
           user_id: data.requested_to,
           case_timeline_id: result.data[0].id,
           message: `새로운 요청이 있습니다: ${data.description}`,
-          is_read: false
+          is_read: false,
         });
       }
 
@@ -115,7 +129,12 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
   return (
     <Box>
       <Dialog.Close>
-        <Button variant="ghost" color="gray" size="1" style={{ position: 'absolute', top: 8, right: 8 }}>
+        <Button
+          variant="ghost"
+          color="gray"
+          size="1"
+          style={{ position: "absolute", top: 8, right: 8 }}
+        >
           <Cross2Icon />
         </Button>
       </Dialog.Close>
@@ -140,57 +159,73 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
                 </Select.Root>
               )}
             />
-            {errors.type && <Text color="red" size="1">{errors.type.message}</Text>}
+            {errors.type && (
+              <Text color="red" size="1">
+                {errors.type.message}
+              </Text>
+            )}
           </Box>
-          
+
           <Controller
             name="type"
             control={control}
-            render={({ field }) => (
+            render={({ field }) =>
               field.value === "요청" && (
                 <Box>
                   <Controller
                     name="requested_to"
                     control={control}
                     render={({ field }) => (
-                      <Select.Root onValueChange={field.onChange} value={field.value}>
+                      <Select.Root
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <Select.Trigger placeholder="요청 대상 선택" />
                         <Select.Content>
                           <Select.Group>
                             <Select.Label>요청 대상</Select.Label>
                             <Select.Item value="none">선택 안함</Select.Item>
-                            {staff.map((s) => s.id && (
-                              <Select.Item key={s.id} value={s.id}>
-                                {s.name} ({s.role})
-                              </Select.Item>
-                            ))}
+                            {staff.map(
+                              (s) =>
+                                s.id && (
+                                  <Select.Item key={s.id} value={s.id}>
+                                    {s.name} ({s.role})
+                                  </Select.Item>
+                                ),
+                            )}
                           </Select.Group>
                         </Select.Content>
                       </Select.Root>
                     )}
                   />
-                  {errors.requested_to && <Text color="red" size="1">{errors.requested_to.message}</Text>}
+                  {errors.requested_to && (
+                    <Text color="red" size="1">
+                      {errors.requested_to.message}
+                    </Text>
+                  )}
                 </Box>
               )
-            )}
+            }
           />
-          
+
           <Box>
-            <TextArea 
+            <TextArea
               placeholder="설명"
               {...register("description")}
               style={{ minHeight: "100px" }}
             />
-            {errors.description && <Text color="red" size="1">{errors.description.message}</Text>}
+            {errors.description && (
+              <Text color="red" size="1">
+                {errors.description.message}
+              </Text>
+            )}
           </Box>
-          
+
           <Flex gap="3" mt="4" justify="end">
             <Button variant="soft" color="gray" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit">
-              {editingItem ? "수정" : "등록"}
-            </Button>
+            <Button type="submit">{editingItem ? "수정" : "등록"}</Button>
           </Flex>
         </Flex>
       </form>
@@ -199,3 +234,4 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
 };
 
 export default TimelineForm;
+

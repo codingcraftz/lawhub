@@ -1,4 +1,4 @@
-// UserSelectionModalContent.js
+// src/app/boards/_components/UserSelectionModalContent.js
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
