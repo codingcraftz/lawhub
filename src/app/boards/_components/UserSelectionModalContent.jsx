@@ -1,8 +1,6 @@
-// src/app/boards/_components/UserSelectionModalContent.js
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button, Checkbox } from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Checkbox, Tooltip } from "@radix-ui/themes"; // Import Tooltip
 
 const UserSelectionModalContent = ({
   userType, // "client" 또는 "staff"
@@ -16,12 +14,13 @@ const UserSelectionModalContent = ({
   const [localSelectedUsers, setLocalSelectedUsers] = useState([
     ...selectedUsers,
   ]);
-  const [test, setTest] = useState([]);
 
   useEffect(() => {
     const fetchAllUsers = async () => {
       console.log("Fetching users for userType:", userType);
-      let query = supabase.from("users").select("id, name, role, is_active");
+      let query = supabase
+        .from("users")
+        .select("id, name, role, is_active, birth_date, phone_number"); // Include birth_date and phone_number
 
       if (userType === "client") {
         query = query.eq("role", "client").eq("is_active", true);
@@ -43,10 +42,6 @@ const UserSelectionModalContent = ({
 
     fetchAllUsers();
   }, [userType]);
-
-  console.log(test);
-  console.log(allUsers);
-  console.log(filteredUsers);
 
   useEffect(() => {
     if (searchTerm === "") {
@@ -73,6 +68,20 @@ const UserSelectionModalContent = ({
     onClose();
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  };
+
+  const formatPhoneNumber = (phoneNumber) => {
+    if (!phoneNumber) return "없음";
+    return phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+  };
+
   return (
     <Box>
       <input
@@ -94,7 +103,24 @@ const UserSelectionModalContent = ({
               checked={!!localSelectedUsers.find((u) => u.id === user.id)}
               onCheckedChange={() => handleToggleUser(user)}
             />
-            <Text ml="2">{user.name}</Text>
+            {/* Tooltip showing birth_date and phone_number */}
+            <Tooltip
+              content={
+                <Box style={{ padding: "0.5rem", fontSize: "12px" }}>
+                  <p>
+                    <strong>생년월일:</strong> {formatDate(user.birth_date)}
+                  </p>
+                  <p>
+                    <strong>전화번호:</strong>{" "}
+                    {formatPhoneNumber(user.phone_number)}
+                  </p>
+                </Box>
+              }
+            >
+              <Text ml="2" style={{ cursor: "pointer" }}>
+                {user.name}
+              </Text>
+            </Tooltip>
           </Flex>
         ))}
       </Box>

@@ -7,6 +7,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { ThemeProvider } from "next-themes";
 import "./layout.css";
 import { Nanum_Gothic } from "next/font/google";
+import "react-datepicker/dist/react-datepicker.css";
 
 const nanumGothic = Nanum_Gothic({
   subsets: ["latin"],

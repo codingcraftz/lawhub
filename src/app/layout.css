@@ -30,3 +30,89 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* 다크 모드 */
+html.dark .react-datepicker__input-container input {
+  background-color: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 0.375rem;
+}
+
+html.dark .react-datepicker {
+  background-color: #111827 !important;
+  border: 1px solid #374151 !important;
+}
+
+html.dark .react-datepicker__header {
+  background-color: #1f2937 !important;
+  border-bottom: 1px solid #374151 !important;
+}
+
+html.dark .react-datepicker__month-select,
+html.dark .react-datepicker__year-select {
+  background-color: #4b5563;
+  color: #f9fafb;
+}
+
+html.dark .react-datepicker__day-name,
+html.dark .react-datepicker__day,
+html.dark .react-datepicker__current-month {
+  color: #d1d5db !important;
+}
+
+html.dark .react-datepicker__day--selected,
+html.dark .react-datepicker__day--keyboard-selected {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+html.dark .react-datepicker__day--disabled {
+  color: #6b7280 !important;
+}
+
+/* 라이트 모드 */
+html.light .react-datepicker__input-container input {
+  background-color: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+}
+
+html.light .react-datepicker {
+  background-color: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+}
+
+html.light .react-datepicker__header {
+  background-color: #f3f4f6 !important;
+  border-bottom: 1px solid #d1d5db !important;
+}
+
+html.light .react-datepicker__month-select,
+html.light .react-datepicker__year-select {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+html.light .react-datepicker__day-name,
+html.light .react-datepicker__day,
+html.light .react-datepicker__current-month {
+  color: #374151 !important;
+}
+
+html.light .react-datepicker__day--selected,
+html.light .react-datepicker__day--keyboard-selected {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+html.light .react-datepicker__day--disabled {
+  color: #9ca3af !important;
+}
+
+/* DatePicker의 전체 너비 보장 */
+.react-datepicker-wrapper,
+.react-datepicker__input-container {
+  width: 100%;
+}
