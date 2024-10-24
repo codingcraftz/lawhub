@@ -1,5 +1,3 @@
-// src/app/boards/_components/CaseForm.jsx
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -10,7 +8,10 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import UserSelectionModalContent from "./UserSelectionModalContent";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import OpponentSelectionModalContent from "./OpponentSelectionModalContent";
+import CustomDatePicker from "@/components/CustomDatePicker";
 
+// 유효성 검사 스키마
 const schema = yup.object().shape({
   title: yup.string().required("제목은 필수입니다"),
   description: yup.string(),
@@ -22,8 +23,10 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const [categories, setCategories] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState([]);
+  const [selectedOpponents, setSelectedOpponents] = useState([]); // 상대방 상태
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [isOpponentModalOpen, setIsOpponentModalOpen] = useState(false); // 상대방 선택 모달
 
   const {
     register,
@@ -45,7 +48,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const fetchCategories = async () => {
     const { data, error } = await supabase.from("case_categories").select("*");
     if (error) {
-      console.error("Error fetching categories:", error);
+      console.error("카테고리 불러오기 오류:", error);
     } else {
       setCategories(data);
     }
@@ -59,7 +62,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       .eq("case_id", caseData.id);
 
     if (clientError) {
-      console.error("Error fetching clients:", clientError);
+      console.error("의뢰인 불러오기 오류:", clientError);
     } else {
       const clients = clientData.map((item) => ({
         id: item.client_id,
@@ -75,13 +78,34 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       .eq("case_id", caseData.id);
 
     if (staffError) {
-      console.error("Error fetching staff:", staffError);
+      console.error("담당자 불러오기 오류:", staffError);
     } else {
       const staff = staffData.map((item) => ({
         id: item.staff_id,
         name: item.staff.name,
       }));
       setSelectedStaff(staff);
+    }
+
+    // 상대방 가져오기 (opponents 테이블과 조인)
+    const { data: opponentData, error: opponentError } = await supabase
+      .from("case_opponents")
+      .select(
+        "opponent_id, opponent:opponents(name, registration_number, address, phone_number)",
+      ) // opponents 테이블과 조인
+      .eq("case_id", caseData.id);
+
+    if (opponentError) {
+      console.error("상대방 불러오기 오류:", opponentError);
+    } else {
+      const opponents = opponentData.map((item) => ({
+        id: item.opponent_id,
+        name: item.opponent.name,
+        registration_number: item.opponent.registration_number,
+        address: item.opponent.address,
+        phone_number: item.opponent.phone_number,
+      }));
+      setSelectedOpponents(opponents);
     }
   };
 
@@ -92,13 +116,13 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         description: data.description,
         start_date: data.start_date,
         category_id: data.category_id,
-        status: data.status || "ongoing", // 기본값을 'ongoing'으로 설정
+        status: data.status || "ongoing",
       };
 
       let insertedCase;
 
       if (caseData) {
-        // 기존 사건 수정
+        // 기존 사건 업데이트
         const { data: updatedCase, error } = await supabase
           .from("cases")
           .update(casePayload)
@@ -108,11 +132,15 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         if (error) throw error;
         insertedCase = updatedCase[0];
 
-        // 기존 연결 데이터 삭제
+        // 기존 관계 삭제
         await supabase.from("case_clients").delete().eq("case_id", caseData.id);
         await supabase.from("case_staff").delete().eq("case_id", caseData.id);
+        await supabase
+          .from("case_opponents")
+          .delete()
+          .eq("case_id", caseData.id); // 기존 상대방 관계 삭제
       } else {
-        // 새로운 사건 생성
+        // 새로운 사건 삽입
         const { data: newCase, error } = await supabase
           .from("cases")
           .insert([casePayload])
@@ -122,61 +150,42 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         insertedCase = newCase[0];
       }
 
-      // 연결 테이블 데이터 삽입
+      // 의뢰인, 담당자, 상대방 삽입
       const clientEntries = selectedClients.map((client) => ({
         case_id: insertedCase.id,
         client_id: client.id,
       }));
-
       const staffEntries = selectedStaff.map((staff) => ({
         case_id: insertedCase.id,
         staff_id: staff.id,
       }));
+      const opponentEntries = selectedOpponents.map((opponent) => ({
+        case_id: insertedCase.id,
+        opponent_id: opponent.id, // 새로운 상대방 삽입 대신 관계만 삽입
+      }));
 
-      // 연결 테이블에 데이터 삽입 시 에러 처리 강화
       if (clientEntries.length > 0) {
-        const { data: clientInsertData, error: clientInsertError } =
-          await supabase.from("case_clients").insert(clientEntries);
-
-        if (clientInsertError) {
-          console.error(
-            "Error inserting into case_clients:",
-            clientInsertError,
-          );
-          throw clientInsertError;
-        }
+        await supabase.from("case_clients").insert(clientEntries);
       }
-
       if (staffEntries.length > 0) {
-        const { data: staffInsertData, error: staffInsertError } =
-          await supabase.from("case_staff").insert(staffEntries);
-
-        if (staffInsertError) {
-          console.error("Error inserting into case_staff:", staffInsertError);
-          throw staffInsertError;
-        }
+        await supabase.from("case_staff").insert(staffEntries);
+      }
+      if (opponentEntries.length > 0) {
+        await supabase.from("case_opponents").insert(opponentEntries);
       }
 
-      // 담당자에게 알림 생성
+      // 담당자에게 알림
       for (const staff of selectedStaff) {
-        try {
-          const { data, error } = await supabase.from("notifications").insert({
-            user_id: staff.id,
-            message: `새로운 사건에 배정되었습니다: ${insertedCase.title}`,
-            case_timeline_id: null,
-            is_read: false,
-          });
-
-          if (error) throw error;
-        } catch (error) {
-          console.error("Error inserting notification:", error);
-          // 여기서 적절한 오류 처리를 수행합니다.
-        }
+        await supabase.from("notifications").insert({
+          user_id: staff.id,
+          message: `새로운 사건에 배정되었습니다: ${insertedCase.title}`,
+          is_read: false,
+        });
       }
 
       onSuccess();
     } catch (error) {
-      console.error("Error saving case:", error);
+      console.error("사건 저장 중 오류:", error);
       alert("사건 정보 저장 중 오류가 발생했습니다.");
     }
   };
@@ -243,17 +252,17 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           />
         </Box>
 
-        {/* 사건 시작일 */}
         <Box>
-          <input
-            type="date"
-            {...register("start_date")}
-            style={{
-              width: "100%",
-              padding: "0.6rem 0.8rem",
-              border: "2px solid var(--gray-6)",
-              borderRadius: "var(--radius-1)",
-            }}
+          <Controller
+            control={control}
+            name="start_date"
+            render={({ field }) => (
+              <CustomDatePicker
+                title="사건 시작 날짜 선택"
+                selectedDate={field.value}
+                onDateChange={(date) => field.onChange(date)}
+              />
+            )}
           />
           {errors.start_date && (
             <Text color="red" size="2">
@@ -285,6 +294,19 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
             </Text>
           )}
         </Box>
+
+        {/* 상대방 선택 */}
+        <Box>
+          <Button type="button" onClick={() => setIsOpponentModalOpen(true)}>
+            상대방 선택
+          </Button>
+          {selectedOpponents.length > 0 && (
+            <Text>
+              선택된 상대방: {selectedOpponents.map((o) => o.name).join(", ")}
+            </Text>
+          )}
+        </Box>
+
         <Flex gap="3" mt="4" justify="end">
           <Button variant="soft" color="gray" onClick={onClose}>
             취소
@@ -338,9 +360,33 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           />
         </Dialog.Content>
       </Dialog.Root>
+
+      {/* 상대방 선택 모달 */}
+      <Dialog.Root
+        open={isOpponentModalOpen}
+        onOpenChange={setIsOpponentModalOpen}
+      >
+        <Dialog.Content style={{ maxWidth: 450 }}>
+          <Dialog.Title>상대방 추가</Dialog.Title>
+          <Dialog.Close asChild>
+            <Button
+              variant="ghost"
+              color="gray"
+              size="1"
+              style={{ position: "absolute", top: 8, right: 8 }}
+            >
+              <Cross2Icon />
+            </Button>
+          </Dialog.Close>
+          <OpponentSelectionModalContent
+            selectedOpponents={selectedOpponents}
+            setSelectedOpponents={setSelectedOpponents}
+            onClose={() => setIsOpponentModalOpen(false)}
+          />
+        </Dialog.Content>
+      </Dialog.Root>
     </form>
   );
 };
 
 export default CaseForm;
-

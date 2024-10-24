@@ -1,9 +1,7 @@
-// src/app/(auth)/signup/page.jsx
-
 "use client";
 
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useRouter } from "next/navigation";
@@ -12,6 +10,7 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card, Separator } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import CustomDatePicker from "@/components/CustomDatePicker";
 
 const schema = yup.object().shape({
   email: yup
@@ -54,6 +53,7 @@ const SignupPage = () => {
     register,
     handleSubmit,
     formState: { errors, isValid },
+    control, // Controller를 위한 control 추가
   } = useForm({
     resolver: yupResolver(schema),
     mode: "onChange",
@@ -165,17 +165,17 @@ const SignupPage = () => {
                 </Text>
               </Box>
             ))}
-            <Box>
-              <input
-                type="date"
-                {...register("birthDate")}
-                placeholder="생년월일"
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
+            <Box className="w-full">
+              <Controller
+                control={control}
+                name="birthDate"
+                render={({ field }) => (
+                  <CustomDatePicker
+                    title="생년월일"
+                    selectedDate={field.value} // CustomDatePicker에 selectedDate prop으로 전달
+                    onDateChange={(date) => field.onChange(date)} // onDateChange prop으로 date 변경 처리
+                  />
+                )}
               />
               <Text
                 color="red"

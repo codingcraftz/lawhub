@@ -18,6 +18,7 @@ const getCategoryColor = (category) => {
 
 const CaseCard = ({ caseItem, onClick }) => {
   // 필수 데이터 존재 여부 확인
+  console.log(caseItem);
   if (
     !caseItem ||
     !caseItem.case_categories ||
@@ -31,6 +32,14 @@ const CaseCard = ({ caseItem, onClick }) => {
     caseItem.case_clients && caseItem.case_clients.length > 0
       ? caseItem.case_clients
           .map((c) => c.client && c.client.name)
+          .filter((name) => name)
+          .join(", ")
+      : "없음";
+
+  const opponentNames =
+    caseItem.case_opponents && caseItem.case_opponents.length > 0
+      ? caseItem.case_opponents
+          .map((o) => o.opponent && o.opponent.name)
           .filter((name) => name)
           .join(", ")
       : "없음";
@@ -62,6 +71,9 @@ const CaseCard = ({ caseItem, onClick }) => {
         </Flex>
         <Text size="3">
           <strong>의뢰인:</strong> {clientNames}
+        </Text>
+        <Text size="3">
+          <strong>상대방:</strong> {opponentNames}
         </Text>
         <Text size="3">
           <strong>담당자:</strong> {staffNames}

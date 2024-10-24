@@ -38,17 +38,22 @@ const BoardsPage = () => {
           setTotalCasesCount(0);
           return;
         }
+
+        // case_opponents 테이블을 opponents와 조인하여 이름 가져오기
         let query = supabase.from("cases").select(
           `
-          *,
-          case_categories (id, name),
-          case_clients (
-            client:users (id, name)
-          ),
-          case_staff!inner (
-            staff:users (id, name)
-          )
-        `,
+        *,
+        case_categories (id, name),
+        case_clients (
+          client:users (id, name)
+        ),
+        case_staff!inner (
+          staff:users (id, name)
+        ),
+        case_opponents (
+          opponent:opponents (id, name)
+        )
+      `,
           { count: "exact" },
         );
 
@@ -85,6 +90,7 @@ const BoardsPage = () => {
   const hasCases = cases.length > 0;
   const totalPages = Math.ceil(totalCasesCount / pageSize);
 
+  console.log(ongoingCases);
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
       <Flex justify="between" align="center" className="mb-4">
