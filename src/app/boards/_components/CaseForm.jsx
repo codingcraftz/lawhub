@@ -1,3 +1,5 @@
+// src/app/boards/_components/CaseForm.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";

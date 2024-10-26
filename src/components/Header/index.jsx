@@ -13,8 +13,9 @@ import { useTheme } from "next-themes";
 import NotificationDropdown from "./NotificationDropdown";
 
 const NAV_LIST = [
-  { title: "Boards", path: "/boards" },
-  { title: "Todos", path: "/todos" },
+  { title: "Boards", path: "/boards", roles: ["admin", "staff"] },
+  { title: "Todos", path: "/todos", roles: ["admin", "staff"] },
+  { title: "My Cases", path: "/client/cases", roles: ["client"] },
 ];
 
 const Header = () => {
@@ -42,13 +43,15 @@ const Header = () => {
             </Text>
           </Link>
           <Flex gap="1rem" align="center">
-            {NAV_LIST.map((nav) => (
-              <Link href={nav.path} key={nav.path}>
-                <Button variant="ghost" color="gray">
-                  {nav.title}
-                </Button>
-              </Link>
-            ))}
+            {NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map(
+              (nav) => (
+                <Link href={nav.path} key={nav.path}>
+                  <Button variant="ghost" color="gray">
+                    {nav.title}
+                  </Button>
+                </Link>
+              ),
+            )}
             {/* 관리자일 경우에만 관리자 페이지 링크 표시 */}
             {user && user.role === "admin" && (
               <Link href="/admin">

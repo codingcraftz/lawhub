@@ -59,8 +59,6 @@ const BoardsPage = () => {
 
         if (user.role === "staff") {
           query = query.eq("case_staff.staff_id", user.id);
-        } else if (user.role === "client") {
-          query = query.eq("case_clients.client_id", user.id);
         }
 
         query = query
