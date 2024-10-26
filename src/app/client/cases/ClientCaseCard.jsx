@@ -16,9 +16,7 @@ const getCategoryColor = (category) => {
   return colors[category] || "bg-gray-200 text-gray-800";
 };
 
-const CaseCard = ({ caseItem, onClick }) => {
-  // 필수 데이터 존재 여부 확인
-  console.log(caseItem);
+const ClientCaseCard = ({ caseItem, onClick }) => {
   if (
     !caseItem ||
     !caseItem.case_categories ||
@@ -75,9 +73,7 @@ const CaseCard = ({ caseItem, onClick }) => {
         <Text size="3">
           <strong>상대방:</strong> {opponentNames}
         </Text>
-        <Text size="3">
-          <strong>담당자:</strong> {staffNames}
-        </Text>
+
         <Text size="2" color="gray">
           <strong>시작일:</strong>{" "}
           {new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
@@ -101,4 +97,4 @@ const CaseCard = ({ caseItem, onClick }) => {
   );
 };
 
-export default CaseCard;
+export default ClientCaseCard;

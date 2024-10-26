@@ -10,7 +10,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import Pagination from "@/components/Pagination";
 import ClientCaseTimeline from "./ClientCaseTimeline";
 import { useRouter } from "next/navigation";
-import CaseCard from "@/app/boards/_components/CaseCard";
+import ClientCaseCard from "./ClientCaseCard";
 
 const ClientCasesPage = () => {
   const { user } = useUser();
@@ -29,7 +29,6 @@ const ClientCasesPage = () => {
       fetchClientCases(page, pageSize);
     }
   }, [user, page]);
-  console.log(user.id);
 
   const fetchClientCases = async (page = 1, pageSize = 9) => {
     try {
@@ -85,7 +84,7 @@ const ClientCasesPage = () => {
       {cases.length > 0 ? (
         <Box className="flex flex-col gap-4">
           {cases.map((caseItem) => (
-            <CaseCard
+            <ClientCaseCard
               key={caseItem.id}
               caseItem={caseItem}
               onClick={() => setSelectedCase(caseItem)}
