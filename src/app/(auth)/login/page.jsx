@@ -1,8 +1,6 @@
-// src/app/(auth)/login/page.jsx
-
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -11,8 +9,7 @@ import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
-import * as Dialog from "@radix-ui/react-dialog"; // Radix UI Dialog import
-import { Cross2Icon } from "@radix-ui/react-icons"; // Close icon
+import * as Dialog from "@radix-ui/react-dialog";
 
 const schema = yup.object().shape({
   email: yup
@@ -22,9 +19,18 @@ const schema = yup.object().shape({
   password: yup.string().required("비밀번호는 필수입니다"),
 });
 
+const passwordResetSchema = yup.object().shape({
+  email: yup
+    .string()
+    .email("유효한 이메일을 입력해주세요")
+    .required("이메일은 필수입니다"),
+});
+
 const LoginPage = () => {
   const router = useRouter();
-  const { fetchUser } = useUser();
+  const { user } = useUser();
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -34,9 +40,22 @@ const LoginPage = () => {
     resolver: yupResolver(schema),
     mode: "onChange",
   });
+  const {
+    register: resetRegister,
+    handleSubmit: handleResetSubmit,
+    formState: { errors: resetErrors },
+  } = useForm({
+    resolver: yupResolver(passwordResetSchema),
+  });
 
   const [modalMessage, setModalMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      router.push("/");
+    }
+  }, [user, router]);
 
   const onCloseModal = () => {
     setIsModalOpen(false);
@@ -51,13 +70,29 @@ const LoginPage = () => {
       });
 
       if (error) throw error;
-
-      router.push("/boards");
+      router.push("/");
     } catch (error) {
       console.error("Login error:", error);
       setModalMessage(
         "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.",
       );
+      setIsModalOpen(true);
+    }
+  };
+
+  const onForgotPassword = async (data) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+
+      setModalMessage("비밀번호 복구 이메일이 전송되었습니다.");
+      setIsModalOpen(true);
+      setIsForgotPasswordOpen(false);
+    } catch (error) {
+      console.error("Password reset error:", error);
+      setModalMessage("비밀번호 복구 요청 중 오류가 발생했습니다.");
       setIsModalOpen(true);
     }
   };
@@ -108,34 +143,147 @@ const LoginPage = () => {
                 회원가입
               </Link>
             </Text>
+            <Text
+              size="2"
+              align="center"
+              style={{ color: "var(--accent-9)", cursor: "pointer" }}
+              onClick={() => setIsForgotPasswordOpen(true)}
+            >
+              비밀번호를 잊으셨나요?
+            </Text>
           </Flex>
         </form>
       </Card>
 
-      {/* Radix UI Dialog Component for Error Messages */}
+      {/* Radix UI Dialog for messages */}
       <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
-          <Dialog.Content
-            className="fixed top-1/2 left-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 transform -translate-x-1/2 -translate-y-1/2 max-w-md w-full"
-            style={{ zIndex: 1000 }}
+        <Dialog.Content
+          style={{
+            maxWidth: 450,
+            padding: "2rem",
+            borderRadius: "8px",
+            border: "2px solid var(--gray-8)",
+            backgroundColor: "var(--gray-1)",
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+            zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          <Dialog.Title
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: "600",
+              color: "var(--accent-9)",
+              marginBottom: "1rem",
+            }}
           >
-            <Dialog.Title className="text-lg font-bold mb-4">오류</Dialog.Title>
-            <Dialog.Description>{modalMessage}</Dialog.Description>
-            <Dialog.Close asChild>
-              <Button
-                variant="ghost"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
-              >
-                <Cross2Icon />
-              </Button>
-            </Dialog.Close>
-            <Flex justify="end" mt="4">
-              <Button onClick={onCloseModal}>확인</Button>
-            </Flex>
-          </Dialog.Content>
-        </Dialog.Portal>
+            오류
+          </Dialog.Title>
+          <Dialog.Description
+            style={{
+              fontSize: "1rem",
+              color: "var(--gray-9)",
+              marginBottom: "1.5rem",
+            }}
+          >
+            {modalMessage}
+          </Dialog.Description>
+          <Dialog.Close asChild>
+            <Button
+              variant="soft"
+              color="blue"
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                fontSize: "1rem",
+                fontWeight: "500",
+              }}
+              onClick={onCloseModal}
+            >
+              확인
+            </Button>
+          </Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Root>
+
+      <Dialog.Root
+        open={isForgotPasswordOpen}
+        onOpenChange={setIsForgotPasswordOpen}
+      >
+        <Dialog.Content
+          style={{
+            maxWidth: 450,
+            padding: "2rem",
+            borderRadius: "8px",
+            border: "2px solid var(--gray-8)",
+            backgroundColor: "var(--gray-1)",
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+            zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          <Dialog.Title
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: "600",
+              color: "var(--accent-9)",
+              marginBottom: "1rem",
+            }}
+          >
+            비밀번호 찾기
+          </Dialog.Title>
+          <form
+            onSubmit={handleResetSubmit(onForgotPassword)}
+            style={{ width: "100%" }}
+          >
+            <input
+              type="email"
+              placeholder="이메일을 입력해주세요"
+              {...resetRegister("email")}
+              style={{
+                width: "100%",
+                padding: "0.5rem",
+                border: "1px solid var(--gray-6)",
+                borderRadius: "var(--radius-2)",
+                marginBottom: "1rem",
+              }}
+            />
+            <Text
+              color="red"
+              size="1"
+              style={{ minHeight: "20px", marginTop: "4px" }}
+            >
+              {resetErrors.email?.message || " "}
+            </Text>
+            <Button
+              type="submit"
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                fontSize: "1rem",
+                fontWeight: "500",
+              }}
+            >
+              비밀번호 복구
+            </Button>
+          </form>
+        </Dialog.Content>
       </Dialog.Root>
     </Box>
   );

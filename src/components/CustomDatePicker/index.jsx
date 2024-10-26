@@ -2,6 +2,8 @@
 
 import React from "react";
 import DatePicker from "react-datepicker";
+import { ko } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
 
 const CustomDatePicker = ({ selectedDate, onDateChange, title }) => {
   return (
@@ -14,6 +16,8 @@ const CustomDatePicker = ({ selectedDate, onDateChange, title }) => {
       showMonthDropdown
       dropdownMode="select"
       maxDate={new Date()}
+      openToDate={new Date(1990, 0, 1)} // 1990년 1월 1일로 설정
+      locale={ko} // 한국어 로케일 설정
       customInput={
         <input
           style={{
