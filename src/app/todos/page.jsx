@@ -9,12 +9,15 @@ import { Text, Flex, Button, Table, TextArea } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import TodoList from "./TodoList"; // 할 일 목록 컴포넌트 임포트
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const TodosPage = () => {
   const [requests, setRequests] = useState([]);
   const { user } = useUser();
   const [approvingRequest, setApprovingRequest] = useState(null);
   const [approvalDescription, setApprovalDescription] = useState("");
+
+  useRoleRedirect(["staff", "admin"], "/login");
 
   useEffect(() => {
     if (user) {

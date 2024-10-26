@@ -11,6 +11,7 @@ import CaseTimeline from "./_components/CaseTimeline";
 import CaseForm from "./_components/CaseForm";
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const BoardsPage = () => {
   const [cases, setCases] = useState([]);
@@ -20,8 +21,9 @@ const BoardsPage = () => {
   const [page, setPage] = useState(1);
   const pageSize = 9;
   const [totalCasesCount, setTotalCasesCount] = useState(0);
-
   const { user } = useUser();
+
+  useRoleRedirect(["staff", "admin"], "/login");
 
   useEffect(() => {
     if (user) {
@@ -88,7 +90,6 @@ const BoardsPage = () => {
   const hasCases = cases.length > 0;
   const totalPages = Math.ceil(totalCasesCount / pageSize);
 
-  console.log(ongoingCases);
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
       <Flex justify="between" align="center" className="mb-4">
