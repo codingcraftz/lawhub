@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -9,9 +9,10 @@ import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card, Separator } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Cross2Icon } from "@radix-ui/react-icons";
 import CustomDatePicker from "@/components/CustomDatePicker";
+import { useUser } from "@/hooks/useUser";
 
+// 유효성 검사 스키마
 const schema = yup.object().shape({
   email: yup
     .string()
@@ -49,11 +50,13 @@ const schema = yup.object().shape({
 
 const SignupPage = () => {
   const router = useRouter();
+  const { user } = useUser();
+
   const {
     register,
     handleSubmit,
     formState: { errors, isValid },
-    control, // Controller를 위한 control 추가
+    control,
   } = useForm({
     resolver: yupResolver(schema),
     mode: "onChange",
@@ -61,6 +64,12 @@ const SignupPage = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      router.push("/");
+    }
+  }, [user, router]);
 
   const onSubmit = async (data) => {
     try {
@@ -71,7 +80,17 @@ const SignupPage = () => {
         },
       );
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        let errorMessage = "회원가입 중 오류가 발생했습니다.";
+        if (signUpError.message.includes("User already registered")) {
+          errorMessage = "이미 등록된 이메일입니다.";
+        } else if (signUpError.message.includes("Invalid email")) {
+          errorMessage = "유효한 이메일을 입력해주세요.";
+        } else if (signUpError.message.includes("Password")) {
+          errorMessage = "비밀번호 조건을 확인해주세요.";
+        }
+        throw new Error(errorMessage);
+      }
 
       if (!authData.user) {
         throw new Error("회원가입 중 문제가 발생했습니다. 다시 시도해주세요.");
@@ -91,9 +110,11 @@ const SignupPage = () => {
       if (userError) {
         console.error("User insertion error:", userError);
         await supabase.auth.signOut();
-        throw userError;
+        throw new Error("회원 정보를 저장하는 중 오류가 발생했습니다.");
       }
 
+      // 회원가입 후 로그아웃 처리
+      await supabase.auth.signOut();
       setModalMessage(
         "회원가입이 완료되었습니다. 관리자의 승인을 기다려주세요.",
       );
@@ -107,7 +128,6 @@ const SignupPage = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    router.push("/login");
   };
 
   return (
@@ -116,7 +136,7 @@ const SignupPage = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "100vh", // 높이 수정
+        height: "100vh",
       }}
     >
       <Card style={{ width: "400px", padding: "2rem" }}>
@@ -172,8 +192,8 @@ const SignupPage = () => {
                 render={({ field }) => (
                   <CustomDatePicker
                     title="생년월일"
-                    selectedDate={field.value} // CustomDatePicker에 selectedDate prop으로 전달
-                    onDateChange={(date) => field.onChange(date)} // onDateChange prop으로 date 변경 처리
+                    selectedDate={field.value}
+                    onDateChange={(date) => field.onChange(date)}
                   />
                 )}
               />
@@ -236,28 +256,61 @@ const SignupPage = () => {
 
       {/* Radix UI Dialog for messages */}
       <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
-          <Dialog.Content
-            className="fixed top-1/2 left-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 transform -translate-x-1/2 -translate-y-1/2 max-w-md w-full"
-            style={{ zIndex: 1000 }}
+        <Dialog.Content
+          style={{
+            maxWidth: 450,
+            padding: "2rem",
+            borderRadius: "8px",
+            border: "2px solid var(--gray-8)",
+            backgroundColor: "var(--gray-1)",
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+            zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          <Dialog.Title
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: "600",
+              color: "var(--accent-9)",
+              marginBottom: "1rem",
+            }}
           >
-            <Dialog.Title className="text-lg font-bold mb-4">알림</Dialog.Title>
-            <Dialog.Description>{modalMessage}</Dialog.Description>
-            <Dialog.Close asChild>
-              <Button
-                variant="ghost"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
-              >
-                <Cross2Icon />
-              </Button>
-            </Dialog.Close>
-            <Flex justify="end" mt="4">
-              <Button onClick={closeModal}>확인</Button>
-            </Flex>
-          </Dialog.Content>
-        </Dialog.Portal>
+            알림
+          </Dialog.Title>
+          <Dialog.Description
+            style={{
+              fontSize: "1rem",
+              color: "var(--gray-9)",
+              marginBottom: "1.5rem",
+            }}
+          >
+            {modalMessage}
+          </Dialog.Description>
+          <Dialog.Close asChild>
+            <Button
+              variant="soft"
+              color="blue"
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                fontSize: "1rem",
+                fontWeight: "500",
+              }}
+              onClick={closeModal}
+            >
+              확인
+            </Button>
+          </Dialog.Close>
+        </Dialog.Content>
       </Dialog.Root>
     </Box>
   );

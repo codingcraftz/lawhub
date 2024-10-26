@@ -1,5 +1,3 @@
-// src/app/todos/page.jsx
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -8,13 +6,16 @@ import { useUser } from "@/hooks/useUser";
 import { Text, Flex, Button, Table, TextArea } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import TodoList from "./TodoList"; // 할 일 목록 컴포넌트 임포트
+import TodoList from "./TodoList";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const TodosPage = () => {
   const [requests, setRequests] = useState([]);
   const { user } = useUser();
   const [approvingRequest, setApprovingRequest] = useState(null);
   const [approvalDescription, setApprovalDescription] = useState("");
+
+  useRoleRedirect(["staff", "admin"], "/login");
 
   useEffect(() => {
     if (user) {
@@ -27,14 +28,15 @@ const TodosPage = () => {
       .from("requests")
       .select(
         `
-        *,
-        case_timelines (
-          id,
-          description,
-          type,
-          case_id
-        )
-      `,
+      *,
+      requester:users(id, name),
+      case_timelines (
+        id,
+        description,
+        type,
+        case_id
+      )
+    `,
       )
       .eq("receiver_id", user.id)
       .eq("status", "pending");
@@ -58,7 +60,7 @@ const TodosPage = () => {
           .update({ status: "rejected" })
           .eq("id", request.id);
         if (error) throw error;
-        fetchRequests();
+        fetchRequests(); // 요청 목록을 다시 가져옵니다.
       } catch (error) {
         console.error(`Error ${action} request:`, error);
       }
@@ -68,22 +70,19 @@ const TodosPage = () => {
   const handleApprovalSubmit = async (e) => {
     e.preventDefault();
     try {
-      // case_timelines에 새로운 레코드 생성
       const { data: timelineData, error: timelineError } = await supabase
         .from("case_timelines")
         .insert({
           case_id: approvingRequest.case_timelines.case_id,
           type: "완료",
           description: approvalDescription,
-          manager: user.id,
-          handler: user.id,
+          created_by: user.id,
           status: "완료",
         })
         .select();
 
       if (timelineError) throw timelineError;
 
-      // 요청의 상태를 'accepted'로 업데이트
       const { error: requestError } = await supabase
         .from("requests")
         .update({ status: "accepted" })
@@ -91,7 +90,6 @@ const TodosPage = () => {
 
       if (requestError) throw requestError;
 
-      // 요청자에게 알림 생성 (선택 사항)
       const { error: notificationError } = await supabase
         .from("notifications")
         .insert({
@@ -103,7 +101,6 @@ const TodosPage = () => {
 
       if (notificationError) throw notificationError;
 
-      // 상태 초기화 및 요청 목록 갱신
       setApprovingRequest(null);
       setApprovalDescription("");
       fetchRequests();
@@ -115,7 +112,6 @@ const TodosPage = () => {
 
   return (
     <div className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
-      {/* 요청 목록 */}
       <Flex justify="between" align="center" className="mb-4">
         <Text size="8" weight="bold">
           요청 목록
@@ -126,6 +122,7 @@ const TodosPage = () => {
           <Table.Row>
             <Table.ColumnHeaderCell>설명</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>유형</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>요청자</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>작업</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
@@ -134,6 +131,7 @@ const TodosPage = () => {
             <Table.Row key={request.id}>
               <Table.Cell>{request.case_timelines.description}</Table.Cell>
               <Table.Cell>{request.case_timelines.type}</Table.Cell>
+              <Table.Cell>{request.requester?.name || "알 수 없음"}</Table.Cell>
               <Table.Cell>
                 <Flex gap="2">
                   <Button
@@ -154,10 +152,8 @@ const TodosPage = () => {
         </Table.Body>
       </Table.Root>
 
-      {/* 할 일 목록 */}
       <TodoList />
 
-      {/* 승인 모달 */}
       {approvingRequest && (
         <Dialog.Root
           open={!!approvingRequest}
@@ -182,7 +178,6 @@ const TodosPage = () => {
                   <Cross2Icon />
                 </Button>
               </Dialog.Close>
-              {/* 완료 내용 입력 폼 */}
               <form onSubmit={handleApprovalSubmit}>
                 <Flex direction="column" gap="4">
                   <Text>

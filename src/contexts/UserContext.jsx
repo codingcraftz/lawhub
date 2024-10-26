@@ -10,7 +10,6 @@ export const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  // fetchUser를 useCallback으로 메모이제이션
   const fetchUser = useCallback(async () => {
     const {
       data: { user: authUser },
@@ -25,6 +24,10 @@ export const UserProvider = ({ children }) => {
 
       if (error) {
         console.error("Error fetching profile:", error);
+      } else if (!profile.is_active) {
+        // is_active가 false면 로그아웃 처리
+        await supabase.auth.signOut();
+        setUser(null);
       } else {
         setUser({ ...authUser, ...profile });
       }
@@ -33,7 +36,6 @@ export const UserProvider = ({ children }) => {
     }
   }, []);
 
-  // 의존성 배열에서 fetchUser는 이제 안전합니다.
   useEffect(() => {
     fetchUser();
 

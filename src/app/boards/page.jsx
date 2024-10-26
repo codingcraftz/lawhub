@@ -11,6 +11,7 @@ import CaseTimeline from "./_components/CaseTimeline";
 import CaseForm from "./_components/CaseForm";
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const BoardsPage = () => {
   const [cases, setCases] = useState([]);
@@ -20,8 +21,9 @@ const BoardsPage = () => {
   const [page, setPage] = useState(1);
   const pageSize = 9;
   const [totalCasesCount, setTotalCasesCount] = useState(0);
-
   const { user } = useUser();
+
+  useRoleRedirect(["staff", "admin"], "/login");
 
   useEffect(() => {
     if (user) {
@@ -59,8 +61,6 @@ const BoardsPage = () => {
 
         if (user.role === "staff") {
           query = query.eq("case_staff.staff_id", user.id);
-        } else if (user.role === "client") {
-          query = query.eq("case_clients.client_id", user.id);
         }
 
         query = query
@@ -90,7 +90,6 @@ const BoardsPage = () => {
   const hasCases = cases.length > 0;
   const totalPages = Math.ceil(totalCasesCount / pageSize);
 
-  console.log(ongoingCases);
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
       <Flex justify="between" align="center" className="mb-4">
@@ -100,7 +99,10 @@ const BoardsPage = () => {
         {user && (user.role === "admin" || user.role === "staff") && (
           <Dialog.Root
             open={isNewCaseModalOpen}
-            onOpenChange={setIsNewCaseModalOpen}
+            onOpenChange={() => {
+              setIsNewCaseModalOpen(false);
+              setSelectedCase(null);
+            }}
           >
             <Dialog.Trigger asChild>
               <Button>새 사건 등록</Button>
@@ -118,9 +120,11 @@ const BoardsPage = () => {
                 </Button>
               </Dialog.Close>
               <CaseForm
+                caseData={selectedCase}
                 onSuccess={() => {
                   fetchCases(page, pageSize);
                   setIsNewCaseModalOpen(false);
+                  setSelectedCase(null);
                 }}
                 onClose={() => setIsNewCaseModalOpen(false)}
               />
@@ -145,6 +149,8 @@ const BoardsPage = () => {
                       key={caseItem.id}
                       caseItem={caseItem}
                       onClick={() => setSelectedCase(caseItem)}
+                      isAdmin={user.role === "admin"}
+                      fetchCases={() => fetchCases(page, pageSize)} // 추가
                     />
                   ))}
                 </div>
