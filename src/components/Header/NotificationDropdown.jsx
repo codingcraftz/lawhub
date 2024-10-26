@@ -5,6 +5,8 @@ import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
 import { Flex, Box, Text, Button, DropdownMenu } from "@radix-ui/themes";
 
+const MAX_DISPLAY_COUNT = 6;
+
 const NotificationDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -25,14 +27,25 @@ const NotificationDropdown = () => {
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("알림을 가져오는 중 오류 발생:", error);
     } else {
-      setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.is_read).length);
+      const unreadNotifications = data.filter((n) => !n.is_read);
+      const readNotifications = data.filter((n) => n.is_read);
+
+      // 읽지 않은 알림 먼저, 그다음 읽은 알림을 추가하여 6개로 제한
+      const limitedNotifications = [
+        ...unreadNotifications.slice(0, MAX_DISPLAY_COUNT),
+        ...readNotifications.slice(
+          0,
+          MAX_DISPLAY_COUNT - unreadNotifications.length,
+        ),
+      ];
+
+      setNotifications(limitedNotifications);
+      setUnreadCount(unreadNotifications.length);
     }
   };
 
@@ -48,7 +61,24 @@ const NotificationDropdown = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          setNotifications((prev) => [payload.new, ...prev].slice(0, 10));
+          setNotifications((prev) => {
+            const newNotification = payload.new;
+            const updatedNotifications = [newNotification, ...prev];
+            const unreadNotifications = updatedNotifications.filter(
+              (n) => !n.is_read,
+            );
+            const readNotifications = updatedNotifications.filter(
+              (n) => n.is_read,
+            );
+
+            return [
+              ...unreadNotifications.slice(0, MAX_DISPLAY_COUNT),
+              ...readNotifications.slice(
+                0,
+                MAX_DISPLAY_COUNT - unreadNotifications.length,
+              ),
+            ];
+          });
           setUnreadCount((prev) => prev + 1);
         },
       )
@@ -66,9 +96,23 @@ const NotificationDropdown = () => {
     if (error) {
       console.error("알림을 읽음 처리하는 중 오류 발생:", error);
     } else {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
-      );
+      setNotifications((prev) => {
+        const updatedNotifications = prev.map((n) =>
+          n.id === id ? { ...n, is_read: true } : n,
+        );
+        const unreadNotifications = updatedNotifications.filter(
+          (n) => !n.is_read,
+        );
+        const readNotifications = updatedNotifications.filter((n) => n.is_read);
+
+        return [
+          ...unreadNotifications.slice(0, MAX_DISPLAY_COUNT),
+          ...readNotifications.slice(
+            0,
+            MAX_DISPLAY_COUNT - unreadNotifications.length,
+          ),
+        ];
+      });
       setUnreadCount((prev) => prev - 1);
     }
   };
@@ -105,48 +149,60 @@ const NotificationDropdown = () => {
         </Button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content style={{ minWidth: "300px" }}>
-        {notifications.length > 0 ? (
-          notifications.map((notification) => (
-            <DropdownMenu.Item
-              key={notification.id}
-              onSelect={() => markAsRead(notification.id)}
-              style={{
-                backgroundColor: notification.is_read
-                  ? "transparent"
-                  : "var(--gray-3)",
-                padding: "8px",
-                cursor: "pointer",
-              }}
-            >
-              <Flex direction="row" align="center">
-                {!notification.is_read && (
-                  <Box
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "var(--blue-9)",
-                      marginRight: "8px",
-                    }}
-                  />
-                )}
-                <Flex direction="column">
-                  <Text
-                    size="2"
-                    weight={notification.is_read ? "normal" : "bold"}
-                  >
-                    {notification.message}
-                  </Text>
-                  <Text size="1" color="gray">
-                    {new Date(notification.created_at).toLocaleString()}
-                  </Text>
+        <Flex direction="column" gap="1rem">
+          {notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <DropdownMenu.Item
+                key={notification.id}
+                onSelect={() => markAsRead(notification.id)}
+                style={{
+                  backgroundColor: notification.is_read
+                    ? "transparent"
+                    : "var(--gray-3)",
+                  padding: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                <Flex direction="row" align="center">
+                  {!notification.is_read && (
+                    <Box
+                      style={{
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "50%",
+                        backgroundColor: "var(--blue-9)",
+                        marginRight: "8px",
+                      }}
+                    />
+                  )}
+                  <Flex direction="column">
+                    <Text
+                      size="2"
+                      weight={notification.is_read ? "normal" : "bold"}
+                    >
+                      {notification.message}
+                    </Text>
+                    <Text size="1" color="gray">
+                      {new Date(notification.created_at).toLocaleString(
+                        "ko-KR",
+                        {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        },
+                      )}
+                    </Text>
+                  </Flex>
                 </Flex>
-              </Flex>
-            </DropdownMenu.Item>
-          ))
-        ) : (
-          <DropdownMenu.Item disabled>알림이 없습니다</DropdownMenu.Item>
-        )}
+              </DropdownMenu.Item>
+            ))
+          ) : (
+            <DropdownMenu.Item disabled>알림이 없습니다</DropdownMenu.Item>
+          )}
+        </Flex>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

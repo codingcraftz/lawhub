@@ -11,7 +11,6 @@ import Pagination from "@/components/Pagination";
 import ClientCaseTimeline from "./ClientCaseTimeline";
 import { useRouter } from "next/navigation";
 import ClientCaseCard from "./ClientCaseCard";
-import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const ClientCasesPage = () => {
   const { user } = useUser();
@@ -23,7 +22,13 @@ const ClientCasesPage = () => {
   const [totalCasesCount, setTotalCasesCount] = useState(0);
   const router = useRouter();
 
-  useRoleRedirect("client", "/boards");
+  useEffect(() => {
+    if (user?.role !== "client") {
+      router.push("/");
+    } else {
+      fetchClientCases(page, pageSize);
+    }
+  }, [user, page]);
 
   const fetchClientCases = async (page = 1, pageSize = 9) => {
     try {

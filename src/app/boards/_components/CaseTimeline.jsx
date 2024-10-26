@@ -1,4 +1,19 @@
-// src/app/boards/_components/CaseTimelind.jsx
+// src/app/boards/_components/CaseTimeline.jsx
+
+const getTypeColor = (type) => {
+  switch (type) {
+    case "요청":
+      return "bg-blue-200 text-blue-900";
+    case "완료":
+      return "bg-green-200 text-green-900";
+    case "상담":
+      return "bg-purple-200 text-purple-900";
+    case "접수":
+      return "bg-yellow-200 text-yellow-900";
+    default:
+      return "bg-gray-200 text-gray-900";
+  }
+};
 
 import React, { useState, useEffect } from "react";
 import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
@@ -35,25 +50,26 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   };
 
   const fetchTimelineItems = async () => {
-    console.log("Fetching timeline items for case:", caseId);
-    const { data, error } = await supabase
-      .from("case_timelines")
-      .select(
-        `
+    try {
+      const { data, error } = await supabase
+        .from("case_timelines")
+        .select(
+          `
         *,
-        manager:users!fk_manager(id, name),
-        handler:users!fk_handler(id, name),
-        requested_to:users!fk_requested_to(id, name)
-        `,
-      )
-      .eq("case_id", caseId)
-      .order("created_at", { ascending: true });
+        created_by(id, name),
+        requested_to(id, name)
+      `,
+        )
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: true });
 
-    if (error) {
+      if (error) {
+        console.error("Error fetching timeline items:", error);
+      } else {
+        setTimelineItems(data);
+      }
+    } catch (error) {
       console.error("Error fetching timeline items:", error);
-    } else {
-      console.log("Fetched timeline items:", data);
-      setTimelineItems(data);
     }
   };
 
@@ -139,13 +155,14 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
 
         {/* 타임라인 항목들 */}
         <Flex direction="column" gap="3">
-          {timelineItems.map((item) => (
+          {timelineItems.map((item, index) => (
             <Box
               key={item.id}
               style={{
+                paddingLeft: "1.5rem",
+                position: "relative",
                 borderLeft: "2px solid var(--gray-6)",
                 paddingLeft: "1rem",
-                position: "relative",
               }}
             >
               <Box
@@ -156,15 +173,21 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                   background: "var(--gray-6)",
                   position: "absolute",
                   left: "-6px",
-                  top: "6px",
                 }}
               />
               <Flex justify="between" align="center">
                 <Flex align="center" gap="2">
                   <Text size="2" color="gray">
-                    {new Date(item.created_at).toLocaleString()}
+                    {new Date(item.created_at).toLocaleString("ko-KR", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
                   </Text>
-                  <Badge>{item.type}</Badge>
+                  <Badge className={getTypeColor(item.type)}>{item.type}</Badge>
                 </Flex>
                 {isAdmin && caseStatus !== "completed" && (
                   <Flex gap="2">
@@ -186,13 +209,17 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                   </Flex>
                 )}
               </Flex>
-              <Text size="3" mt="1">
-                {item.description}
-              </Text>
-              <Text size="2" color="gray" mt="1">
-                담당자: {item.manager?.name || "없음"}
-                {item.handler && `| 처리자: ${item.handler.name}`}
-              </Text>
+              <Flex className="justify-between">
+                <Text size="3" mt="1">
+                  {item.description}
+                </Text>
+                <Text size="2" color="gray" mt="1">
+                  {item.created_by?.name &&
+                    (item.type === "요청" && item.requested_to?.name
+                      ? `${item.created_by.name} → ${item.requested_to.name}`
+                      : item.created_by.name)}
+                </Text>
+              </Flex>
             </Box>
           ))}
         </Flex>

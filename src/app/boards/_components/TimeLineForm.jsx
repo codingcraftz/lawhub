@@ -68,10 +68,10 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         description: data.description,
         case_id: caseId,
         status: "대기중",
-        manager: currentUser.id,
-        handler: currentUser.id,
+        created_by: currentUser.id,
       };
 
+      // 요청 유형일 때만 requested_to 필드를 추가
       if (
         data.type === "요청" &&
         data.requested_to &&
@@ -96,6 +96,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
 
       if (result.error) throw result.error;
 
+      // 요청 및 알림 전송 로직 추가
       if (
         !editingItem &&
         result.data &&
@@ -104,6 +105,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         data.requested_to &&
         data.requested_to !== "none"
       ) {
+        // 요청 테이블에 새로운 요청 생성
         await supabase.from("requests").insert({
           case_timeline_id: result.data[0].id,
           requester_id: currentUser.id,
@@ -111,6 +113,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
           status: "pending",
         });
 
+        // 알림 테이블에 새로운 알림 생성
         await supabase.from("notifications").insert({
           user_id: data.requested_to,
           case_timeline_id: result.data[0].id,
@@ -151,7 +154,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
                     <Select.Group>
                       <Select.Label>유형</Select.Label>
                       <Select.Item value="요청">요청</Select.Item>
-                      <Select.Item value="완">완료</Select.Item>
+                      <Select.Item value="완료">완료</Select.Item>
                       <Select.Item value="상담">상담</Select.Item>
                       <Select.Item value="접수">접수</Select.Item>
                     </Select.Group>
@@ -234,4 +237,3 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
 };
 
 export default TimelineForm;
-

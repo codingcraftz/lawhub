@@ -99,7 +99,10 @@ const BoardsPage = () => {
         {user && (user.role === "admin" || user.role === "staff") && (
           <Dialog.Root
             open={isNewCaseModalOpen}
-            onOpenChange={setIsNewCaseModalOpen}
+            onOpenChange={() => {
+              setIsNewCaseModalOpen(false);
+              setSelectedCase(null);
+            }}
           >
             <Dialog.Trigger asChild>
               <Button>새 사건 등록</Button>
@@ -117,9 +120,11 @@ const BoardsPage = () => {
                 </Button>
               </Dialog.Close>
               <CaseForm
+                caseData={selectedCase}
                 onSuccess={() => {
                   fetchCases(page, pageSize);
                   setIsNewCaseModalOpen(false);
+                  setSelectedCase(null);
                 }}
                 onClose={() => setIsNewCaseModalOpen(false)}
               />
@@ -144,6 +149,8 @@ const BoardsPage = () => {
                       key={caseItem.id}
                       caseItem={caseItem}
                       onClick={() => setSelectedCase(caseItem)}
+                      isAdmin={user.role === "admin"}
+                      fetchCases={() => fetchCases(page, pageSize)} // 추가
                     />
                   ))}
                 </div>
