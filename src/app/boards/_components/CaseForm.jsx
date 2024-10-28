@@ -192,6 +192,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
     }
   };
 
+  console.log(123);
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Flex direction="column" gap="4">
