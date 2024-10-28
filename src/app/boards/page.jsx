@@ -99,14 +99,12 @@ const BoardsPage = () => {
         {user && (user.role === "admin" || user.role === "staff") && (
           <Dialog.Root
             open={isNewCaseModalOpen}
-            onOpenChange={() => {
-              setIsNewCaseModalOpen(false);
-              setSelectedCase(null);
-            }}
+            onOpenChange={setIsNewCaseModalOpen}
           >
-            <Dialog.Trigger asChild>
-              <Button>새 사건 등록</Button>
-            </Dialog.Trigger>
+            <Button onClick={() => setIsNewCaseModalOpen(true)}>
+              새 사건 등록
+            </Button>
+
             <Dialog.Content style={{ maxWidth: 450 }}>
               <Dialog.Title>새 사건 등록</Dialog.Title>
               <Dialog.Close asChild>
@@ -115,6 +113,7 @@ const BoardsPage = () => {
                   color="gray"
                   size="1"
                   style={{ position: "absolute", top: 8, right: 8 }}
+                  onClick={() => setIsNewCaseModalOpen(false)}
                 >
                   <Cross2Icon />
                 </Button>

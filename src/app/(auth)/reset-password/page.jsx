@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"; // router를 next/router에서 가져옵니다
 import { useForm } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -33,29 +33,28 @@ const ResetPasswordPage = () => {
   });
 
   useEffect(() => {
-    // Extract tokens from URL
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.replace("#", "?"));
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
+    if (router.isReady) {
+      // router가 준비되었을 때 실행하도록 합니다.
+      const access_token = router.query.access_token;
+      const refresh_token = router.query.refresh_token;
 
-    if (access_token && refresh_token) {
-      // Set session with extracted tokens
-      supabase.auth
-        .setSession({ access_token, refresh_token })
-        .then(({ data, error }) => {
-          if (data) {
-            setIsSessionSet(true); // Allow password reset
-            setMessage("");
-          } else if (error) {
-            setMessage("세션 설정 중 오류가 발생했습니다.");
-            console.error("Session error:", error);
-          }
-        });
-    } else {
-      setMessage("유효하지 않은 접근입니다.");
+      if (access_token && refresh_token) {
+        supabase.auth
+          .setSession({ access_token, refresh_token })
+          .then(({ session, error }) => {
+            if (session) {
+              setIsSessionSet(true); // 세션이 성공적으로 설정된 경우
+              setMessage("");
+            } else if (error) {
+              setMessage("세션 설정 중 오류가 발생했습니다.");
+              console.error("Session error:", error);
+            }
+          });
+      } else {
+        setMessage("유효하지 않은 접근입니다.");
+      }
     }
-  }, []);
+  }, [router.isReady]); // router.isReady를 의존성에 추가하여 라우터가 준비되었을 때 실행합니다.
 
   const onSubmit = async (data) => {
     if (!isSessionSet) {
