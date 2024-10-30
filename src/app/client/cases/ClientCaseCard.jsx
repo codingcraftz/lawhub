@@ -7,6 +7,7 @@ import { Card, Flex, Text, Badge } from "@radix-ui/themes";
 import { getCategoryColor } from "@/utils/util";
 
 const ClientCaseCard = ({ caseItem, onClick }) => {
+  const categoryStyle = getCategoryColor(caseItem.case_categories.name);
   if (
     !caseItem ||
     !caseItem.case_categories ||

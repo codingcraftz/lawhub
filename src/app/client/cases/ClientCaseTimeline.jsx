@@ -148,7 +148,16 @@ const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
                 <Text size="3" mt="1">
                   {item.description}
                 </Text>
-                <Text size="2" color="gray" mt="1">
+                <Text
+                  size="2"
+                  color="gray"
+                  mt="1"
+                  style={{
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                    marginLeft: "8px",
+                  }}
+                >
                   {item.created_by?.name &&
                     (item.type === "요청" && item.requested_to?.name
                       ? `${item.created_by.name} → ${item.requested_to.name}`
