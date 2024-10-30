@@ -2,36 +2,58 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Box, Button, Flex, Text } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
 import CustomDatePicker from "@/components/CustomDatePicker";
 
-const DeadlineForm = ({ caseId, onSuccess, onClose }) => {
+const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
   const {
     control,
     handleSubmit,
     register,
     formState: { errors },
-  } = useForm();
+    setValue,
+  } = useForm({
+    defaultValues: editingDeadline || {},
+  });
+
+  useEffect(() => {
+    if (editingDeadline) {
+      setValue("type", editingDeadline.type);
+      setValue("deadline_date", editingDeadline.deadline_date);
+    }
+  }, [editingDeadline, setValue]);
 
   const onSubmit = async (data) => {
     try {
-      const { error } = await supabase.from("case_deadlines").insert({
-        case_id: caseId,
-        type: data.type,
-        deadline_date: data.deadline_date,
-      });
-      if (error) throw error;
+      if (editingDeadline) {
+        // 수정 모드
+        const { error } = await supabase
+          .from("case_deadlines")
+          .update({
+            type: data.type,
+            deadline_date: data.deadline_date,
+          })
+          .eq("id", editingDeadline.id);
+        if (error) throw error;
+      } else {
+        // 추가 모드
+        const { error } = await supabase.from("case_deadlines").insert({
+          case_id: caseId,
+          type: data.type,
+          deadline_date: data.deadline_date,
+        });
+        if (error) throw error;
+      }
       onSuccess();
     } catch (error) {
-      console.error("Error adding deadline:", error);
-      alert("기일 추가 중 오류가 발생했습니다.");
+      console.error("기일 저장 중 오류:", error);
+      alert("기일 저장 중 오류가 발생했습니다.");
     }
   };
 
-  console.log("caseId", caseId);
   return (
     <Box>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -70,7 +92,7 @@ const DeadlineForm = ({ caseId, onSuccess, onClose }) => {
             <Button variant="soft" color="gray" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit">등록</Button>
+            <Button type="submit">{editingDeadline ? "수정" : "등록"}</Button>
           </Flex>
         </Flex>
       </form>

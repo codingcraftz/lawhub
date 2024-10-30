@@ -14,10 +14,11 @@ import {
 } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { Controller } from "react-hook-form";
+import { useUser } from "@/hooks/useUser";
 
 const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
   const [staff, setStaff] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user } = useUser();
 
   const {
     register,
@@ -32,7 +33,6 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
 
   useEffect(() => {
     fetchStaff();
-    fetchCurrentUser();
     if (editingItem) {
       Object.keys(editingItem).forEach((key) => {
         setValue(key, editingItem[key]);
@@ -54,13 +54,6 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
     }
   };
 
-  const fetchCurrentUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    setCurrentUser(user);
-  };
-
   const onSubmit = async (data) => {
     try {
       const timelineData = {
@@ -68,7 +61,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         description: data.description,
         case_id: caseId,
         status: "대기중",
-        created_by: currentUser.id,
+        created_by: user.id,
       };
 
       // 요청 유형일 때만 requested_to 필드를 추가
@@ -108,7 +101,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         // 요청 테이블에 새로운 요청 생성
         await supabase.from("requests").insert({
           case_timeline_id: result.data[0].id,
-          requester_id: currentUser.id,
+          requester_id: user.id,
           receiver_id: data.requested_to,
           status: "pending",
         });
