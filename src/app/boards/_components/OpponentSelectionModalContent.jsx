@@ -95,6 +95,30 @@ const OpponentSelectionModalContent = ({
     onClose();
   };
 
+  const handleAddNewOpponent = async (data) => {
+    try {
+      const { data: newOpponentData, error } = await supabase
+        .from("opponents") // Insert into opponents table
+        .insert([data])
+        .select("*");
+
+      if (error) {
+        console.error("Error adding opponent:", error);
+        alert("상대방 추가 중 오류가 발생했습니다.");
+        return;
+      }
+
+      // Add new opponent to local state
+      setAllOpponents((prev) => [...prev, newOpponentData[0]]);
+      setLocalSelectedOpponents((prev) => [...prev, newOpponentData[0]]);
+      setIsAddingOpponent(false);
+      alert("상대방이 성공적으로 추가되었습니다.");
+    } catch (error) {
+      console.error("Error adding opponent:", error);
+      alert("상대방 추가 중 오류가 발생했습니다.");
+    }
+  };
+
   return (
     <Box>
       {!isAddingOpponent ? (
