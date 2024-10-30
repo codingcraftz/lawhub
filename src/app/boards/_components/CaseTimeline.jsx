@@ -4,6 +4,7 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
 import TimelineForm from "./TimeLineForm";
 import DeadlineForm from "./DeadlineForm";
+import { useUser } from "@/hooks/useUser";
 
 const getTypeColor = (type) => {
   switch (type) {
@@ -22,30 +23,35 @@ const getTypeColor = (type) => {
 
 const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
-  const [deadlines, setDeadlines] = useState([]); // 기일 항목 상태 추가
+  const [deadlines, setDeadlines] = useState([]);
+  const [editingDeadline, setEditingDeadline] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeadlineDialogOpen, setIsDeadlineDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user } = useUser();
 
   useEffect(() => {
     fetchTimelineItems();
     fetchDeadlines();
-    fetchCurrentUser();
   }, [caseId]);
 
-  const fetchCurrentUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const { data, error } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-      if (!error && data) {
-        setCurrentUser({ ...user, role: data.role });
+  const handleEditDeadline = (deadline) => {
+    setEditingDeadline(deadline); // 수정할 기일 설정
+    setIsDeadlineDialogOpen(true); // 수정 모드로 다이얼로그 열기
+  };
+
+  const handleDeleteDeadline = async (id) => {
+    if (window.confirm("정말로 이 기일을 삭제하시겠습니까?")) {
+      try {
+        const { error } = await supabase
+          .from("case_deadlines")
+          .delete()
+          .eq("id", id);
+        if (error) throw error;
+        fetchDeadlines(); // 업데이트된 기일 목록 가져오기
+      } catch (error) {
+        console.error("기일 삭제 중 오류:", error);
+        alert("기일 삭제 중 오류가 발생했습니다.");
       }
     }
   };
@@ -111,6 +117,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const handleDeadlineFormSuccess = () => {
     fetchDeadlines();
     setIsDeadlineDialogOpen(false);
+    setEditingDeadline(null);
   };
 
   const handleFormSuccess = () => {
@@ -119,7 +126,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
     setEditingItem(null);
   };
 
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   const handleCaseCompletion = async () => {
     if (
@@ -146,7 +153,6 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   return (
     <Box>
       <Flex direction="column" gap="4">
-        {/* 상단 기일 리스트 */}
         {deadlines.length > 0 && (
           <Box mb="4">
             <Flex direction="column" gap="2">
@@ -164,16 +170,37 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                   <Text size="3" weight="bold">
                     {deadline.type}
                   </Text>
-                  <Text size="2" color="gray">
-                    {new Date(deadline.deadline_date).toLocaleDateString(
-                      "ko-KR",
-                      {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                      },
+                  <Flex gap="3">
+                    <Text size="2" color="gray">
+                      {new Date(deadline.deadline_date).toLocaleDateString(
+                        "ko-KR",
+                        {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                        },
+                      )}
+                    </Text>
+                    {isAdmin && caseStatus !== "completed" && (
+                      <Flex gap="2">
+                        <Button
+                          size="1"
+                          variant="soft"
+                          onClick={() => handleEditDeadline(deadline)}
+                        >
+                          수정
+                        </Button>
+                        <Button
+                          size="1"
+                          variant="soft"
+                          color="red"
+                          onClick={() => handleDeleteDeadline(deadline.id)}
+                        >
+                          삭제
+                        </Button>
+                      </Flex>
                     )}
-                  </Text>
+                  </Flex>
                 </Flex>
               ))}
             </Flex>
@@ -311,12 +338,18 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                   zIndex: 1000,
                 }}
               >
-                <Dialog.Title>새 기일 추가</Dialog.Title>
+                <Dialog.Title>
+                  {editingDeadline ? "기일 수정" : "새 기일 추가"}
+                </Dialog.Title>
                 <DeadlineForm
-                  caseId={caseId} // 현재 사건 타임라인 ID 전달
+                  caseId={caseId}
                   onSuccess={handleDeadlineFormSuccess}
-                  onClose={() => setIsDeadlineDialogOpen(false)}
-                />
+                  onClose={() => {
+                    setIsDeadlineDialogOpen(false);
+                    setEditingDeadline(null);
+                  }}
+                  editingDeadline={editingDeadline} // 수정할 데이터를 전달
+                />{" "}
               </Dialog.Content>
             </Dialog.Root>
           )}
