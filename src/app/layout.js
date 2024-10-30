@@ -32,7 +32,9 @@ export default function RootLayout({ children }) {
               style={{ minHeight: "100vh" }}
             >
               <Header />
-              {children}
+              <div style={{ backgroundColor: "var(--gray-2)", width: "100%" }}>
+                {children}
+              </div>
             </Theme>
           </ThemeProvider>
         </UserProvider>
