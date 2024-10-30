@@ -1,9 +1,8 @@
-// src/components/Header/NotificationDropdown.jsx
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
 import { Flex, Box, Text, Button, DropdownMenu } from "@radix-ui/themes";
+import { useRouter } from "next/navigation"; // 추가
 
 const MAX_DISPLAY_COUNT = 6;
 
@@ -11,6 +10,7 @@ const NotificationDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useUser();
+  const router = useRouter(); // 추가
 
   useEffect(() => {
     if (user) {
@@ -35,7 +35,6 @@ const NotificationDropdown = () => {
       const unreadNotifications = data.filter((n) => !n.is_read);
       const readNotifications = data.filter((n) => n.is_read);
 
-      // 읽지 않은 알림 먼저, 그다음 읽은 알림을 추가하여 6개로 제한
       const limitedNotifications = [
         ...unreadNotifications.slice(0, MAX_DISPLAY_COUNT),
         ...readNotifications.slice(
@@ -85,6 +84,16 @@ const NotificationDropdown = () => {
       .subscribe();
 
     return channel;
+  };
+
+  const handleNotificationClick = async (notification) => {
+    await markAsRead(notification.id);
+
+    if (notification.message.includes("배정")) {
+      router.push("/boards");
+    } else if (notification.message.includes("요청")) {
+      router.push("/todos");
+    }
   };
 
   const markAsRead = async (id) => {
@@ -154,7 +163,7 @@ const NotificationDropdown = () => {
             notifications.map((notification) => (
               <DropdownMenu.Item
                 key={notification.id}
-                onSelect={() => markAsRead(notification.id)}
+                onSelect={() => handleNotificationClick(notification)}
                 style={{
                   backgroundColor: notification.is_read
                     ? "transparent"

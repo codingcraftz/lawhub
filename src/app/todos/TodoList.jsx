@@ -159,7 +159,6 @@ const TodoList = () => {
 
   return (
     <>
-      {/* 할 일 관리 */}
       <Flex justify="between" align="center" className="mb-4 mt-6">
         <Text size="8" weight="bold">
           할 일 관리

@@ -124,7 +124,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       let insertedCase;
 
       if (caseData) {
-        // 기존 사건 업데이트
         const { data: updatedCase, error } = await supabase
           .from("cases")
           .update(casePayload)
@@ -134,15 +133,13 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         if (error) throw error;
         insertedCase = updatedCase[0];
 
-        // 기존 관계 삭제
         await supabase.from("case_clients").delete().eq("case_id", caseData.id);
         await supabase.from("case_staff").delete().eq("case_id", caseData.id);
         await supabase
           .from("case_opponents")
           .delete()
-          .eq("case_id", caseData.id); // 기존 상대방 관계 삭제
+          .eq("case_id", caseData.id);
       } else {
-        // 새로운 사건 삽입
         const { data: newCase, error } = await supabase
           .from("cases")
           .insert([casePayload])
@@ -152,7 +149,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         insertedCase = newCase[0];
       }
 
-      // 의뢰인, 담당자, 상대방 삽입
       const clientEntries = selectedClients.map((client) => ({
         case_id: insertedCase.id,
         client_id: client.id,
@@ -163,7 +159,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       }));
       const opponentEntries = selectedOpponents.map((opponent) => ({
         case_id: insertedCase.id,
-        opponent_id: opponent.id, // 새로운 상대방 삽입 대신 관계만 삽입
+        opponent_id: opponent.id,
       }));
 
       if (clientEntries.length > 0) {
@@ -176,13 +172,14 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         await supabase.from("case_opponents").insert(opponentEntries);
       }
 
-      // 담당자에게 알림
-      for (const staff of selectedStaff) {
-        await supabase.from("notifications").insert({
-          user_id: staff.id,
-          message: `새로운 사건에 배정되었습니다: ${insertedCase.title}`,
-          is_read: false,
-        });
+      if (!caseData) {
+        for (const staff of selectedStaff) {
+          await supabase.from("notifications").insert({
+            user_id: staff.id,
+            message: `새로운 사건에 배정되었습니다: ${insertedCase.title}`,
+            is_read: false,
+          });
+        }
       }
 
       onSuccess();
@@ -192,7 +189,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
     }
   };
 
-  console.log(123);
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Flex direction="column" gap="4">

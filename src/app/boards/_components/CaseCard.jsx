@@ -5,20 +5,12 @@
 import React, { useState } from "react";
 import { Card, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
 import CaseForm from "@/app/boards/_components/CaseForm";
-
-const getCategoryColor = (category) => {
-  const colors = {
-    민사: "bg-blue-200 text-blue-800",
-    형사: "bg-red-200 text-red-800",
-    집행: "bg-green-200 text-green-800",
-    파산: "bg-orange-200 text-orange-800",
-    회생: "bg-purple-200 text-purple-800",
-  };
-  return colors[category] || "bg-gray-200 text-gray-800";
-};
+import { getCategoryColor } from "@/utils/util";
 
 const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const categoryStyle = getCategoryColor(caseItem.case_categories.name);
 
   if (
     !caseItem ||
@@ -48,17 +40,23 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
         className="w-full cursor-pointer p-4 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-lg"
         onClick={onClick}
       >
-        <Flex direction="column" gap="2">
-          <Flex justify="between" align="center">
-            <Text size="5" weight="bold">
+        <Flex className="h-full" direction="column" gap="2">
+          <Flex justify="between" align="flex-start">
+            <Text size="5" weight="bold" style={{ flex: 1 }}>
               {caseItem.title}
             </Text>
             <Badge
-              className={`px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(caseItem.case_categories.name)}`}
+              className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}
+              style={{
+                alignSelf: "flex-start",
+                ...categoryStyle,
+              }}
             >
               {caseItem.case_categories.name}
             </Badge>
           </Flex>
+          <div style={{ flexGrow: 1 }} />
+
           <Text size="3">
             <strong>의뢰인:</strong> {clientNames}
           </Text>
@@ -86,7 +84,6 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
               })}
             </Text>
           )}
-          {/* Admin Edit Button */}
           {isAdmin && (
             <Button
               variant="soft"
@@ -123,6 +120,7 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
               onSuccess={() => {
                 setIsEditModalOpen(false);
                 fetchCases();
+                // Optionally trigger a refresh or re-fetch to update case details
               }}
               onClose={() => setIsEditModalOpen(false)}
             />
