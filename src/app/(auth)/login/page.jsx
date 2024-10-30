@@ -104,9 +104,17 @@ const LoginPage = () => {
         justifyContent: "center",
         alignItems: "center",
         height: "100vh",
+        padding: "1rem",
       }}
+      className="sm:px-4 md:px-6 lg:px-8"
     >
-      <Card style={{ width: "400px", padding: "2rem" }}>
+      <Card
+        style={{
+          width: "100%",
+          maxWidth: "400px",
+          padding: "2rem",
+        }}
+      >
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
             <Text size="5" weight="bold">
@@ -134,7 +142,11 @@ const LoginPage = () => {
                 </Text>
               </Box>
             ))}
-            <Button type="submit" disabled={!isValid}>
+            <Button
+              type="submit"
+              disabled={!isValid}
+              style={{ width: "100%", padding: "0.75rem" }}
+            >
               로그인
             </Button>
             <Text size="2" align="center">
@@ -143,14 +155,6 @@ const LoginPage = () => {
                 회원가입
               </Link>
             </Text>
-            {/* <Text */}
-            {/*   size="2" */}
-            {/*   align="center" */}
-            {/*   style={{ color: "var(--accent-9)", cursor: "pointer" }} */}
-            {/*   onClick={() => setIsForgotPasswordOpen(true)} */}
-            {/* > */}
-            {/*   비밀번호를 잊으셨나요? */}
-            {/* </Text> */}
           </Flex>
         </form>
       </Card>
@@ -159,7 +163,7 @@ const LoginPage = () => {
       <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
         <Dialog.Content
           style={{
-            maxWidth: 450,
+            maxWidth: "450px",
             padding: "2rem",
             borderRadius: "8px",
             border: "2px solid var(--gray-8)",
@@ -220,7 +224,7 @@ const LoginPage = () => {
       >
         <Dialog.Content
           style={{
-            maxWidth: 450,
+            maxWidth: "450px",
             padding: "2rem",
             borderRadius: "8px",
             border: "2px solid var(--gray-8)",

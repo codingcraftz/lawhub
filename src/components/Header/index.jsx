@@ -67,7 +67,9 @@ const Header = () => {
           <Button variant="ghost" onClick={toggleTheme}>
             {theme === "light" ? <MoonIcon /> : <SunIcon />}
           </Button>
-          <NotificationDropdown />
+          {user && (user.role === "admin" || user.role === "staff") && (
+            <NotificationDropdown />
+          )}
           {user ? (
             <Flex gap="1rem" align="center">
               <Avatar

@@ -109,8 +109,10 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         // 알림 테이블에 새로운 알림 생성
         await supabase.from("notifications").insert({
           user_id: data.requested_to,
+          case_id: caseId, // 사건 ID 추가
           case_timeline_id: result.data[0].id,
-          message: `새로운 요청이 있습니다: ${data.description}`,
+          type: "요청", // 요청 유형 지정
+          message: `${data.description}`,
           is_read: false,
         });
       }

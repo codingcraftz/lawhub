@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
-import { Flex, Box, Text, Button, DropdownMenu } from "@radix-ui/themes";
-import { useRouter } from "next/navigation"; // 추가
+import {
+  Flex,
+  Box,
+  Text,
+  Button,
+  DropdownMenu,
+  Tooltip,
+} from "@radix-ui/themes";
+import { useRouter } from "next/navigation";
 
 const MAX_DISPLAY_COUNT = 6;
 
@@ -10,7 +17,7 @@ const NotificationDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useUser();
-  const router = useRouter(); // 추가
+  const router = useRouter();
 
   useEffect(() => {
     if (user) {
@@ -25,7 +32,7 @@ const NotificationDropdown = () => {
   const fetchNotifications = async () => {
     const { data, error } = await supabase
       .from("notifications")
-      .select("*")
+      .select("*, case_timelines (case_id, case:cases(title))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -60,8 +67,8 @@ const NotificationDropdown = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          const newNotification = payload.new;
           setNotifications((prev) => {
-            const newNotification = payload.new;
             const updatedNotifications = [newNotification, ...prev];
             const unreadNotifications = updatedNotifications.filter(
               (n) => !n.is_read,
@@ -88,10 +95,9 @@ const NotificationDropdown = () => {
 
   const handleNotificationClick = async (notification) => {
     await markAsRead(notification.id);
-
-    if (notification.message.includes("배정")) {
+    if (notification.type === "배정") {
       router.push("/boards");
-    } else if (notification.message.includes("요청")) {
+    } else if (notification.type === "요청") {
       router.push("/todos");
     }
   };
@@ -102,27 +108,46 @@ const NotificationDropdown = () => {
       .update({ is_read: true })
       .eq("id", id);
 
-    if (error) {
-      console.error("알림을 읽음 처리하는 중 오류 발생:", error);
-    } else {
-      setNotifications((prev) => {
-        const updatedNotifications = prev.map((n) =>
-          n.id === id ? { ...n, is_read: true } : n,
-        );
-        const unreadNotifications = updatedNotifications.filter(
-          (n) => !n.is_read,
-        );
-        const readNotifications = updatedNotifications.filter((n) => n.is_read);
-
-        return [
-          ...unreadNotifications.slice(0, MAX_DISPLAY_COUNT),
-          ...readNotifications.slice(
-            0,
-            MAX_DISPLAY_COUNT - unreadNotifications.length,
-          ),
-        ];
-      });
+    if (!error) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+      );
       setUnreadCount((prev) => prev - 1);
+    }
+  };
+
+  const renderNotificationMessage = (notification) => {
+    const caseTitle = notification.case_timelines?.case?.title || "알 수 없음";
+
+    if (notification.type === "배정") {
+      return <Text>새로운 사건에 배정되었습니다: {notification.message}</Text>;
+    } else if (
+      notification.type === "요청" ||
+      notification.type === "요청 승인"
+    ) {
+      return (
+        <Tooltip
+          content={notification.message}
+          side="top"
+          align="start"
+          sideOffset={5}
+        >
+          <Text
+            style={{
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              cursor: "pointer",
+            }}
+          >
+            {notification.type === "요청"
+              ? `새로운 요청이 있습니다: ${caseTitle}`
+              : `요청이 승인되었습니다: ${caseTitle}`}
+          </Text>
+        </Tooltip>
+      );
+    } else {
+      return <Text>{notification.message}</Text>;
     }
   };
 
@@ -185,12 +210,7 @@ const NotificationDropdown = () => {
                     />
                   )}
                   <Flex direction="column">
-                    <Text
-                      size="2"
-                      weight={notification.is_read ? "normal" : "bold"}
-                    >
-                      {notification.message}
-                    </Text>
+                    {renderNotificationMessage(notification)}
                     <Text size="1" color="gray">
                       {new Date(notification.created_at).toLocaleString(
                         "ko-KR",
