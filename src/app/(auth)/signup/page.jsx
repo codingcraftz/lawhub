@@ -194,6 +194,7 @@ const SignupPage = () => {
                     title="생년월일"
                     selectedDate={field.value}
                     onDateChange={(date) => field.onChange(date)}
+                    openDate="1990-01-01"
                   />
                 )}
               />

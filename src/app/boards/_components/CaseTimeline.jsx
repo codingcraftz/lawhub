@@ -1,4 +1,9 @@
-// src/app/boards/_components/CaseTimeline.jsx
+import React, { useState, useEffect } from "react";
+import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
+import { PlusIcon } from "@radix-ui/react-icons";
+import { supabase } from "@/utils/supabase";
+import TimelineForm from "./TimeLineForm";
+import DeadlineForm from "./DeadlineForm";
 
 const getTypeColor = (type) => {
   switch (type) {
@@ -15,21 +20,17 @@ const getTypeColor = (type) => {
   }
 };
 
-import React, { useState, useEffect } from "react";
-import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
-import { PlusIcon } from "@radix-ui/react-icons";
-import { supabase } from "@/utils/supabase";
-import TimelineForm from "./TimeLineForm";
-
 const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
+  const [deadlines, setDeadlines] = useState([]); // 기일 항목 상태 추가
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeadlineDialogOpen, setIsDeadlineDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    console.log("CaseTimeline component mounted or caseId changed:", caseId);
     fetchTimelineItems();
+    fetchDeadlines();
     fetchCurrentUser();
   }, [caseId]);
 
@@ -53,13 +54,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
     try {
       const { data, error } = await supabase
         .from("case_timelines")
-        .select(
-          `
-        *,
-        created_by(id, name),
-        requested_to(id, name)
-      `,
-        )
+        .select("*, created_by(id, name), requested_to(id, name)")
         .eq("case_id", caseId)
         .order("created_at", { ascending: true });
 
@@ -70,6 +65,25 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
       }
     } catch (error) {
       console.error("Error fetching timeline items:", error);
+    }
+  };
+
+  const fetchDeadlines = async () => {
+    // 기일 항목을 불러와 상단에 표시
+    try {
+      const { data, error } = await supabase
+        .from("case_deadlines")
+        .select("*")
+        .eq("case_id", caseId)
+        .order("deadline_date", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching deadlines:", error);
+      } else {
+        setDeadlines(data);
+      }
+    } catch (error) {
+      console.error("Error fetching deadlines:", error);
     }
   };
 
@@ -94,6 +108,11 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
     }
   };
 
+  const handleDeadlineFormSuccess = () => {
+    fetchDeadlines();
+    setIsDeadlineDialogOpen(false);
+  };
+
   const handleFormSuccess = () => {
     fetchTimelineItems();
     setIsDialogOpen(false);
@@ -115,8 +134,8 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
           .eq("id", caseId);
         if (error) throw error;
         alert("사건이 성공적으로 완료되었습니다.");
-        onClose(); // 타임라인을 닫고 사건 목록으로 돌아갑니다.
-        window.location.reload(); // 페이지를 새로고침하여 변경사항을 반영합니다.
+        onClose();
+        window.location.reload();
       } catch (error) {
         console.error("Error completing case:", error);
         alert("사건 완료 중 오류가 발생했습니다.");
@@ -127,15 +146,50 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   return (
     <Box>
       <Flex direction="column" gap="4">
+        {/* 상단 기일 리스트 */}
+        {deadlines.length > 0 && (
+          <Box mb="4">
+            <Flex direction="column" gap="2">
+              {deadlines.map((deadline) => (
+                <Flex
+                  key={deadline.id}
+                  justify="between"
+                  align="center"
+                  className="p-2 border rounded-md"
+                  style={{
+                    backgroundColor: "var(--gray-2)",
+                    border: "1px solid var(--gray-6)",
+                  }}
+                >
+                  <Text size="3" weight="bold">
+                    {deadline.type}
+                  </Text>
+                  <Text size="2" color="gray">
+                    {new Date(deadline.deadline_date).toLocaleDateString(
+                      "ko-KR",
+                      {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                      },
+                    )}
+                  </Text>
+                </Flex>
+              ))}
+            </Flex>
+          </Box>
+        )}
+
         <Flex justify="between" align="center">
           <Text size="5" weight="bold">
             사건 타임라인
           </Text>
+
           {caseStatus !== "completed" && (
             <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Dialog.Trigger>
                 <Button size="2" onClick={() => setEditingItem(null)}>
-                  <PlusIcon />새 항목 추가
+                  <PlusIcon /> 새 항목 추가
                 </Button>
               </Dialog.Trigger>
               <Dialog.Content>
@@ -153,9 +207,9 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
           )}
         </Flex>
 
-        {/* 타임라인 항목들 */}
+        {/* 타임라인 리스트 */}
         <Flex direction="column" gap="3">
-          {timelineItems.map((item, index) => (
+          {timelineItems.map((item) => (
             <Box
               key={item.id}
               style={{
@@ -209,11 +263,27 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                   </Flex>
                 )}
               </Flex>
-              <Flex className="justify-between">
-                <Text size="3" mt="1">
+              <Flex
+                className="justify-between"
+                style={{ flexWrap: "nowrap", gap: "8px" }}
+              >
+                <Text
+                  size="3"
+                  mt="1"
+                  style={{ flexGrow: 1, overflow: "hidden" }}
+                >
                   {item.description}
                 </Text>
-                <Text size="2" color="gray" mt="1">
+                <Text
+                  size="2"
+                  color="gray"
+                  mt="1"
+                  style={{
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                    marginLeft: "8px",
+                  }}
+                >
                   {item.created_by?.name &&
                     (item.type === "요청" && item.requested_to?.name
                       ? `${item.created_by.name} → ${item.requested_to.name}`
@@ -223,9 +293,34 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
             </Box>
           ))}
         </Flex>
+        <Flex justify="between" mt="4">
+          {caseStatus !== "completed" && (
+            <Dialog.Root
+              open={isDeadlineDialogOpen}
+              onOpenChange={setIsDeadlineDialogOpen}
+            >
+              <Dialog.Trigger>
+                <Button size="2" onClick={() => setIsDeadlineDialogOpen(true)}>
+                  <PlusIcon /> 기일 추가
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Content
+                style={{
+                  overflow: "visible",
+                  position: "relative",
+                  zIndex: 1000,
+                }}
+              >
+                <Dialog.Title>새 기일 추가</Dialog.Title>
+                <DeadlineForm
+                  caseId={caseId} // 현재 사건 타임라인 ID 전달
+                  onSuccess={handleDeadlineFormSuccess}
+                  onClose={() => setIsDeadlineDialogOpen(false)}
+                />
+              </Dialog.Content>
+            </Dialog.Root>
+          )}
 
-        {/* 하단 버튼 */}
-        <Flex justify="end" mt="4">
           {isAdmin && caseStatus !== "completed" ? (
             <Button size="2" color="red" onClick={handleCaseCompletion}>
               사건 종결

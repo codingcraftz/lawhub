@@ -143,14 +143,14 @@ const LoginPage = () => {
                 회원가입
               </Link>
             </Text>
-            <Text
-              size="2"
-              align="center"
-              style={{ color: "var(--accent-9)", cursor: "pointer" }}
-              onClick={() => setIsForgotPasswordOpen(true)}
-            >
-              비밀번호를 잊으셨나요?
-            </Text>
+            {/* <Text */}
+            {/*   size="2" */}
+            {/*   align="center" */}
+            {/*   style={{ color: "var(--accent-9)", cursor: "pointer" }} */}
+            {/*   onClick={() => setIsForgotPasswordOpen(true)} */}
+            {/* > */}
+            {/*   비밀번호를 잊으셨나요? */}
+            {/* </Text> */}
           </Flex>
         </form>
       </Card>

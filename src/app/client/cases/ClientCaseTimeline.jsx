@@ -21,9 +21,11 @@ import { supabase } from "@/utils/supabase";
 
 const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
+  const [deadlines, setDeadlines] = useState([]); // 기일 항목 상태 추가
 
   useEffect(() => {
     fetchTimelineItems();
+    fetchDeadlines();
   }, [caseId]);
 
   const fetchTimelineItems = async () => {
@@ -46,8 +48,61 @@ const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
     }
   };
 
+  const fetchDeadlines = async () => {
+    // 기일 항목을 불러와 상단에 표시
+    try {
+      const { data, error } = await supabase
+        .from("case_deadlines")
+        .select("*")
+        .eq("case_id", caseId)
+        .order("deadline_date", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching deadlines:", error);
+      } else {
+        setDeadlines(data);
+      }
+    } catch (error) {
+      console.error("Error fetching deadlines:", error);
+    }
+  };
+
   return (
     <Box>
+      {/* 상단 기일 리스트 */}
+      {deadlines.length > 0 && (
+        <Box mb="4">
+          <Flex direction="column" gap="2">
+            {deadlines.map((deadline) => (
+              <Flex
+                key={deadline.id}
+                justify="between"
+                align="center"
+                className="p-2 border rounded-md"
+                style={{
+                  backgroundColor: "var(--gray-2)",
+                  border: "1px solid var(--gray-6)",
+                }}
+              >
+                <Text size="3" weight="bold">
+                  {deadline.type}
+                </Text>
+                <Text size="2" color="gray">
+                  {new Date(deadline.deadline_date).toLocaleDateString(
+                    "ko-KR",
+                    {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                    },
+                  )}
+                </Text>
+              </Flex>
+            ))}
+          </Flex>
+        </Box>
+      )}
+
       <Flex direction="column" gap="4">
         <Text size="5" weight="bold">
           사건 타임라인

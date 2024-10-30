@@ -3,8 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
-import { Text, Flex, Button, Table, TextArea } from "@radix-ui/themes";
-import * as Dialog from "@radix-ui/react-dialog";
+import {
+  Text,
+  Flex,
+  Button,
+  Table,
+  TextArea,
+  Box,
+  Dialog,
+} from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import TodoList from "./TodoList";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
@@ -50,17 +57,15 @@ const TodosPage = () => {
 
   const handleRequestAction = async (request, action) => {
     if (action === "accepted") {
-      // 승인 모달을 띄웁니다.
       setApprovingRequest(request);
     } else {
-      // 거절 처리
       try {
         const { error } = await supabase
           .from("requests")
           .update({ status: "rejected" })
           .eq("id", request.id);
         if (error) throw error;
-        fetchRequests(); // 요청 목록을 다시 가져옵니다.
+        fetchRequests();
       } catch (error) {
         console.error(`Error ${action} request:`, error);
       }
@@ -120,24 +125,24 @@ const TodosPage = () => {
       <Table.Root mb="6">
         <Table.Header>
           <Table.Row>
-            <Table.ColumnHeaderCell>설명</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>유형</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>요청자</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>설명</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>작업</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {requests.map((request) => (
             <Table.Row key={request.id}>
-              <Table.Cell>{request.case_timelines.description}</Table.Cell>
               <Table.Cell>{request.case_timelines.type}</Table.Cell>
               <Table.Cell>{request.requester?.name || "알 수 없음"}</Table.Cell>
+              <Table.Cell>{request.case_timelines.description}</Table.Cell>
               <Table.Cell>
                 <Flex gap="2">
                   <Button
                     onClick={() => handleRequestAction(request, "accepted")}
                   >
-                    승인
+                    완료
                   </Button>
                   <Button
                     variant="outline"
@@ -154,58 +159,50 @@ const TodosPage = () => {
 
       <TodoList />
 
-      {approvingRequest && (
-        <Dialog.Root
-          open={!!approvingRequest}
-          onOpenChange={() => setApprovingRequest(null)}
-        >
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
-            <Dialog.Content
-              className="fixed top-1/2 left-1/2 bg-white dark:bg-gray-800 rounded-lg p-6 transform -translate-x-1/2 -translate-y-1/2 max-w-md w-full"
-              style={{ zIndex: 1000 }}
+      {/* 승인 모달 */}
+      <Dialog.Root
+        open={!!approvingRequest}
+        onOpenChange={() => setApprovingRequest(null)}
+      >
+        <Dialog.Content style={{ maxWidth: 450 }}>
+          <Dialog.Title>요청 승인</Dialog.Title>
+          <Dialog.Close asChild>
+            <Button
+              variant="ghost"
+              color="gray"
+              size="1"
+              style={{ position: "absolute", top: 8, right: 8 }}
+              onClick={() => setApprovingRequest(null)}
             >
-              <Dialog.Title className="text-lg font-bold mb-4">
-                요청 승인
-              </Dialog.Title>
-              <Dialog.Close asChild>
-                <Button
-                  variant="ghost"
-                  size="1"
-                  style={{ position: "absolute", top: 8, right: 8 }}
-                  onClick={() => setApprovingRequest(null)}
-                >
-                  <Cross2Icon />
-                </Button>
-              </Dialog.Close>
-              <form onSubmit={handleApprovalSubmit}>
-                <Flex direction="column" gap="4">
-                  <Text>
-                    요청: {approvingRequest.case_timelines.description}
-                  </Text>
-                  <TextArea
-                    placeholder="완료 내용을 입력하세요"
-                    value={approvalDescription}
-                    onChange={(e) => setApprovalDescription(e.target.value)}
-                    required
-                    style={{ minHeight: "100px" }}
-                  />
-                  <Flex justify="end" gap="2">
-                    <Button
-                      variant="soft"
-                      color="gray"
-                      onClick={() => setApprovingRequest(null)}
-                    >
-                      취소
-                    </Button>
-                    <Button type="submit">완료</Button>
-                  </Flex>
-                </Flex>
-              </form>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
+              <Cross2Icon />
+            </Button>
+          </Dialog.Close>
+          <form onSubmit={handleApprovalSubmit}>
+            <Box mb="4">
+              <Text size="2" color="gray">
+                요청 내용: {approvingRequest?.case_timelines.description}
+              </Text>
+            </Box>
+            <TextArea
+              placeholder="완료 내용을 입력하세요"
+              value={approvalDescription}
+              onChange={(e) => setApprovalDescription(e.target.value)}
+              required
+              style={{ minHeight: "100px", marginBottom: "1rem" }}
+            />
+            <Flex justify="end" gap="2">
+              <Button
+                variant="soft"
+                color="gray"
+                onClick={() => setApprovingRequest(null)}
+              >
+                취소
+              </Button>
+              <Button type="submit">완료</Button>
+            </Flex>
+          </form>
+        </Dialog.Content>
+      </Dialog.Root>
     </div>
   );
 };

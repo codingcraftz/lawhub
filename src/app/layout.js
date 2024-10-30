@@ -22,7 +22,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body className={nanumGothic.className}>
+      <body className={`${nanumGothic.className} root-portal`}>
         <UserProvider>
           <ThemeProvider attribute="class">
             <Theme
