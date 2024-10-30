@@ -176,7 +176,9 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         for (const staff of selectedStaff) {
           await supabase.from("notifications").insert({
             user_id: staff.id,
-            message: `새로운 사건에 배정되었습니다: ${insertedCase.title}`,
+            case_id: insertedCase.id,
+            type: "배정",
+            message: `${insertedCase.title}`,
             is_read: false,
           });
         }

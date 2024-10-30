@@ -41,7 +41,8 @@ const TodosPage = () => {
         id,
         description,
         type,
-        case_id
+        case_id,
+        case:cases(title)
       )
     `,
       )
@@ -54,7 +55,6 @@ const TodosPage = () => {
       setRequests(data);
     }
   };
-
   const handleRequestAction = async (request, action) => {
     if (action === "accepted") {
       setApprovingRequest(request);
@@ -71,7 +71,6 @@ const TodosPage = () => {
       }
     }
   };
-
   const handleApprovalSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -100,7 +99,9 @@ const TodosPage = () => {
         .insert({
           user_id: approvingRequest.requester_id,
           case_timeline_id: timelineData[0].id,
-          message: `요청이 승인되었습니다: ${approvalDescription}`,
+          case_id: approvingRequest.case_timelines.case_id,
+          type: "요청 승인",
+          message: `${approvalDescription}`,
           is_read: false,
         });
 
@@ -127,6 +128,7 @@ const TodosPage = () => {
           <Table.Row>
             <Table.ColumnHeaderCell>유형</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>요청자</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>사건</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>설명</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>작업</Table.ColumnHeaderCell>
           </Table.Row>
@@ -136,6 +138,9 @@ const TodosPage = () => {
             <Table.Row key={request.id}>
               <Table.Cell>{request.case_timelines.type}</Table.Cell>
               <Table.Cell>{request.requester?.name || "알 수 없음"}</Table.Cell>
+              <Table.Cell>
+                {request.case_timelines.case?.title || "없음"}
+              </Table.Cell>
               <Table.Cell>{request.case_timelines.description}</Table.Cell>
               <Table.Cell>
                 <Flex gap="2">

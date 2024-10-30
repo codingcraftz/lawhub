@@ -131,15 +131,8 @@ const SignupPage = () => {
   };
 
   return (
-    <Box
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-      }}
-    >
-      <Card style={{ width: "400px", padding: "2rem" }}>
+    <Box className="flex justify-center items-center min-h-screen px-4 sm:px-6 md:px-8">
+      <Card className="w-full max-w-md p-6 sm:p-8 md:p-10 lg:w-1/3">
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
             <Text size="5" weight="bold">
@@ -169,18 +162,12 @@ const SignupPage = () => {
                         : field
                   }
                   {...register(field)}
+                  className="w-full p-2 border rounded-md"
                   style={{
-                    width: "100%",
-                    padding: "0.5rem",
                     border: "1px solid var(--gray-6)",
-                    borderRadius: "var(--radius-2)",
                   }}
                 />
-                <Text
-                  color="red"
-                  size="1"
-                  style={{ minHeight: "20px", marginTop: "4px" }}
-                >
+                <Text color="red" size="1" className="min-h-[20px] mt-1">
                   {errors[field]?.message || " "}
                 </Text>
               </Box>
@@ -198,22 +185,16 @@ const SignupPage = () => {
                   />
                 )}
               />
-              <Text
-                color="red"
-                size="1"
-                style={{ minHeight: "20px", marginTop: "4px" }}
-              >
+              <Text color="red" size="1" className="min-h-[20px] mt-1">
                 {errors.birthDate?.message || " "}
               </Text>
             </Box>
             <Box>
               <select
                 {...register("gender")}
+                className="w-full p-2 border rounded-md"
                 style={{
-                  width: "100%",
-                  padding: "0.5rem",
                   border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
                 }}
               >
                 <option value="">성별 선택</option>
@@ -221,11 +202,7 @@ const SignupPage = () => {
                 <option value="female">여성</option>
                 <option value="other">기타</option>
               </select>
-              <Text
-                color="red"
-                size="1"
-                style={{ minHeight: "20px", marginTop: "4px" }}
-              >
+              <Text color="red" size="1" className="min-h-[20px] mt-1">
                 {errors.gender?.message || " "}
               </Text>
             </Box>
@@ -234,85 +211,49 @@ const SignupPage = () => {
               <input type="checkbox" {...register("agreeTerms")} />
               <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
             </Flex>
-            <Text
-              color="red"
-              size="1"
-              style={{ minHeight: "20px", marginTop: "4px" }}
-            >
+            <Text color="red" size="1" className="min-h-[20px] mt-1">
               {errors.agreeTerms?.message || " "}
             </Text>
-            <Button type="submit" disabled={!isValid}>
+            <Button type="submit" disabled={!isValid} className="w-full">
               회원가입
             </Button>
             <Separator size="4" />
             <Text size="2" align="center">
               이미 계정이 있으신가요?{" "}
-              <Link href="/login" style={{ color: "var(--accent-9)" }}>
+              <Link href="/login" className="text-blue-500">
                 로그인
               </Link>
             </Text>
           </Flex>
         </form>
-      </Card>
 
-      {/* Radix UI Dialog for messages */}
-      <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <Dialog.Content
-          style={{
-            maxWidth: 450,
-            padding: "2rem",
-            borderRadius: "8px",
-            border: "2px solid var(--gray-8)",
-            backgroundColor: "var(--gray-1)",
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
-            zIndex: 1000,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
-          <Dialog.Title
+        {/* Radix UI Dialog for messages */}
+        <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <Dialog.Content
+            className="max-w-[450px] p-8 rounded-md border-2 bg-white fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-lg z-50 text-center"
             style={{
-              fontSize: "1.25rem",
-              fontWeight: "600",
-              color: "var(--accent-9)",
-              marginBottom: "1rem",
+              border: "1px solid var(--gray-6)",
             }}
           >
-            알림
-          </Dialog.Title>
-          <Dialog.Description
-            style={{
-              fontSize: "1rem",
-              color: "var(--gray-9)",
-              marginBottom: "1.5rem",
-            }}
-          >
-            {modalMessage}
-          </Dialog.Description>
-          <Dialog.Close asChild>
-            <Button
-              variant="soft"
-              color="blue"
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                fontSize: "1rem",
-                fontWeight: "500",
-              }}
-              onClick={closeModal}
-            >
-              확인
-            </Button>
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Root>
+            <Dialog.Title className="text-lg font-semibold text-blue-500 mb-4">
+              알림
+            </Dialog.Title>
+            <Dialog.Description className="text-base text-gray-700 mb-6">
+              {modalMessage}
+            </Dialog.Description>
+            <Dialog.Close asChild>
+              <Button
+                variant="soft"
+                color="blue"
+                className="w-full py-2 rounded-md text-base font-medium"
+                onClick={closeModal}
+              >
+                확인
+              </Button>
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Root>
+      </Card>
     </Box>
   );
 };
