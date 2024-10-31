@@ -6,10 +6,11 @@ import React, { useState } from "react";
 import { Card, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
 import CaseForm from "@/app/boards/_components/CaseForm";
 import { getCategoryColor } from "@/utils/util";
+import CaseDetails from "./CaseDetails";
 
 const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const categoryStyle = getCategoryColor(caseItem.case_categories.name);
 
   if (
@@ -84,19 +85,34 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
               })}
             </Text>
           )}
-          {isAdmin && (
+          <Flex width="100%" gap="0.5rem">
             <Button
+              className="flex-1"
               variant="soft"
               color="blue"
               size="1"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsEditModalOpen(true);
+                setIsDetailsModalOpen(true);
               }}
             >
-              수정
+              사건 정보
             </Button>
-          )}
+            {isAdmin && (
+              <Button
+                className="flex-1"
+                variant="soft"
+                color="blue"
+                size="1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditModalOpen(true);
+                }}
+              >
+                수정
+              </Button>
+            )}
+          </Flex>
         </Flex>
       </Card>
 
@@ -126,6 +142,14 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
             />
           </Dialog.Content>
         </Dialog.Root>
+      )}
+
+      {/* Case Details Modal */}
+      {isDetailsModalOpen && (
+        <CaseDetails
+          caseData={caseItem}
+          onClose={() => setIsDetailsModalOpen(false)}
+        />
       )}
     </>
   );

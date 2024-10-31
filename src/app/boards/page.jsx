@@ -236,7 +236,6 @@ const BoardsPage = () => {
         </Tabs.Content>
       </Tabs.Root>
 
-      {/* 타임라인 모달 */}
       {selectedCase && (
         <Dialog.Root
           open={!!selectedCase}
