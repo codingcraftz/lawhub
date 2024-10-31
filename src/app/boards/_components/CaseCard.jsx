@@ -8,7 +8,14 @@ import CaseForm from "@/app/boards/_components/CaseForm";
 import { getCategoryColor } from "@/utils/util";
 import CaseDetails from "./CaseDetails";
 
-const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
+const CaseCard = ({
+  caseItem,
+  onClick,
+  isAdmin,
+  ongoingCases,
+  scheduledCases,
+  closedCases,
+}) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const categoryStyle = getCategoryColor(caseItem.case_categories.name);
@@ -135,8 +142,9 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
               caseData={caseItem}
               onSuccess={() => {
                 setIsEditModalOpen(false);
-                fetchCases();
-                // Optionally trigger a refresh or re-fetch to update case details
+                ongoingCases();
+                scheduledCases();
+                closedCases();
               }}
               onClose={() => setIsEditModalOpen(false)}
             />
