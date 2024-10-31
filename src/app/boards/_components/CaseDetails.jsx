@@ -3,7 +3,8 @@
 "use client";
 
 import React from "react";
-import { Dialog, Text, Box, Flex } from "@radix-ui/themes";
+import { Dialog, Text, Box, Flex, Button } from "@radix-ui/themes";
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 const CaseDetails = ({ caseData, onClose }) => {
   if (!caseData) return null;
@@ -22,22 +23,19 @@ const CaseDetails = ({ caseData, onClose }) => {
 
   return (
     <Dialog.Root open={!!caseData} onOpenChange={onClose}>
-      <Dialog.Content style={{ maxWidth: 1000 }}>
+      <Dialog.Content
+        style={{ minWidth: 500, maxWidth: 1000, width: "fit-content" }}
+      >
         <Dialog.Title>사건 정보</Dialog.Title>
         <Dialog.Close asChild>
-          <button
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--gray-5)",
-            }}
+          <Button
+            variant="ghost"
+            color="gray"
+            size="1"
+            style={{ position: "absolute", top: 8, right: 8 }}
           >
-            닫기
-          </button>
+            <Cross2Icon />
+          </Button>
         </Dialog.Close>
         <Box padding="2" display="flex" flexDirection="column" gap="2">
           <Box as="div" style={{ fontSize: "1.25rem", fontWeight: "bold" }}>
@@ -73,6 +71,11 @@ const CaseDetails = ({ caseData, onClose }) => {
               })}
             </Box>
           )}
+          <Flex>
+            <Button className="ml-auto" size="2" onClick={onClose}>
+              확인
+            </Button>
+          </Flex>
         </Box>
       </Dialog.Content>
     </Dialog.Root>
