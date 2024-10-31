@@ -46,12 +46,12 @@ const HomePage = () => {
             {
               title: "우리의 목표",
               description:
-                "모든 고객이 쉽고 안전하게 법적 문제를 이해하고 해결할 수 있도록 돕는 것",
+                "쉽고 안전하게 법적 문제를 이해하고 해결할 수 있도록 돕는 것",
             },
             {
               title: "우리의 비전",
               description:
-                "고객과의 신뢰를 바탕으로 원활한 법률 서비스와 내부 협업을 통한 효율성 증대",
+                "신뢰를 바탕으로 원활한 법률 서비스와 내부 협업을 통한 효율성 증대",
             },
             {
               title: "우리의 가치",
@@ -71,9 +71,11 @@ const HomePage = () => {
                   border: "2px solid var(--gray-2)",
                 }}
               >
-                <Text size="5" weight="bold" className="mb-2">
-                  {content.title}
-                </Text>
+                <Box>
+                  <Text size="5" weight="bold" className="mb-2">
+                    {content.title}
+                  </Text>
+                </Box>
                 <Text size="3" className="leading-relaxed">
                   {content.description}
                 </Text>
