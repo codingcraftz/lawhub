@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button, Dialog } from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Dialog, Switch } from "@radix-ui/themes";
 import * as yup from "yup";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -13,7 +13,6 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import OpponentSelectionModalContent from "./OpponentSelectionModalContent";
 import CustomDatePicker from "@/components/CustomDatePicker";
 
-// 유효성 검사 스키마
 const schema = yup.object().shape({
   title: yup.string().required("제목은 필수입니다"),
   description: yup.string(),
@@ -29,6 +28,9 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isOpponentModalOpen, setIsOpponentModalOpen] = useState(false); // 상대방 선택 모달
+  const [isScheduled, setIsScheduled] = useState(
+    caseData?.status === "scheduled",
+  );
 
   const {
     register,
@@ -57,7 +59,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   };
 
   const fetchCaseRelations = async () => {
-    // 의뢰인 가져오기
     const { data: clientData, error: clientError } = await supabase
       .from("case_clients")
       .select("client_id, client:users(name)")
@@ -73,7 +74,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       setSelectedClients(clients);
     }
 
-    // 담당자 가져오기
     const { data: staffData, error: staffError } = await supabase
       .from("case_staff")
       .select("staff_id, staff:users(name)")
@@ -89,12 +89,11 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       setSelectedStaff(staff);
     }
 
-    // 상대방 가져오기 (opponents 테이블과 조인)
     const { data: opponentData, error: opponentError } = await supabase
       .from("case_opponents")
       .select(
         "opponent_id, opponent:opponents(name, registration_number, address, phone_number)",
-      ) // opponents 테이블과 조인
+      )
       .eq("case_id", caseData.id);
 
     if (opponentError) {
@@ -118,7 +117,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         description: data.description,
         start_date: data.start_date,
         category_id: data.category_id,
-        status: data.status || "ongoing",
+        status: isScheduled ? "scheduled" : "ongoing",
       };
 
       let insertedCase;
@@ -194,7 +193,13 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Flex direction="column" gap="4">
-        {/* 사건 제목 입력 */}
+        <Flex className="ml-auto" align="center" gap="2">
+          <Text size="3">진행 예정</Text>
+          <Switch
+            checked={isScheduled}
+            onCheckedChange={(checked) => setIsScheduled(checked)}
+          />
+        </Flex>
         <Box>
           <input
             placeholder="사건 제목"
@@ -274,37 +279,43 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
 
         {/* 의뢰인 선택 */}
         <Box>
-          <Button type="button" onClick={() => setIsClientModalOpen(true)}>
+          <Button
+            className="mr-2"
+            type="button"
+            onClick={() => setIsClientModalOpen(true)}
+          >
             의뢰인 선택
           </Button>
           {selectedClients.length > 0 && (
-            <Text>
-              선택된 의뢰인: {selectedClients.map((c) => c.name).join(", ")}
-            </Text>
+            <Text>{selectedClients.map((c) => c.name).join(", ")}</Text>
           )}
         </Box>
 
         {/* 담당자 선택 */}
         <Box>
-          <Button type="button" onClick={() => setIsStaffModalOpen(true)}>
+          <Button
+            className="mr-2"
+            type="button"
+            onClick={() => setIsStaffModalOpen(true)}
+          >
             담당자 선택
           </Button>
           {selectedStaff.length > 0 && (
-            <Text>
-              선택된 담당자: {selectedStaff.map((s) => s.name).join(", ")}
-            </Text>
+            <Text>{selectedStaff.map((s) => s.name).join(", ")}</Text>
           )}
         </Box>
 
         {/* 상대방 선택 */}
         <Box>
-          <Button type="button" onClick={() => setIsOpponentModalOpen(true)}>
+          <Button
+            className="mr-2"
+            type="button"
+            onClick={() => setIsOpponentModalOpen(true)}
+          >
             상대방 선택
           </Button>
           {selectedOpponents.length > 0 && (
-            <Text>
-              선택된 상대방: {selectedOpponents.map((o) => o.name).join(", ")}
-            </Text>
+            <Text>{selectedOpponents.map((o) => o.name).join(", ")}</Text>
           )}
         </Box>
 

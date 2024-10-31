@@ -13,13 +13,16 @@ import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const BoardsPage = () => {
   const [ongoingCases, setOngoingCases] = useState([]);
+  const [scheduledCases, setScheduledCases] = useState([]);
   const [closedCases, setClosedCases] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [ongoingPage, setOngoingPage] = useState(1);
+  const [scheduledPage, setScheduledPage] = useState(1);
   const [closedPage, setClosedPage] = useState(1);
   const pageSize = 9;
   const [totalOngoingCount, setTotalOngoingCount] = useState(0);
+  const [totalScheduledCount, setTotalScheduledCount] = useState(0);
   const [totalClosedCount, setTotalClosedCount] = useState(0);
   const { user } = useUser();
 
@@ -28,6 +31,7 @@ const BoardsPage = () => {
   useEffect(() => {
     if (user) {
       fetchOngoingCases(ongoingPage, pageSize);
+      fetchScheduledCases(scheduledPage, pageSize);
       fetchClosedCases(closedPage, pageSize);
     }
   }, [user, ongoingPage, closedPage]);
@@ -76,6 +80,55 @@ const BoardsPage = () => {
       } catch (error) {
         console.error("Error fetching ongoing cases:", error);
         setOngoingCases([]);
+      }
+    },
+    [user],
+  );
+
+  const fetchScheduledCases = useCallback(
+    async (page = 1, pageSize = 10) => {
+      try {
+        if (!user) {
+          setScheduledCases([]);
+          setTotalScheduledCount(0);
+          return;
+        }
+
+        let query = supabase.from("cases").select(
+          `
+          *,
+          case_categories (id, name),
+          case_clients (
+            client:users (id, name)
+          ),
+          case_staff!inner (
+            staff:users (id, name)
+          ),
+          case_opponents (
+            opponent:opponents (id, name)
+          )
+        `,
+          { count: "exact" },
+        );
+
+        if (user.role === "staff") {
+          query = query.eq("case_staff.staff_id", user.id);
+        }
+
+        query = query
+          .eq("status", "scheduled")
+          .order("start_date", { ascending: false })
+          .range((page - 1) * pageSize, page * pageSize - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) throw error;
+
+        setScheduledCases(data);
+        setTotalScheduledCount(count);
+      } catch (error) {
+        console.error("Error fetching scheduled cases:", error);
+        setScheduledCases([]);
       }
     },
     [user],
@@ -131,8 +184,10 @@ const BoardsPage = () => {
   );
 
   const hasOngoingCases = ongoingCases.length > 0;
+  const hasScheduledCases = scheduledCases.length > 0;
   const hasClosedCases = closedCases.length > 0;
   const totalOngoingPages = Math.ceil(totalOngoingCount / pageSize);
+  const totalScheduledPages = Math.ceil(totalScheduledCount / pageSize);
   const totalClosedPages = Math.ceil(totalClosedCount / pageSize);
 
   return (
@@ -167,6 +222,8 @@ const BoardsPage = () => {
                 caseData={selectedCase}
                 onSuccess={() => {
                   fetchOngoingCases(ongoingPage, pageSize);
+                  fetchScheduledCases(scheduledPage, pageSize);
+                  fetchClosedCases(closedPage, pageSize);
                   setIsNewCaseModalOpen(false);
                   setSelectedCase(null);
                 }}
@@ -180,6 +237,7 @@ const BoardsPage = () => {
       <Tabs.Root defaultValue="ongoing">
         <Tabs.List>
           <Tabs.Trigger value="ongoing">진행중인 사건</Tabs.Trigger>
+          <Tabs.Trigger value="scheduled">진행예정 사건</Tabs.Trigger>
           <Tabs.Trigger value="closed">종료된 사건</Tabs.Trigger>
         </Tabs.List>
 
@@ -192,7 +250,11 @@ const BoardsPage = () => {
                   caseItem={caseItem}
                   onClick={() => setSelectedCase(caseItem)}
                   isAdmin={user?.role === "admin"}
-                  fetchCases={() => fetchOngoingCases(ongoingPage, pageSize)}
+                  ongoingCases={() => fetchOngoingCases(ongoingPage, pageSize)}
+                  scheduledCases={() =>
+                    fetchScheduledCases(scheduledPage, pageSize)
+                  }
+                  closedCases={() => fetchClosedCases(closedPage, pageSize)}
                 />
               ))}
             </div>
@@ -210,6 +272,37 @@ const BoardsPage = () => {
           )}
         </Tabs.Content>
 
+        <Tabs.Content value="scheduled">
+          {hasScheduledCases ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              {scheduledCases.map((caseItem) => (
+                <CaseCard
+                  key={caseItem.id}
+                  caseItem={caseItem}
+                  onClick={() => setSelectedCase(caseItem)}
+                  isAdmin={user?.role === "admin"}
+                  ongoingCases={() => fetchOngoingCases(ongoingPage, pageSize)}
+                  scheduledCases={() =>
+                    fetchScheduledCases(scheduledPage, pageSize)
+                  }
+                  closedCases={() => fetchClosedCases(closedPage, pageSize)}
+                />
+              ))}
+            </div>
+          ) : (
+            <Text size="3" className="text-center mt-8">
+              진행중인 사건이 없습니다.
+            </Text>
+          )}
+          {totalOngoingPages > 1 && (
+            <Pagination
+              currentPage={scheduledPage}
+              totalPages={totalScheduledPages}
+              onPageChange={setScheduledPage}
+            />
+          )}
+        </Tabs.Content>
+
         <Tabs.Content value="closed">
           {hasClosedCases ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
@@ -218,6 +311,12 @@ const BoardsPage = () => {
                   key={caseItem.id}
                   caseItem={caseItem}
                   onClick={() => setSelectedCase(caseItem)}
+                  isAdmin={user?.role === "admin"}
+                  ongoingCases={() => fetchOngoingCases(ongoingPage, pageSize)}
+                  scheduledCases={() =>
+                    fetchScheduledCases(scheduledPage, pageSize)
+                  }
+                  closedCases={() => fetchClosedCases(closedPage, pageSize)}
                 />
               ))}
             </div>
