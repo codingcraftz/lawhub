@@ -15,7 +15,7 @@ const LogoText = () => {
     setIsDarkMode(theme === "dark");
   }, [theme]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (materialRef.current) {
       materialRef.current.uniforms.time.value += delta * 0.5;
     }
@@ -25,7 +25,7 @@ const LogoText = () => {
     <Text
       ref={textRef}
       fontSize={3}
-      depth={0.8} // 3D 깊이 설정
+      depth={0.8}
       bevelEnabled
       bevelThickness={0.3}
       bevelSize={0.15}
@@ -33,17 +33,16 @@ const LogoText = () => {
       anchorY="middle"
     >
       LawHub
-      {/* 커스텀 셰이더로 광택 효과 추가 */}
       <shaderMaterial
         ref={materialRef}
         uniforms={{
           time: { value: 0 },
           color1: {
             value: new THREE.Color(isDarkMode ? "#777" : "#eee"),
-          }, // 다크 모드와 라이트 모드에 맞춘 기본 색상
+          },
           color2: {
             value: new THREE.Color(isDarkMode ? "#bbb" : "#aaa"),
-          }, // 광택색을 모드에 맞춰 설정
+          },
         }}
         vertexShader={`
           varying vec2 vUv;
@@ -77,7 +76,6 @@ const Scene = () => {
         backgroundColor: "var(--gray-2)",
       }}
     >
-      {/* 조명 설정 */}
       <ambientLight intensity={0.3} />
       <pointLight position={[5, 5, 5]} intensity={1.5} />
       <spotLight
@@ -87,7 +85,6 @@ const Scene = () => {
         penumbra={0.5}
       />
 
-      {/* 메탈릭 3D 텍스트 */}
       <LogoText />
     </Canvas>
   );

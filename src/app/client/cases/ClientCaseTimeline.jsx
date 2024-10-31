@@ -19,9 +19,9 @@ import React, { useState, useEffect } from "react";
 import { Box, Flex, Text, Badge, Button } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
 
-const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
+const ClientCaseTimeline = ({ caseId, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
-  const [deadlines, setDeadlines] = useState([]); // 기일 항목 상태 추가
+  const [deadlines, setDeadlines] = useState([]);
 
   useEffect(() => {
     fetchTimelineItems();
@@ -49,7 +49,6 @@ const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
   };
 
   const fetchDeadlines = async () => {
-    // 기일 항목을 불러와 상단에 표시
     try {
       const { data, error } = await supabase
         .from("case_deadlines")
@@ -69,7 +68,6 @@ const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
 
   return (
     <Box>
-      {/* 상단 기일 리스트 */}
       {deadlines.length > 0 && (
         <Box mb="4">
           <Flex direction="column" gap="2">
@@ -107,7 +105,6 @@ const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
         <Text size="5" weight="bold">
           사건 타임라인
         </Text>
-        {/* 타임라인 항목들 */}
         <Flex direction="column" gap="3">
           {timelineItems.map((item) => (
             <Box
@@ -167,7 +164,6 @@ const ClientCaseTimeline = ({ caseId, caseStatus, onClose }) => {
             </Box>
           ))}
         </Flex>
-        {/* 하단 버튼 */}
         <Flex justify="end" mt="4">
           <Button size="2" onClick={onClose}>
             확인

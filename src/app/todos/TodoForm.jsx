@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { Dialog, Text, Flex, Button, Box } from "@radix-ui/themes";
+import { Dialog, Flex, Button, Box } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
 const priorityOptions = ["높음", "중간", "낮음"];

@@ -1,4 +1,3 @@
-// utils/getCategoryColor.js
 export const getCategoryColor = (category) => {
   const colors = {
     민사: { backgroundColor: "var(--sky-3)", color: "var(--sky-12)" },

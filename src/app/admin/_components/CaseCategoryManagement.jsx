@@ -132,7 +132,6 @@ const CaseCategoryManagement = () => {
           ))}
         </Table.Body>
       </Table.Root>
-      {/* 카테고리 추가/수정 모달 */}
       <DialogPrimitive.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 bg-black bg-opacity-50" />

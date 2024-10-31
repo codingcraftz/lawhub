@@ -3,12 +3,10 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { supabase } from "@/utils/supabase";
 import { useForm } from "react-hook-form";
 import { Box, Flex, Button, Text, Dialog } from "@radix-ui/themes";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { Cross2Icon } from "@radix-ui/react-icons";
 
 const schema = yup.object().shape({
   email: yup
@@ -54,7 +52,6 @@ const UserForm = ({ editingUser, onSuccess, onClose }) => {
   const onSubmit = async (data) => {
     try {
       if (editingUser) {
-        // 사용자 정보 업데이트 (이메일 제외)
         const response = await fetch("/api/updateUser", {
           method: "POST",
           headers: {
@@ -79,7 +76,6 @@ const UserForm = ({ editingUser, onSuccess, onClose }) => {
           );
         }
       } else {
-        // 새로운 사용자 생성 요청
         const response = await fetch("/api/createUser", {
           method: "POST",
           headers: {
@@ -120,7 +116,7 @@ const UserForm = ({ editingUser, onSuccess, onClose }) => {
             placeholder="이메일"
             type="email"
             {...register("email")}
-            disabled={!!editingUser} // 수정 시 이메일 변경 불가
+            disabled={!!editingUser}
             style={{
               width: "100%",
               padding: "0.6rem 0.8rem",

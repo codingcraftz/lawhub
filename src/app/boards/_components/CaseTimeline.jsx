@@ -129,18 +129,13 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const isAdmin = user?.role === "admin";
 
   const handleCaseCompletion = async () => {
-    if (
-      window.confirm(
-        "정말로 이 사건을 완료하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-      )
-    ) {
+    if (window.confirm("정말로 이 사건을 완료하시겠습니까?")) {
       try {
         const { error } = await supabase
           .from("cases")
           .update({ status: "completed" })
           .eq("id", caseId);
         if (error) throw error;
-        alert("사건이 성공적으로 완료되었습니다.");
         onClose();
         window.location.reload();
       } catch (error) {

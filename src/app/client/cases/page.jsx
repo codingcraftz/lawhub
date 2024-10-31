@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
-import { Box, Text, Flex, Button, Dialog } from "@radix-ui/themes";
+import { Box, Text, Button, Dialog } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import Pagination from "@/components/Pagination";
 import ClientCaseTimeline from "./ClientCaseTimeline";
@@ -34,7 +34,6 @@ const ClientCasesPage = () => {
     try {
       setIsLoading(true);
 
-      // case_opponents 테이블을 opponents와 조인하여 이름 가져오기
       let query = supabase.from("cases").select(
         `
         *,

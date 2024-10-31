@@ -10,26 +10,14 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
 import * as Dialog from "@radix-ui/react-dialog";
-
-const schema = yup.object().shape({
-  email: yup
-    .string()
-    .email("유효한 이메일을 입력해주세요")
-    .required("이메일은 필수입니다"),
-  password: yup.string().required("비밀번호는 필수입니다"),
-});
-
-const passwordResetSchema = yup.object().shape({
-  email: yup
-    .string()
-    .email("유효한 이메일을 입력해주세요")
-    .required("이메일은 필수입니다"),
-});
+import { loginSchema, passwordResetSchema } from "@/utils/schema";
 
 const LoginPage = () => {
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const { user } = useUser();
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const {
     register,
@@ -37,7 +25,7 @@ const LoginPage = () => {
     reset,
     formState: { errors, isValid },
   } = useForm({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(loginSchema),
     mode: "onChange",
   });
   const {
@@ -47,9 +35,6 @@ const LoginPage = () => {
   } = useForm({
     resolver: yupResolver(passwordResetSchema),
   });
-
-  const [modalMessage, setModalMessage] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -159,7 +144,6 @@ const LoginPage = () => {
         </form>
       </Card>
 
-      {/* Radix UI Dialog for messages */}
       <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
         <Dialog.Content
           style={{

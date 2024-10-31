@@ -34,7 +34,6 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     if (router.isReady) {
-      // router가 준비되었을 때 실행하도록 합니다.
       const access_token = router.query.access_token;
       const refresh_token = router.query.refresh_token;
 
@@ -43,7 +42,7 @@ const ResetPasswordPage = () => {
           .setSession({ access_token, refresh_token })
           .then(({ session, error }) => {
             if (session) {
-              setIsSessionSet(true); // 세션이 성공적으로 설정된 경우
+              setIsSessionSet(true);
               setMessage("");
             } else if (error) {
               setMessage("세션 설정 중 오류가 발생했습니다.");
@@ -54,7 +53,7 @@ const ResetPasswordPage = () => {
         setMessage("유효하지 않은 접근입니다.");
       }
     }
-  }, [router.isReady]); // router.isReady를 의존성에 추가하여 라우터가 준비되었을 때 실행합니다.
+  }, [router.isReady]);
 
   const onSubmit = async (data) => {
     if (!isSessionSet) {

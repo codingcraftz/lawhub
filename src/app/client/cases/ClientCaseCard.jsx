@@ -16,7 +16,6 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
     return null;
   }
 
-  // 의뢰인 이름 추출
   const clientNames =
     caseItem.case_clients && caseItem.case_clients.length > 0
       ? caseItem.case_clients
@@ -33,14 +32,13 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
           .join(", ")
       : "없음";
 
-  // 담당자 이름 추출
-  const staffNames =
-    caseItem.case_staff && caseItem.case_staff.length > 0
-      ? caseItem.case_staff
-          .map((s) => s.staff && s.staff.name)
-          .filter((name) => name)
-          .join(", ")
-      : "없음";
+  // const staffNames =
+  //   caseItem.case_staff && caseItem.case_staff.length > 0
+  //     ? caseItem.case_staff
+  //         .map((s) => s.staff && s.staff.name)
+  //         .filter((name) => name)
+  //         .join(", ")
+  //     : "없음";
 
   return (
     <Card

@@ -64,7 +64,6 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         created_by: user.id,
       };
 
-      // 요청 유형일 때만 requested_to 필드를 추가
       if (
         data.type === "요청" &&
         data.requested_to &&
@@ -89,7 +88,6 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
 
       if (result.error) throw result.error;
 
-      // 요청 및 알림 전송 로직 추가
       if (
         !editingItem &&
         result.data &&
@@ -98,7 +96,6 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
         data.requested_to &&
         data.requested_to !== "none"
       ) {
-        // 요청 테이블에 새로운 요청 생성
         await supabase.from("requests").insert({
           case_timeline_id: result.data[0].id,
           requester_id: user.id,
@@ -106,7 +103,6 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
           status: "pending",
         });
 
-        // 알림 테이블에 새로운 알림 생성
         await supabase.from("notifications").insert({
           user_id: data.requested_to,
           case_id: caseId, // 사건 ID 추가
