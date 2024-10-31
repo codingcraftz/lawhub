@@ -25,7 +25,6 @@ export const UserProvider = ({ children }) => {
       if (error) {
         console.error("Error fetching profile:", error);
       } else if (!profile.is_active) {
-        // is_active가 false면 로그아웃 처리
         await supabase.auth.signOut();
         setUser(null);
       } else {

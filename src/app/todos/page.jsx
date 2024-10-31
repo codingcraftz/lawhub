@@ -60,12 +60,15 @@ const TodosPage = () => {
       setApprovingRequest(request);
     } else {
       try {
-        const { error } = await supabase
-          .from("requests")
-          .update({ status: "rejected" })
-          .eq("id", request.id);
-        if (error) throw error;
-        fetchRequests();
+        if (window.confirm("정말로 이 요청을 거절하시겠습니까?")) {
+          const { error } = await supabase
+            .from("requests")
+            .update({ status: "rejected" })
+            .eq("id", request.id);
+          if (error) throw error;
+
+          fetchRequests();
+        }
       } catch (error) {
         console.error(`Error ${action} request:`, error);
       }

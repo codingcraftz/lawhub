@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
@@ -11,42 +10,7 @@ import { Box, Flex, Text, Button, Card, Separator } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import CustomDatePicker from "@/components/CustomDatePicker";
 import { useUser } from "@/hooks/useUser";
-
-// 유효성 검사 스키마
-const schema = yup.object().shape({
-  email: yup
-    .string()
-    .email("유효한 이메일을 입력해주세요")
-    .required("이메일은 필수입니다"),
-  name: yup.string().required("이름은 필수입니다"),
-  phoneNumber: yup
-    .string()
-    .matches(/^[0-9]{10,11}$/, "전화번호는 10~11자리의 숫자만 입력해주세요")
-    .required("전화번호는 필수입니다"),
-  password: yup
-    .string()
-    .matches(
-      /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d가-힣!@#$%^&*]{8,}$/,
-      "비밀번호는 최소 8자 이상이며, 영문자와 숫자를 포함해야 합니다",
-    )
-    .required("비밀번호는 필수입니다"),
-  passwordConfirm: yup
-    .string()
-    .oneOf([yup.ref("password"), null], "비밀번호가 일치하지 않습니다")
-    .required("비밀번호 확인은 필수입니다"),
-  birthDate: yup
-    .date()
-    .nullable()
-    .typeError("유효한 날짜를 입력해주세요")
-    .required("생년월일은 필수입니다"),
-  gender: yup
-    .string()
-    .oneOf(["male", "female", "other"], "유효한 성별을 선택해주세요")
-    .required("성별은 필수입니다"),
-  agreeTerms: yup
-    .boolean()
-    .oneOf([true], "이용약관 및 개인정보 처리방침에 동의해야 합니다"),
-});
+import { signupSchema } from "@/utils/schema";
 
 const SignupPage = () => {
   const router = useRouter();
@@ -58,7 +22,7 @@ const SignupPage = () => {
     formState: { errors, isValid },
     control,
   } = useForm({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(signupSchema),
     mode: "onChange",
   });
 
@@ -79,7 +43,6 @@ const SignupPage = () => {
           password: data.password,
         },
       );
-
       if (signUpError) {
         let errorMessage = "회원가입 중 오류가 발생했습니다.";
         if (signUpError.message.includes("User already registered")) {
@@ -113,7 +76,6 @@ const SignupPage = () => {
         throw new Error("회원 정보를 저장하는 중 오류가 발생했습니다.");
       }
 
-      // 회원가입 후 로그아웃 처리
       await supabase.auth.signOut();
       setModalMessage(
         "회원가입이 완료되었습니다. 관리자의 승인을 기다려주세요.",
@@ -206,7 +168,6 @@ const SignupPage = () => {
                 {errors.gender?.message || " "}
               </Text>
             </Box>
-            {/* 이용약관 동의 */}
             <Flex gap="2" align="center">
               <input type="checkbox" {...register("agreeTerms")} />
               <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
@@ -227,7 +188,6 @@ const SignupPage = () => {
           </Flex>
         </form>
 
-        {/* Radix UI Dialog for messages */}
         <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
           <Dialog.Content
             className="max-w-[450px] p-8 rounded-md border-2 bg-white fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-lg z-50 text-center"

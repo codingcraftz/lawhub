@@ -6,7 +6,6 @@ import { Box, Text, Card } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 
-// Dynamically import Logo3D to only render it on the client
 const Logo3D = dynamic(() => import("../components/Logo3D"), { ssr: false });
 
 const HomePage = () => {
@@ -16,7 +15,6 @@ const HomePage = () => {
         <Logo3D />
       </Box>
 
-      {/* Text below the logo */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -31,10 +29,9 @@ const HomePage = () => {
         </Text>
       </motion.div>
 
-      {/* About Section */}
       <Box className="w-full max-w-4xl py-16">
         <Text size="6" weight="bold" className="text-center mb-8">
-          회사 소개
+          About
         </Text>
         <motion.div
           initial={{ opacity: 0 }}

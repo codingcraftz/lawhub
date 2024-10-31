@@ -13,9 +13,9 @@ import { useTheme } from "next-themes";
 import NotificationDropdown from "./NotificationDropdown";
 
 const NAV_LIST = [
-  { title: "Boards", path: "/boards", roles: ["admin", "staff"] },
-  { title: "Todos", path: "/todos", roles: ["admin", "staff"] },
-  { title: "My Cases", path: "/client/cases", roles: ["client"] },
+  { title: "사건 관리", path: "/boards", roles: ["admin", "staff"] },
+  { title: "일정 관리", path: "/todos", roles: ["admin", "staff"] },
+  { title: "나의 사건", path: "/client/cases", roles: ["client"] },
 ];
 
 const Header = () => {
@@ -52,7 +52,6 @@ const Header = () => {
                 </Link>
               ),
             )}
-            {/* 관리자일 경우에만 관리자 페이지 링크 표시 */}
             {user && user.role === "admin" && (
               <Link href="/admin">
                 <Button variant="ghost" color="red">

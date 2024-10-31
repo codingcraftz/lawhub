@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button, Checkbox, Tooltip } from "@radix-ui/themes"; // Import Tooltip
+import { Box, Flex, Text, Button, Checkbox, Tooltip } from "@radix-ui/themes";
 
 const UserSelectionModalContent = ({
-  userType, // "client" 또는 "staff"
+  userType,
   selectedUsers,
   setSelectedUsers,
   onClose,
@@ -17,10 +17,9 @@ const UserSelectionModalContent = ({
 
   useEffect(() => {
     const fetchAllUsers = async () => {
-      console.log("Fetching users for userType:", userType);
       let query = supabase
         .from("users")
-        .select("id, name, role, is_active, birth_date, phone_number"); // Include birth_date and phone_number
+        .select("id, name, role, is_active, birth_date, phone_number");
 
       if (userType === "client") {
         query = query.eq("role", "client").eq("is_active", true);
@@ -29,8 +28,6 @@ const UserSelectionModalContent = ({
       }
 
       const { data, error } = await query;
-      console.log("Query result:", { data, error });
-
       if (error) {
         console.error("Error fetching users:", error);
       } else {
@@ -103,7 +100,6 @@ const UserSelectionModalContent = ({
               checked={!!localSelectedUsers.find((u) => u.id === user.id)}
               onCheckedChange={() => handleToggleUser(user)}
             />
-            {/* Tooltip showing birth_date and phone_number */}
             <Tooltip
               content={
                 <Box style={{ padding: "0.5rem", fontSize: "12px" }}>

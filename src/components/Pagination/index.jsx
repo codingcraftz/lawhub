@@ -20,7 +20,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
   const renderPageNumbers = () => {
     const pages = [];
-    const maxVisible = 5; // 표시할 최대 페이지 수
+    const maxVisible = 5;
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
     let end = start + maxVisible - 1;
 

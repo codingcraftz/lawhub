@@ -59,16 +59,13 @@ const UserApproval = () => {
 
   return (
     <Box>
-      <Text size="6" weight="bold" mb="4">
-        승인 대기 중인 회원
-      </Text>
       <Table.Root>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>이름</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>이메일</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>가입일</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>액션</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>승인 / 거절</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -77,7 +74,14 @@ const UserApproval = () => {
               <Table.Cell>{user.name}</Table.Cell>
               <Table.Cell>{user.email}</Table.Cell>
               <Table.Cell>
-                {new Date(user.created_at).toLocaleDateString()}
+                {new Date(user.created_at).toLocaleDateString("ko-KR", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
               </Table.Cell>
               <Table.Cell>
                 <Flex gap="2">

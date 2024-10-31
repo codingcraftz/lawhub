@@ -17,8 +17,8 @@ const CustomDatePicker = ({ selectedDate, onDateChange, title, openDate }) => {
       showYearDropdown
       showMonthDropdown
       dropdownMode="select"
-      openToDate={parsedOpenDate} // 변환된 날짜 사용
-      locale={ko} // 한국어 로케일 설정
+      openToDate={parsedOpenDate}
+      locale={ko}
       customInput={
         <input
           style={{

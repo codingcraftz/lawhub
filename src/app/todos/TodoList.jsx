@@ -23,7 +23,7 @@ const TodoList = () => {
   });
   const [newTodo, setNewTodo] = useState("");
   const [priority, setPriority] = useState("중간");
-  const [editingTodo, setEditingTodo] = useState(null); // 편집할 todo 상태 추가
+  const [editingTodo, setEditingTodo] = useState(null);
   const { user } = useUser();
 
   const [showFullTextState, setShowFullTextState] = useState({});
@@ -60,7 +60,7 @@ const TodoList = () => {
 
   const addTodo = async () => {
     if (!newTodo.trim()) return;
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("todos")
       .insert({
         title: newTodo,
@@ -92,23 +92,6 @@ const TodoList = () => {
     }
   };
 
-  const updateTodo = async (todo) => {
-    // Exclude 'isEditing' from the update
-    const { isEditing, ...updateData } = todo;
-
-    const { error } = await supabase
-      .from("todos")
-      .update(updateData)
-      .eq("id", todo.id);
-
-    if (error) {
-      console.error("Error updating todo:", error);
-    } else {
-      fetchTodos();
-    }
-  };
-
-  // "더보기" 상태 토글 함수
   const toggleShowFullText = (id) => {
     setShowFullTextState((prevState) => ({
       ...prevState,
@@ -282,7 +265,7 @@ const TodoList = () => {
                               <Flex gap="0.5rem">
                                 <Button
                                   variant="ghost"
-                                  onClick={() => setEditingTodo(item)} // 편집할 항목 설정
+                                  onClick={() => setEditingTodo(item)}
                                 >
                                   편집
                                 </Button>
@@ -310,10 +293,10 @@ const TodoList = () => {
           <TodoForm
             todo={editingTodo}
             onSave={() => {
-              fetchTodos(); // 데이터 업데이트
-              setEditingTodo(null); // 다이얼로그 닫기
+              fetchTodos();
+              setEditingTodo(null);
             }}
-            onClose={() => setEditingTodo(null)} // 다이얼로그 닫기
+            onClose={() => setEditingTodo(null)}
           />
         )}
       </DragDropContext>

@@ -37,33 +37,6 @@ const UserManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (userId) => {
-    if (confirm("정말로 이 사용자를 삭제하시겠습니까?")) {
-      try {
-        const response = await fetch("/api/deleteUser", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: userId }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            result.error || "사용자 삭제 중 오류가 발생했습니다.",
-          );
-        }
-
-        fetchUsers();
-      } catch (error) {
-        console.error("Error deleting user:", error);
-        alert(error.message || "사용자 삭제 중 오류가 발생했습니다.");
-      }
-    }
-  };
-
   const handleFormSuccess = () => {
     fetchUsers();
     setIsDialogOpen(false);
@@ -73,10 +46,8 @@ const UserManagement = () => {
   return (
     <Box>
       <Flex justify="between" align="center" mb="4">
-        <Text size="8" weight="bold">
-          사용자 관리
-        </Text>
         <Button
+          className="ml-auto mt-2"
           onClick={() => {
             setEditingUser(null);
             setIsDialogOpen(true);
@@ -89,28 +60,38 @@ const UserManagement = () => {
       <Table.Root>
         <Table.Header>
           <Table.Row>
-            <Table.ColumnHeaderCell>이름</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>이메일</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>이름</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>핸드폰 번호</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>생년월일</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>성별</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>역할</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>활성화 여부</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>액션</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>수정</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {users.map((user) => (
             <Table.Row key={user.id}>
-              <Table.Cell>{user.name}</Table.Cell>
               <Table.Cell>{user.email}</Table.Cell>
+              <Table.Cell>{user.name}</Table.Cell>
               <Table.Cell>{user.phone_number}</Table.Cell>
               <Table.Cell>
                 {user.birth_date ? user.birth_date.split("T")[0] : ""}
               </Table.Cell>
-              <Table.Cell>{user.gender}</Table.Cell>
-              <Table.Cell>{user.role}</Table.Cell>
-              <Table.Cell>{user.is_active ? "활성화" : "비활성화"}</Table.Cell>
+              <Table.Cell>
+                {user.gender === "male"
+                  ? "남"
+                  : user.gender === "female"
+                    ? "여"
+                    : "기타"}
+              </Table.Cell>
+              <Table.Cell>
+                {user.role === "staff"
+                  ? "직원"
+                  : user.role === "client"
+                    ? "고객"
+                    : "관리자"}
+              </Table.Cell>
               <Table.Cell>
                 <Flex gap="2">
                   <Button
@@ -119,14 +100,6 @@ const UserManagement = () => {
                     onClick={() => handleEdit(user)}
                   >
                     수정
-                  </Button>
-                  <Button
-                    size="1"
-                    variant="soft"
-                    color="red"
-                    onClick={() => handleDelete(user.id)}
-                  >
-                    삭제
                   </Button>
                 </Flex>
               </Table.Cell>
@@ -161,4 +134,3 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
-
