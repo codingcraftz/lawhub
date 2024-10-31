@@ -14,7 +14,6 @@ import useRoleRedirect from "@/hooks/userRoleRedirect";
 const BoardsPage = () => {
   const [ongoingCases, setOngoingCases] = useState([]);
   const [closedCases, setClosedCases] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedCase, setSelectedCase] = useState(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [ongoingPage, setOngoingPage] = useState(1);
@@ -36,7 +35,6 @@ const BoardsPage = () => {
   const fetchOngoingCases = useCallback(
     async (page = 1, pageSize = 10) => {
       try {
-        setIsLoading(true);
         if (!user) {
           setOngoingCases([]);
           setTotalOngoingCount(0);
@@ -78,8 +76,6 @@ const BoardsPage = () => {
       } catch (error) {
         console.error("Error fetching ongoing cases:", error);
         setOngoingCases([]);
-      } finally {
-        setIsLoading(false);
       }
     },
     [user],
@@ -88,7 +84,6 @@ const BoardsPage = () => {
   const fetchClosedCases = useCallback(
     async (page = 1, pageSize = 10) => {
       try {
-        setIsLoading(true);
         if (!user) {
           setClosedCases([]);
           setTotalClosedCount(0);
@@ -130,14 +125,10 @@ const BoardsPage = () => {
       } catch (error) {
         console.error("Error fetching closed cases:", error);
         setClosedCases([]);
-      } finally {
-        setIsLoading(false);
       }
     },
     [user],
   );
-
-  if (isLoading) return <Text>Loading...</Text>;
 
   const hasOngoingCases = ongoingCases.length > 0;
   const hasClosedCases = closedCases.length > 0;
@@ -245,7 +236,6 @@ const BoardsPage = () => {
         </Tabs.Content>
       </Tabs.Root>
 
-      {/* 타임라인 모달 */}
       {selectedCase && (
         <Dialog.Root
           open={!!selectedCase}

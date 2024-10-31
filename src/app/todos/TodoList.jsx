@@ -7,11 +7,12 @@ import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Text, Flex, Button } from "@radix-ui/themes";
+import TodoForm from "./TodoForm";
 
 const priorityColors = {
-  높음: "var(--tomato-4)",
-  중간: "var(--sky-3)",
-  낮음: "var(--gray-3)",
+  높음: "var(--red-5)",
+  중간: "var(--green-5)",
+  낮음: "var(--gray-5)",
 };
 
 const TodoList = () => {
@@ -22,7 +23,10 @@ const TodoList = () => {
   });
   const [newTodo, setNewTodo] = useState("");
   const [priority, setPriority] = useState("중간");
+  const [editingTodo, setEditingTodo] = useState(null); // 편집할 todo 상태 추가
   const { user } = useUser();
+
+  const [showFullTextState, setShowFullTextState] = useState({});
 
   useEffect(() => {
     if (user) {
@@ -77,12 +81,14 @@ const TodoList = () => {
   };
 
   const deleteTodo = async (id) => {
-    const { error } = await supabase.from("todos").delete().eq("id", id);
+    if (window.confirm("정말로 이 항목을 삭제하시겠습니까?")) {
+      const { error } = await supabase.from("todos").delete().eq("id", id);
 
-    if (error) {
-      console.error("Error deleting todo:", error);
-    } else {
-      fetchTodos();
+      if (error) {
+        console.error("Error deleting todo:", error);
+      } else {
+        fetchTodos();
+      }
     }
   };
 
@@ -100,6 +106,14 @@ const TodoList = () => {
     } else {
       fetchTodos();
     }
+  };
+
+  // "더보기" 상태 토글 함수
+  const toggleShowFullText = (id) => {
+    setShowFullTextState((prevState) => ({
+      ...prevState,
+      [id]: !prevState[id],
+    }));
   };
 
   const onDragEnd = async (result) => {
@@ -169,14 +183,20 @@ const TodoList = () => {
           placeholder="새로운 할 일 추가"
           value={newTodo}
           onChange={(e) => setNewTodo(e.target.value)}
-          className="flex-grow p-2 border border-gray-7 rounded"
-          style={{ backgroundColor: "var(--gray-2)" }}
+          className="flex-grow p-2 border rounded"
+          style={{
+            backgroundColor: "var(--gray-2)",
+            border: "1px solid var(--gray-6)",
+          }}
         />
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="w-32 p-2 border border-gray-7 rounded"
-          style={{ backgroundColor: "var(--gray-2)" }}
+          className="w-32 p-2 rounded"
+          style={{
+            backgroundColor: "var(--gray-2)",
+            border: "1px solid var(--gray-6)",
+          }}
         >
           <option value="높음">높음</option>
           <option value="중간">중간</option>
@@ -184,7 +204,6 @@ const TodoList = () => {
         </select>
         <Button onClick={addTodo}>추가</Button>
       </div>
-
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex gap-4">
           {Object.entries(columns).map(([columnId, column]) => (
@@ -200,8 +219,8 @@ const TodoList = () => {
                     className="min-h-[300px] p-2 rounded-lg transition-colors"
                     style={{
                       backgroundColor: snapshot.isDraggingOver
-                        ? "var(--gray-3)"
-                        : "var(--gray-1)",
+                        ? "var(--gray-5)"
+                        : "var(--gray-3)",
                     }}
                   >
                     {column.items.map((item, index) => (
@@ -215,46 +234,59 @@ const TodoList = () => {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className="user-select-none p-4 mb-2 rounded shadow"
+                            className="user-select-none p-4 mb-2 rounded shadow flex justify-between items-center"
                             style={{
                               backgroundColor: priorityColors[item.priority],
                               opacity: snapshot.isDragging ? 0.8 : 1,
                               ...provided.draggableProps.style,
                             }}
                           >
-                            <Flex justify="between" align="center">
-                              <div>
-                                <Text size="5" weight="bold">
-                                  {item.title}
-                                </Text>
+                            <Flex gap="2" justify="between" width="100%">
+                              <Flex direction="column" className="flex-1">
+                                <Flex>
+                                  <Text
+                                    size="5"
+                                    weight="bold"
+                                    style={{
+                                      whiteSpace: showFullTextState[item.id]
+                                        ? "normal"
+                                        : "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      maxWidth: showFullTextState[item.id]
+                                        ? "100%"
+                                        : "200px",
+                                    }}
+                                  >
+                                    {item.title}
+                                  </Text>
+                                  {item.title.length > 20 && (
+                                    <Button
+                                      variant="ghost"
+                                      color="blue"
+                                      onClick={() =>
+                                        toggleShowFullText(item.id)
+                                      }
+                                      size="small"
+                                    >
+                                      {showFullTextState[item.id]
+                                        ? "간략히"
+                                        : "...더보기"}
+                                    </Button>
+                                  )}
+                                </Flex>
                                 <Text size="3" color="gray">
                                   우선순위: {item.priority}
                                 </Text>
-                              </div>
-                              <Flex gap="2">
+                              </Flex>
+                              <Flex gap="0.5rem">
                                 <Button
                                   variant="ghost"
-                                  onClick={() => {
-                                    // Set isEditing to true
-                                    setColumns((prevColumns) => {
-                                      const newColumns = { ...prevColumns };
-                                      Object.keys(newColumns).forEach(
-                                        (colId) => {
-                                          newColumns[colId].items = newColumns[
-                                            colId
-                                          ].items.map((i) =>
-                                            i.id === item.id
-                                              ? { ...i, isEditing: true }
-                                              : i,
-                                          );
-                                        },
-                                      );
-                                      return newColumns;
-                                    });
-                                  }}
+                                  onClick={() => setEditingTodo(item)} // 편집할 항목 설정
                                 >
                                   편집
                                 </Button>
+
                                 <Button
                                   variant="ghost"
                                   onClick={() => deleteTodo(item.id)}
@@ -263,115 +295,6 @@ const TodoList = () => {
                                 </Button>
                               </Flex>
                             </Flex>
-                            {item.isEditing && (
-                              <div className="mt-2">
-                                <input
-                                  value={item.title}
-                                  onChange={(e) => {
-                                    const newTitle = e.target.value;
-                                    setColumns((prevColumns) => {
-                                      const newColumns = { ...prevColumns };
-                                      Object.keys(newColumns).forEach(
-                                        (colId) => {
-                                          newColumns[colId].items = newColumns[
-                                            colId
-                                          ].items.map((i) =>
-                                            i.id === item.id
-                                              ? { ...i, title: newTitle }
-                                              : i,
-                                          );
-                                        },
-                                      );
-                                      return newColumns;
-                                    });
-                                  }}
-                                  className="w-full p-2 border border-gray-7 rounded mb-2"
-                                  style={{ backgroundColor: "var(--gray-2)" }}
-                                />
-                                <select
-                                  value={item.priority}
-                                  onChange={(e) => {
-                                    const newPriority = e.target.value;
-                                    setColumns((prevColumns) => {
-                                      const newColumns = { ...prevColumns };
-                                      Object.keys(newColumns).forEach(
-                                        (colId) => {
-                                          newColumns[colId].items = newColumns[
-                                            colId
-                                          ].items.map((i) =>
-                                            i.id === item.id
-                                              ? {
-                                                  ...i,
-                                                  priority: newPriority,
-                                                }
-                                              : i,
-                                          );
-                                        },
-                                      );
-                                      return newColumns;
-                                    });
-                                  }}
-                                  className="w-full p-2 border border-gray-7 rounded mb-2"
-                                  style={{ backgroundColor: "var(--gray-2)" }}
-                                >
-                                  <option value="높음">높음</option>
-                                  <option value="중간">중간</option>
-                                  <option value="낮음">낮음</option>
-                                </select>
-                                <Flex gap="2" mt="2">
-                                  <Button
-                                    onClick={() => {
-                                      // Create a copy of item without 'isEditing'
-                                      const updatedItem = { ...item };
-                                      delete updatedItem.isEditing;
-
-                                      updateTodo(updatedItem);
-
-                                      setColumns((prevColumns) => {
-                                        const newColumns = { ...prevColumns };
-                                        Object.keys(newColumns).forEach(
-                                          (colId) => {
-                                            newColumns[colId].items =
-                                              newColumns[colId].items.map(
-                                                (i) =>
-                                                  i.id === item.id
-                                                    ? { ...i, isEditing: false }
-                                                    : i,
-                                              );
-                                          },
-                                        );
-                                        return newColumns;
-                                      });
-                                    }}
-                                  >
-                                    저장
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                      // Cancel editing
-                                      setColumns((prevColumns) => {
-                                        const newColumns = { ...prevColumns };
-                                        Object.keys(newColumns).forEach(
-                                          (colId) => {
-                                            newColumns[colId].items =
-                                              newColumns[colId].items.map(
-                                                (i) =>
-                                                  i.id === item.id
-                                                    ? { ...i, isEditing: false }
-                                                    : i,
-                                              );
-                                          },
-                                        );
-                                        return newColumns;
-                                      });
-                                    }}
-                                  >
-                                    취소
-                                  </Button>
-                                </Flex>
-                              </div>
-                            )}
                           </div>
                         )}
                       </Draggable>
@@ -383,6 +306,16 @@ const TodoList = () => {
             </div>
           ))}
         </div>
+        {editingTodo && (
+          <TodoForm
+            todo={editingTodo}
+            onSave={() => {
+              fetchTodos(); // 데이터 업데이트
+              setEditingTodo(null); // 다이얼로그 닫기
+            }}
+            onClose={() => setEditingTodo(null)} // 다이얼로그 닫기
+          />
+        )}
       </DragDropContext>
     </>
   );
