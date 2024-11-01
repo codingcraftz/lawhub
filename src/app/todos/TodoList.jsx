@@ -157,7 +157,7 @@ const TodoList = () => {
   return (
     <>
       <Flex justify="between" align="center" className="mb-4 mt-6">
-        <Text size="8" weight="bold">
+        <Text size="5" weight="bold">
           할 일 관리
         </Text>
       </Flex>
@@ -191,7 +191,7 @@ const TodoList = () => {
         <div className="flex gap-4">
           {Object.entries(columns).map(([columnId, column]) => (
             <div key={columnId} className="flex-grow min-w-[250px]">
-              <Text size="6" weight="bold" mb="2">
+              <Text size="4" weight="bold" mb="2">
                 {column.title}
               </Text>
               <Droppable droppableId={columnId}>
@@ -228,7 +228,7 @@ const TodoList = () => {
                               <Flex direction="column" className="flex-1">
                                 <Flex>
                                   <Text
-                                    size="5"
+                                    size="3"
                                     weight="bold"
                                     style={{
                                       whiteSpace: showFullTextState[item.id]
@@ -258,7 +258,7 @@ const TodoList = () => {
                                     </Button>
                                   )}
                                 </Flex>
-                                <Text size="3" color="gray">
+                                <Text size="2" color="gray">
                                   우선순위: {item.priority}
                                 </Text>
                               </Flex>

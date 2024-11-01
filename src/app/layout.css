@@ -29,6 +29,10 @@ a {
   text-decoration: none;
 }
 
+.radix-themes {
+  background-color: var(--gray-2);
+}
+
 /* 다크 모드 */
 html.dark .react-datepicker__input-container input {
   background-color: #1f2937;
