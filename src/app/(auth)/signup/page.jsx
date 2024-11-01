@@ -142,7 +142,11 @@ const SignupPage = () => {
                   <CustomDatePicker
                     title="생년월일"
                     selectedDate={field.value}
-                    onDateChange={(date) => field.onChange(date)}
+                    onDateChange={(date) =>
+                      field.onChange(
+                        date ? date.toISOString().split("T")[0] : "",
+                      )
+                    }
                     openDate="1990-01-01"
                   />
                 )}
