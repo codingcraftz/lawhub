@@ -1,217 +1,183 @@
+// src/app/todos/page.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
-import {
-  Text,
-  Flex,
-  Button,
-  Table,
-  TextArea,
-  Box,
-  Dialog,
-} from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
-import TodoList from "./TodoList";
+import { Tabs, Box, Dialog, Text } from "@radix-ui/themes";
+import DialogContent from "./DialogContent";
+import RequestTable from "./RequestTable";
+import { supabase } from "@/utils/supabase";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
+import TodoForm from "./TodoForm";
+import TodoList from "./TodoList";
+
+const pageSize = 5;
 
 const TodosPage = () => {
-  const [requests, setRequests] = useState([]);
   const { user } = useUser();
-  const [approvingRequest, setApprovingRequest] = useState(null);
-  const [approvalDescription, setApprovalDescription] = useState("");
+  const [requestsSent, setRequestsSent] = useState({
+    data: [],
+    page: 1,
+    count: 0,
+  });
+  const [requestsReceived, setRequestsReceived] = useState({
+    data: [],
+    page: 1,
+    count: 0,
+  });
+  const [closedRequests, setClosedRequests] = useState({
+    data: [],
+    page: 1,
+    count: 0,
+  });
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   useRoleRedirect(["staff", "admin"], "/login");
 
   useEffect(() => {
     if (user) {
-      fetchRequests();
+      fetchRequests("sent", requestsSent.page);
+      fetchRequests("received", requestsReceived.page);
+      fetchRequests("closed", closedRequests.page);
     }
-  }, [user]);
+  }, [user, requestsSent.page, requestsReceived.page, closedRequests.page]);
 
-  const fetchRequests = async () => {
-    const { data, error } = await supabase
-      .from("requests")
-      .select(
-        `
-      *,
-      requester:users(id, name),
-      case_timelines (
-        id,
-        description,
-        type,
-        case_id,
-        case:cases(title)
-      )
-    `,
-      )
-      .eq("receiver_id", user.id)
-      .eq("status", "pending");
+  const fetchRequests = async (type, page) => {
+    let query = supabase.from("requests").select(
+      `
+          *,
+          requester:users(id, name),
+          receiver:users(id, name),
+          case_timelines ( id, description, type, case:cases(title) )
+        `,
+      { count: "exact" },
+    );
+
+    if (type === "sent") {
+      query = query.eq("requester_id", user.id).neq("status", "closed");
+    } else if (type === "received") {
+      query = query.eq("receiver_id", user.id).eq("status", "ongoing");
+    } else if (type === "closed") {
+      query = query.eq("requester_id", user.id).eq("status", "closed");
+    }
+
+    const { data, count, error } = await query.range(
+      (page - 1) * pageSize,
+      page * pageSize - 1,
+    );
 
     if (error) {
-      console.error("Error fetching requests:", error);
+      console.error(`Error fetching ${type} requests:`, error);
     } else {
-      setRequests(data);
-    }
-  };
-  const handleRequestAction = async (request, action) => {
-    if (action === "accepted") {
-      setApprovingRequest(request);
-    } else {
-      try {
-        if (window.confirm("정말로 이 요청을 거절하시겠습니까?")) {
-          const { error } = await supabase
-            .from("requests")
-            .update({ status: "rejected" })
-            .eq("id", request.id);
-          if (error) throw error;
-
-          fetchRequests();
-        }
-      } catch (error) {
-        console.error(`Error ${action} request:`, error);
+      if (type === "sent") {
+        setRequestsSent({ data, page, count });
+      } else if (type === "received") {
+        setRequestsReceived({ data, page, count });
+      } else if (type === "closed") {
+        setClosedRequests({ data, page, count });
       }
     }
   };
-  const handleApprovalSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const { data: timelineData, error: timelineError } = await supabase
-        .from("case_timelines")
-        .insert({
-          case_id: approvingRequest.case_timelines.case_id,
-          type: "완료",
-          description: approvalDescription,
-          created_by: user.id,
-          status: "완료",
-        })
-        .select();
 
-      if (timelineError) throw timelineError;
+  const handlePageChange = (type, newPage) => {
+    if (type === "sent") {
+      setRequestsSent((prev) => ({ ...prev, page: newPage }));
+    } else if (type === "received") {
+      setRequestsReceived((prev) => ({ ...prev, page: newPage }));
+    } else if (type === "closed") {
+      setClosedRequests((prev) => ({ ...prev, page: newPage }));
+    }
+  };
 
-      const { error: requestError } = await supabase
-        .from("requests")
-        .update({ status: "accepted" })
-        .eq("id", approvingRequest.id);
+  const handleRequestCompletion = async (requestId, timelineId) => {
+    if (window.confirm("요청을 완료하시겠습니까?")) {
+      try {
+        // 1. requests 테이블에서 status 업데이트
+        const { error: requestError } = await supabase
+          .from("requests")
+          .update({ status: "closed" })
+          .eq("id", requestId);
 
-      if (requestError) throw requestError;
+        if (requestError) {
+          throw new Error("Error completing request in requests table");
+        }
 
-      const { error: notificationError } = await supabase
-        .from("notifications")
-        .insert({
-          user_id: approvingRequest.requester_id,
-          case_timeline_id: timelineData[0].id,
-          case_id: approvingRequest.case_timelines.case_id,
-          type: "요청 승인",
-          message: `${approvalDescription}`,
-          is_read: false,
-        });
+        // 2. case_timelines 테이블에서 type 업데이트
+        const { error: timelineError } = await supabase
+          .from("case_timelines")
+          .update({ type: "요청완료" })
+          .eq("id", timelineId);
 
-      if (notificationError) throw notificationError;
+        if (timelineError) {
+          throw new Error("Error updating type in case_timelines table");
+        }
 
-      setApprovingRequest(null);
-      setApprovalDescription("");
-      fetchRequests();
-    } catch (error) {
-      console.error("Error approving request:", error);
-      alert("요청 승인 중 오류가 발생했습니다.");
+        // 완료 후 데이터 재로딩
+        fetchRequests("sent", requestsSent.page);
+        fetchRequests("closed", closedRequests.page);
+      } catch (error) {
+        console.error(error.message);
+        alert("요청 완료 중 오류가 발생했습니다.");
+      }
     }
   };
 
   return (
-    <div className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
-      <Flex justify="between" align="center" className="mb-4">
-        <Text size="8" weight="bold">
-          요청 목록
+    <>
+      <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
+        <Text size="5" weight="bold">
+          요청 관리
         </Text>
-      </Flex>
-      <Table.Root mb="6">
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell>유형</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>요청자</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>사건</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>설명</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>작업</Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {requests.map((request) => (
-            <Table.Row key={request.id}>
-              <Table.Cell>{request.case_timelines.type}</Table.Cell>
-              <Table.Cell>{request.requester?.name || "알 수 없음"}</Table.Cell>
-              <Table.Cell>
-                {request.case_timelines.case?.title || "없음"}
-              </Table.Cell>
-              <Table.Cell>{request.case_timelines.description}</Table.Cell>
-              <Table.Cell>
-                <Flex gap="2">
-                  <Button
-                    onClick={() => handleRequestAction(request, "accepted")}
-                  >
-                    완료
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleRequestAction(request, "rejected")}
-                  >
-                    거절
-                  </Button>
-                </Flex>
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
+        <Tabs.Root defaultValue="received">
+          <Tabs.List>
+            <Tabs.Trigger value="received">받은 요청</Tabs.Trigger>
+            <Tabs.Trigger value="sent">보낸 요청</Tabs.Trigger>
+            <Tabs.Trigger value="closed">종료된 요청</Tabs.Trigger>
+          </Tabs.List>
 
-      <TodoList />
-
-      {/* 승인 모달 */}
-      <Dialog.Root
-        open={!!approvingRequest}
-        onOpenChange={() => setApprovingRequest(null)}
-      >
-        <Dialog.Content style={{ maxWidth: 450 }}>
-          <Dialog.Title>요청 승인</Dialog.Title>
-          <Dialog.Close asChild>
-            <Button
-              variant="ghost"
-              color="gray"
-              size="1"
-              style={{ position: "absolute", top: 8, right: 8 }}
-              onClick={() => setApprovingRequest(null)}
-            >
-              <Cross2Icon />
-            </Button>
-          </Dialog.Close>
-          <form onSubmit={handleApprovalSubmit}>
-            <Box mb="4">
-              <Text size="2" color="gray">
-                요청 내용: {approvingRequest?.case_timelines.description}
-              </Text>
-            </Box>
-            <TextArea
-              placeholder="완료 내용을 입력하세요"
-              value={approvalDescription}
-              onChange={(e) => setApprovalDescription(e.target.value)}
-              required
-              style={{ minHeight: "100px", marginBottom: "1rem" }}
+          <Tabs.Content value="received">
+            <RequestTable
+              requests={requestsReceived.data}
+              onRequestClick={setSelectedRequest}
+              paginationData={requestsReceived}
+              onPageChange={(page) => handlePageChange("received", page)}
             />
-            <Flex justify="end" gap="2">
-              <Button
-                variant="soft"
-                color="gray"
-                onClick={() => setApprovingRequest(null)}
-              >
-                취소
-              </Button>
-              <Button type="submit">완료</Button>
-            </Flex>
-          </form>
-        </Dialog.Content>
-      </Dialog.Root>
-    </div>
+          </Tabs.Content>
+
+          <Tabs.Content value="sent">
+            <RequestTable
+              requests={requestsSent.data}
+              onRequestClick={setSelectedRequest}
+              paginationData={requestsSent}
+              onPageChange={(page) => handlePageChange("sent", page)}
+              onRequestComplete={(requestId, timelineId) =>
+                handleRequestCompletion(requestId, timelineId)
+              }
+            />
+          </Tabs.Content>
+
+          <Tabs.Content value="closed">
+            <RequestTable
+              requests={closedRequests.data}
+              onRequestClick={setSelectedRequest}
+              paginationData={closedRequests}
+              onPageChange={(page) => handlePageChange("closed", page)}
+            />
+          </Tabs.Content>
+        </Tabs.Root>
+
+        {selectedRequest && (
+          <Dialog.Root
+            open={!!selectedRequest}
+            onOpenChange={() => setSelectedRequest(null)}
+          >
+            <DialogContent selectedRequest={selectedRequest} user={user} />
+          </Dialog.Root>
+        )}
+        <TodoList />
+      </Box>
+    </>
   );
 };
 

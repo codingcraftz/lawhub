@@ -8,14 +8,7 @@ import CaseForm from "@/app/boards/_components/CaseForm";
 import { getCategoryColor } from "@/utils/util";
 import CaseDetails from "./CaseDetails";
 
-const CaseCard = ({
-  caseItem,
-  onClick,
-  isAdmin,
-  ongoingCases,
-  scheduledCases,
-  closedCases,
-}) => {
+const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const categoryStyle = getCategoryColor(caseItem.case_categories.name);
@@ -142,9 +135,7 @@ const CaseCard = ({
               caseData={caseItem}
               onSuccess={() => {
                 setIsEditModalOpen(false);
-                ongoingCases();
-                scheduledCases();
-                closedCases();
+                fetchCases();
               }}
               onClose={() => setIsEditModalOpen(false)}
             />

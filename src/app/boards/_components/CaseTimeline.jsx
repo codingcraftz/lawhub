@@ -9,13 +9,15 @@ import { useUser } from "@/hooks/useUser";
 const getTypeColor = (type) => {
   switch (type) {
     case "요청":
+      return "bg-yellow-200 text-yellow-900";
+    case "요청완료":
       return "bg-blue-200 text-blue-900";
     case "완료":
-      return "bg-green-200 text-green-900";
+      return "bg-gray-200 text-gray-900";
     case "상담":
       return "bg-purple-200 text-purple-900";
     case "접수":
-      return "bg-yellow-200 text-yellow-900";
+      return "bg-green-200 text-green-900";
     default:
       return "bg-gray-200 text-gray-900";
   }
@@ -263,7 +265,23 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                       hour12: true,
                     })}
                   </Text>
-                  <Badge className={getTypeColor(item.type)}>{item.type}</Badge>
+                  {item.type === "요청" ? (
+                    <Flex>
+                      <Badge className={getTypeColor(item.type)}>
+                        요청(진행중)
+                      </Badge>
+                    </Flex>
+                  ) : item.type === "요청완료" ? (
+                    <Flex>
+                      <Badge className={getTypeColor(item.type)}>
+                        요청(완료)
+                      </Badge>
+                    </Flex>
+                  ) : (
+                    <Badge className={getTypeColor(item.type)}>
+                      {item.type}
+                    </Badge>
+                  )}
                 </Flex>
                 {isAdmin && caseStatus !== "completed" && (
                   <Flex gap="2">
@@ -307,7 +325,8 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                   }}
                 >
                   {item.created_by?.name &&
-                    (item.type === "요청" && item.requested_to?.name
+                    ((item.type === "요청" || item.type === "요청완료") &&
+                    item.requested_to?.name
                       ? `${item.created_by.name} → ${item.requested_to.name}`
                       : item.created_by.name)}
                 </Text>
