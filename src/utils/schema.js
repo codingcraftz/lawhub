@@ -37,9 +37,8 @@ export const signupSchema = yup.object().shape({
     .oneOf([yup.ref("password"), null], "비밀번호가 일치하지 않습니다")
     .required("비밀번호 확인은 필수입니다"),
   birthDate: yup
-    .date()
-    .nullable()
-    .typeError("유효한 날짜를 입력해주세요")
+    .string()
+    .matches(/^\d{4}-\d{2}-\d{2}$/, "생년월일은 YYYY-MM-DD 형식이어야 합니다")
     .required("생년월일은 필수입니다"),
   gender: yup
     .string()
