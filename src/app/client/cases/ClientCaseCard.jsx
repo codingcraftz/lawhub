@@ -4,7 +4,7 @@
 
 import React, { useState } from "react";
 import { Card, Flex, Text, Badge, Button } from "@radix-ui/themes";
-import { getCategoryColor } from "@/utils/util";
+import { getCategoryColor, getClientRoleColor } from "@/utils/util";
 import CaseDetails from "@/app/case-management/_components/CaseDetails";
 
 const ClientCaseCard = ({ caseItem, onClick }) => {
@@ -63,9 +63,23 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
             </Badge>
           </Flex>
           <div style={{ flexGrow: 1 }} />
-          <Text size="3">
-            <strong>의뢰인:</strong> {clientNames}
-          </Text>
+          <Flex align="center">
+            <Text size="3">
+              <strong>의뢰인:</strong> {clientNames}
+            </Text>
+            {caseItem.client_role && (
+              <Badge
+                size="3"
+                style={{
+                  background: "none",
+                  color: getClientRoleColor(caseItem.client_role),
+                }}
+              >
+                ({caseItem.client_role})
+              </Badge>
+            )}
+          </Flex>
+
           <Text size="3">
             <strong>상대방:</strong> {opponentNames}
           </Text>

@@ -81,7 +81,7 @@ const ClientCasesPage = () => {
       </Text>
 
       {cases.length > 0 ? (
-        <Box className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           {cases.map((caseItem) => (
             <ClientCaseCard
               key={caseItem.id}
@@ -89,7 +89,7 @@ const ClientCasesPage = () => {
               onClick={() => setSelectedCase(caseItem)}
             />
           ))}
-        </Box>
+        </div>
       ) : (
         <Text size="3" className="text-center mt-8">
           진행중인 사건이 없습니다.
