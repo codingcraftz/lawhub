@@ -14,3 +14,26 @@ export const getCategoryColor = (category) => {
     }
   );
 };
+
+export function getClientRoleColor(role) {
+  switch (role) {
+    case "원고":
+      return "var(--red-9)";
+    case "피고":
+      return "var(--blue-9)";
+    case "신청인":
+      return "var(--green-9)";
+    case "피신청인":
+      return "var(--orange-9)";
+    case "고소인":
+      return "var(--purple-9)";
+    case "피고소인":
+      return "var(--teal-9)";
+    case "채권자":
+      return "var(--yellow-9)";
+    case "채무자":
+      return "var(--gray-9)";
+    default:
+      return "var(--black)";
+  }
+}
