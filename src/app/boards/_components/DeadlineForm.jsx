@@ -22,7 +22,7 @@ const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
   useEffect(() => {
     if (editingDeadline) {
       setValue("type", editingDeadline.type);
-      setValue("deadline_date", editingDeadline.deadline_date);
+      setValue("deadline_date", new Date(editingDeadline.deadline_date));
     }
   }, [editingDeadline, setValue]);
 
@@ -80,7 +80,11 @@ const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
                 <CustomDatePicker
                   selectedDate={field.value}
                   onDateChange={field.onChange}
-                  title="기일 날짜 선택"
+                  title="기일 날짜 및 시간 선택"
+                  showTimeSelect={true} // 시간 선택 활성화
+                  timeIntervals={10} // 15분 간격
+                  timeFormat="HH:mm" // 24시간 형식
+                  dateFormat="yyyy-MM-dd HH:mm" // 날짜와 시간 형식
                 />
               )}
             />

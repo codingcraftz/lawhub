@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase";
 import TimelineForm from "./TimeLineForm";
 import DeadlineForm from "./DeadlineForm";
 import { useUser } from "@/hooks/useUser";
+import DialogContent from "@/app/todos/DialogContent";
 
 const getTypeColor = (type) => {
   switch (type) {
@@ -30,6 +31,8 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeadlineDialogOpen, setIsDeadlineDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const { user } = useUser();
 
   useEffect(() => {
@@ -37,9 +40,43 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
     fetchDeadlines();
   }, [caseId]);
 
+  const openCommentDialog = async (item) => {
+    try {
+      const { data: requestData, error } = await supabase
+        .from("requests")
+        .select(
+          `
+        *,
+        requester:users(id, name),
+        receiver:users(id, name),
+        case_timelines(id, description, type, case:cases(title))
+      `,
+        )
+        .eq("case_timeline_id", item.id)
+        .single();
+
+      if (error || !requestData) {
+        console.error("Error fetching request:", error);
+        alert("요청 정보를 불러오는 중 오류가 발생했습니다.");
+        return;
+      }
+
+      setSelectedRequest(requestData);
+      setIsCommentDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching request:", error);
+      alert("요청 정보를 불러오는 중 오류가 발생했습니다.");
+    }
+  };
+
+  const closeCommentDialog = () => {
+    setSelectedRequest(null);
+    setIsCommentDialogOpen(false);
+  };
+
   const handleEditDeadline = (deadline) => {
-    setEditingDeadline(deadline); // 수정할 기일 설정
-    setIsDeadlineDialogOpen(true); // 수정 모드로 다이얼로그 열기
+    setEditingDeadline(deadline);
+    setIsDeadlineDialogOpen(true);
   };
 
   const handleDeleteDeadline = async (id) => {
@@ -50,7 +87,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
           .delete()
           .eq("id", id);
         if (error) throw error;
-        fetchDeadlines(); // 업데이트된 기일 목록 가져오기
+        fetchDeadlines();
       } catch (error) {
         console.error("기일 삭제 중 오류:", error);
         alert("기일 삭제 중 오류가 발생했습니다.");
@@ -77,7 +114,6 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   };
 
   const fetchDeadlines = async () => {
-    // 기일 항목을 불러와 상단에 표시
     try {
       const { data, error } = await supabase
         .from("case_deadlines")
@@ -100,17 +136,50 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, type) => {
     if (window.confirm("정말로 이 항목을 삭제하시겠습니까?")) {
       try {
-        const { error } = await supabase
+        if (type === "요청" || type === "요청완료") {
+          // requests와 request_comments 삭제
+          const { data: requestData, error: requestError } = await supabase
+            .from("requests")
+            .select("id")
+            .eq("case_timeline_id", id);
+
+          if (requestError) throw requestError;
+
+          if (requestData && requestData.length > 0) {
+            const requestIds = requestData.map((request) => request.id);
+
+            // request_comments 삭제
+            const { error: commentError } = await supabase
+              .from("request_comments")
+              .delete()
+              .in("request_id", requestIds);
+
+            if (commentError) throw commentError;
+
+            // requests 삭제
+            const { error: deleteRequestError } = await supabase
+              .from("requests")
+              .delete()
+              .eq("case_timeline_id", id);
+
+            if (deleteRequestError) throw deleteRequestError;
+          }
+        }
+
+        // case_timelines에서 항목 삭제
+        const { error: timelineError } = await supabase
           .from("case_timelines")
           .delete()
           .eq("id", id);
-        if (error) throw error;
-        fetchTimelineItems();
+
+        if (timelineError) throw timelineError;
+
+        fetchTimelineItems(); // 타임라인 업데이트
       } catch (error) {
-        console.error("Error deleting timeline item:", error);
+        console.error("타임라인 항목 삭제 중 오류:", error);
         alert("타임라인 항목 삭제 중 오류가 발생했습니다.");
       }
     }
@@ -175,6 +244,9 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                           year: "numeric",
                           month: "2-digit",
                           day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
                         },
                       )}
                     </Text>
@@ -282,6 +354,15 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                       {item.type}
                     </Badge>
                   )}
+                  {(item.type === "요청" || item.type === "요청완료") && (
+                    <Button
+                      size="1"
+                      variant="ghost"
+                      onClick={() => openCommentDialog(item)}
+                    >
+                      요청 상세 보기
+                    </Button>
+                  )}
                 </Flex>
                 {isAdmin && caseStatus !== "completed" && (
                   <Flex gap="2">
@@ -379,6 +460,14 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
           )}
         </Flex>
       </Flex>
+      {isCommentDialogOpen && selectedRequest && (
+        <Dialog.Root
+          open={isCommentDialogOpen}
+          onOpenChange={closeCommentDialog}
+        >
+          <DialogContent selectedRequest={selectedRequest} user={user} />
+        </Dialog.Root>
+      )}
     </Box>
   );
 };

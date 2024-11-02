@@ -57,9 +57,19 @@ html.dark .react-datepicker__year-select {
   color: #f9fafb;
 }
 
+html.dark .react-datepicker__time-list-item {
+  background-color: #111827;
+  color: #d1d5db !important;
+}
+html.light .react-datepicker__time-list-item {
+  background-color: #ffffff;
+  color: #343946 !important;
+}
+
 html.dark .react-datepicker__day-name,
 html.dark .react-datepicker__day,
-html.dark .react-datepicker__current-month {
+html.dark .react-datepicker__current-month,
+html.dark .react-datepicker-time__header {
   color: #d1d5db !important;
 }
 
@@ -99,7 +109,8 @@ html.light .react-datepicker__year-select {
 
 html.light .react-datepicker__day-name,
 html.light .react-datepicker__day,
-html.light .react-datepicker__current-month {
+html.light .react-datepicker__current-month,
+html.light .react-datepicker-time__header {
   color: #374151 !important;
 }
 

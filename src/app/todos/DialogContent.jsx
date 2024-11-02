@@ -75,9 +75,12 @@ const DialogContent = ({ selectedRequest, user }) => {
     }
   };
 
+  console.log(selectedRequest);
   return (
     <Dialog.Content style={{ maxWidth: 600 }}>
-      <Dialog.Title>{selectedRequest.case_timelines.case?.title}</Dialog.Title>
+      <Dialog.Title>
+        {selectedRequest?.case_timelines?.case?.title}
+      </Dialog.Title>
       <Dialog.Close asChild>
         <Button
           variant="ghost"
@@ -89,7 +92,7 @@ const DialogContent = ({ selectedRequest, user }) => {
         </Button>
       </Dialog.Close>
       <Box className="mt-4">
-        <Text as="p">{selectedRequest.case_timelines.description}</Text>
+        <Text as="p">{selectedRequest?.case_timelines?.description}</Text>
       </Box>
       <Box className="mt-6">
         <Text weight="bold" size="4">
@@ -100,7 +103,15 @@ const DialogContent = ({ selectedRequest, user }) => {
             <Flex justify="between">
               <Text size="2" color="gray">
                 {comment.user?.name} (
-                {new Date(comment.created_at).toLocaleString("ko-KR")})
+                {new Date(comment.created_at).toLocaleString("ko-KR", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+                )
               </Text>
               {comment.user_id === user.id && (
                 <Flex gap="1">
@@ -148,7 +159,21 @@ const DialogContent = ({ selectedRequest, user }) => {
             )}
           </Box>
         ))}
-        {selectedRequest.status !== "closed" && (
+        {selectedRequest.status === "closed" ? (
+          <Box
+            style={{
+              backgroundColor: "var(--gray-4)",
+              color: "var(--gray-12)",
+              padding: "0.5rem",
+              borderRadius: "8px",
+              textAlign: "center",
+              fontWeight: "bold",
+              fontSize: "1rem",
+            }}
+          >
+            해당 요청은 완료되었습니다.
+          </Box>
+        ) : user.role === "client" ? null : (
           <CommentForm onAddComment={handleAddComment} />
         )}
       </Box>
