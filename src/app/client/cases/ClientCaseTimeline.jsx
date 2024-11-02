@@ -3,25 +3,32 @@
 const getTypeColor = (type) => {
   switch (type) {
     case "요청":
+      return "bg-yellow-200 text-yellow-900";
+    case "요청완료":
       return "bg-blue-200 text-blue-900";
     case "완료":
-      return "bg-green-200 text-green-900";
+      return "bg-gray-200 text-gray-900";
     case "상담":
       return "bg-purple-200 text-purple-900";
     case "접수":
-      return "bg-yellow-200 text-yellow-900";
+      return "bg-green-200 text-green-900";
     default:
       return "bg-gray-200 text-gray-900";
   }
 };
 
 import React, { useState, useEffect } from "react";
-import { Box, Flex, Text, Badge, Button } from "@radix-ui/themes";
+import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
+import DialogContent from "@/app/todos/DialogContent";
+import { useUser } from "@/hooks/useUser";
 
 const ClientCaseTimeline = ({ caseId, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const { user } = useUser();
 
   useEffect(() => {
     fetchTimelineItems();
@@ -34,9 +41,9 @@ const ClientCaseTimeline = ({ caseId, onClose }) => {
       .select(
         `
         *,
- created_by:users!case_timelines_created_by_fkey(id, name),
+        created_by:users!case_timelines_created_by_fkey(id, name),
         requested_to:users!case_timelines_requested_to_fkey(id, name)
-      `,
+        `,
       )
       .eq("case_id", caseId)
       .order("created_at", { ascending: true });
@@ -64,6 +71,40 @@ const ClientCaseTimeline = ({ caseId, onClose }) => {
     } catch (error) {
       console.error("Error fetching deadlines:", error);
     }
+  };
+
+  const openCommentDialog = async (item) => {
+    try {
+      const { data: requestData, error } = await supabase
+        .from("requests")
+        .select(
+          `
+        *,
+        requester:users(id, name),
+        receiver:users(id, name),
+        case_timelines(id, description, type, case:cases(title))
+      `,
+        )
+        .eq("case_timeline_id", item.id)
+        .single();
+
+      if (error || !requestData) {
+        console.error("Error fetching request:", error);
+        alert("요청 정보를 불러오는 중 오류가 발생했습니다.");
+        return;
+      }
+
+      setSelectedRequest(requestData);
+      setIsCommentDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching request:", error);
+      alert("요청 정보를 불러오는 중 오류가 발생했습니다.");
+    }
+  };
+
+  const closeCommentDialog = () => {
+    setSelectedRequest(null);
+    setIsCommentDialogOpen(false);
   };
 
   return (
@@ -138,7 +179,32 @@ const ClientCaseTimeline = ({ caseId, onClose }) => {
                       hour12: true,
                     })}
                   </Text>
-                  <Badge className={getTypeColor(item.type)}>{item.type}</Badge>
+                  {item.type === "요청" ? (
+                    <Flex>
+                      <Badge className={getTypeColor(item.type)}>
+                        요청(진행중)
+                      </Badge>
+                    </Flex>
+                  ) : item.type === "요청완료" ? (
+                    <Flex>
+                      <Badge className={getTypeColor(item.type)}>
+                        요청(완료)
+                      </Badge>
+                    </Flex>
+                  ) : (
+                    <Badge className={getTypeColor(item.type)}>
+                      {item.type}
+                    </Badge>
+                  )}
+                  {(item.type === "요청" || item.type === "요청완료") && (
+                    <Button
+                      size="1"
+                      variant="ghost"
+                      onClick={() => openCommentDialog(item)}
+                    >
+                      요청 상세 보기
+                    </Button>
+                  )}
                 </Flex>
               </Flex>
               <Flex className="justify-between">
@@ -170,6 +236,14 @@ const ClientCaseTimeline = ({ caseId, onClose }) => {
           </Button>
         </Flex>
       </Flex>
+      {isCommentDialogOpen && selectedRequest && (
+        <Dialog.Root
+          open={isCommentDialogOpen}
+          onOpenChange={closeCommentDialog}
+        >
+          <DialogContent selectedRequest={selectedRequest} user={user} />
+        </Dialog.Root>
+      )}
     </Box>
   );
 };
