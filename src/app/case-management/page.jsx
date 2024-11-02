@@ -11,7 +11,7 @@ import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
-const BoardsPage = () => {
+const CaseManagementPage = () => {
   const initialState = {
     cases: [],
     count: 0,
@@ -53,7 +53,7 @@ const BoardsPage = () => {
             *,
             case_categories (id, name),
             case_clients (client:users (id, name)),
-            case_staff!inner (staff:users (id, name)),
+            case_staff (staff:users (id, name)),
             case_opponents (opponent:opponents (id, name))
           `,
           { count: "exact" },
@@ -163,13 +163,15 @@ const BoardsPage = () => {
                 ))}
               </div>
             ) : (
-              <Text size="3" className="text-center mt-8">
-                {status === "ongoing"
-                  ? "진행중인 사건이 없습니다."
-                  : status === "scheduled"
-                    ? "진행예정 사건이 없습니다."
-                    : "종료된 사건이 없습니다."}
-              </Text>
+              <Flex justify="center">
+                <Text size="3" className="text-center mt-8">
+                  {status === "ongoing"
+                    ? "진행중인 사건이 없습니다."
+                    : status === "scheduled"
+                      ? "진행예정 사건이 없습니다."
+                      : "종료된 사건이 없습니다."}
+                </Text>
+              </Flex>
             )}
             {totalPages(status) > 1 && (
               <Pagination
@@ -211,4 +213,4 @@ const BoardsPage = () => {
   );
 };
 
-export default BoardsPage;
+export default CaseManagementPage;

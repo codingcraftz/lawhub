@@ -20,14 +20,26 @@ const schema = yup.object().shape({
   category_id: yup.string().required("카테고리를 선택해주세요"),
 });
 
+const clientRoles = [
+  "원고",
+  "피고",
+  "신청인",
+  "피신청인",
+  "고소인",
+  "피고소인",
+  "채권자",
+  "채무자",
+];
+
 const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const [categories, setCategories] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState([]);
-  const [selectedOpponents, setSelectedOpponents] = useState([]); // 상대방 상태
+  const [selectedOpponents, setSelectedOpponents] = useState([]);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
-  const [isOpponentModalOpen, setIsOpponentModalOpen] = useState(false); // 상대방 선택 모달
+  const [isOpponentModalOpen, setIsOpponentModalOpen] = useState(false);
+  const [clientRole, setClientRole] = useState("의뢰인");
   const [isScheduled, setIsScheduled] = useState(
     caseData?.status === "scheduled",
   );
@@ -46,6 +58,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
     fetchCategories();
     if (caseData) {
       fetchCaseRelations();
+      setClientRole(caseData.client_role || clientRoles[0]);
     }
   }, [caseData]);
 
@@ -118,6 +131,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         start_date: data.start_date,
         category_id: data.category_id,
         status: isScheduled ? "scheduled" : "ongoing",
+        client_role: clientRole,
       };
 
       let insertedCase;
@@ -151,6 +165,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       const clientEntries = selectedClients.map((client) => ({
         case_id: insertedCase.id,
         client_id: client.id,
+        role: clientRole,
       }));
       const staffEntries = selectedStaff.map((staff) => ({
         case_id: insertedCase.id,
@@ -187,6 +202,28 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
     } catch (error) {
       console.error("사건 저장 중 오류:", error);
       alert("사건 정보 저장 중 오류가 발생했습니다.");
+    }
+  };
+  const onDelete = async () => {
+    if (!caseData?.id) return;
+    if (window.confirm("정말로 이 사건을 삭제하시겠습니까?")) {
+      try {
+        const { error } = await supabase
+          .from("cases")
+          .delete()
+          .eq("id", caseData.id);
+
+        if (error) {
+          console.error("삭제 오류:", error);
+          alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+          throw error;
+        }
+
+        onSuccess();
+      } catch (error) {
+        console.error("사건 삭제 중 오류:", error);
+        alert("사건 삭제 중 오류가 발생했습니다.");
+      }
     }
   };
 
@@ -276,6 +313,26 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
             </Text>
           )}
         </Box>
+        <Box>
+          <label htmlFor="client-role">의뢰인 역할</label>
+          <select
+            id="client-role"
+            value={clientRole}
+            onChange={(e) => setClientRole(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "0.6rem 0.8rem",
+              border: "2px solid var(--gray-6)",
+              borderRadius: "var(--radius-1)",
+            }}
+          >
+            {clientRoles.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+        </Box>
 
         {/* 의뢰인 선택 */}
         <Box>
@@ -290,7 +347,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
             <Text>{selectedClients.map((c) => c.name).join(", ")}</Text>
           )}
         </Box>
-
         {/* 담당자 선택 */}
         <Box>
           <Button
@@ -320,7 +376,12 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         </Box>
 
         <Flex gap="3" mt="4" justify="end">
-          <Button variant="soft" color="gray" onClick={onClose}>
+          {caseData && (
+            <Button type="button" variant="soft" color="red" onClick={onDelete}>
+              삭제
+            </Button>
+          )}
+          <Button type="button" variant="soft" color="gray" onClick={onClose}>
             취소
           </Button>
           <Button type="submit">등록</Button>

@@ -204,7 +204,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
       try {
         const { error } = await supabase
           .from("cases")
-          .update({ status: "completed" })
+          .update({ status: "closed" })
           .eq("id", caseId);
         if (error) throw error;
         onClose();
@@ -250,7 +250,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                         },
                       )}
                     </Text>
-                    {isAdmin && caseStatus !== "completed" && (
+                    {isAdmin && caseStatus !== "closed" && (
                       <Flex gap="2">
                         <Button
                           size="1"
@@ -281,7 +281,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
             사건 타임라인
           </Text>
 
-          {caseStatus !== "completed" && (
+          {caseStatus !== "closed" && (
             <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Dialog.Trigger>
                 <Button size="2" onClick={() => setEditingItem(null)}>
@@ -364,7 +364,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                     </Button>
                   )}
                 </Flex>
-                {isAdmin && caseStatus !== "completed" && (
+                {isAdmin && caseStatus !== "closed" && (
                   <Flex gap="2">
                     <Button
                       size="1"
@@ -416,7 +416,7 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
           ))}
         </Flex>
         <Flex justify="between" mt="4">
-          {caseStatus !== "completed" && (
+          {caseStatus !== "closed" && (
             <Dialog.Root
               open={isDeadlineDialogOpen}
               onOpenChange={setIsDeadlineDialogOpen}
@@ -444,12 +444,12 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
                     setEditingDeadline(null);
                   }}
                   editingDeadline={editingDeadline} // 수정할 데이터를 전달
-                />{" "}
+                />
               </Dialog.Content>
             </Dialog.Root>
           )}
 
-          {isAdmin && caseStatus !== "completed" ? (
+          {isAdmin && caseStatus !== "closed" ? (
             <Button size="2" color="red" onClick={handleCaseCompletion}>
               사건 종결
             </Button>

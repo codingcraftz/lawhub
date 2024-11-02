@@ -4,9 +4,10 @@
 
 import React, { useState } from "react";
 import { Card, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
-import CaseForm from "@/app/boards/_components/CaseForm";
-import { getCategoryColor } from "@/utils/util";
+import CaseForm from "@/app/case-management/_components/CaseForm";
+import { getCategoryColor, getClientRoleColor } from "@/utils/util";
 import CaseDetails from "./CaseDetails";
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -58,9 +59,22 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
           </Flex>
           <div style={{ flexGrow: 1 }} />
 
-          <Text size="3">
-            <strong>의뢰인:</strong> {clientNames}
-          </Text>
+          <Flex align="center">
+            <Text size="3">
+              <strong>의뢰인:</strong> {clientNames}
+            </Text>
+            {caseItem.client_role && (
+              <Badge
+                size="3"
+                style={{
+                  background: "none",
+                  color: getClientRoleColor(caseItem.client_role),
+                }}
+              >
+                ({caseItem.client_role})
+              </Badge>
+            )}
+          </Flex>
           <Text size="3">
             <strong>상대방:</strong> {opponentNames}
           </Text>
@@ -98,7 +112,7 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
             >
               사건 정보
             </Button>
-            {isAdmin && (
+            {isAdmin && caseItem.status !== "closed" && (
               <Button
                 className="flex-1"
                 variant="soft"
@@ -128,7 +142,7 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
                 size="1"
                 style={{ position: "absolute", top: 8, right: 8 }}
               >
-                닫기
+                <Cross2Icon />
               </Button>
             </Dialog.Close>
             <CaseForm

@@ -147,19 +147,18 @@ const OpponentSelectionModalContent = ({
                   }
                   onCheckedChange={() => handleToggleOpponent(opponent)}
                 />
-                {/* Tooltip showing phone_number, address, and registration_number */}
                 <Tooltip
                   content={
                     <Box style={{ padding: "0.5rem", fontSize: "12px" }}>
                       <p>
-                        <strong>전화번호:</strong>{" "}
+                        <strong>전화번호:</strong>
                         {formatPhoneNumber(opponent.phone_number)}
                       </p>
                       <p>
                         <strong>주소:</strong> {opponent.address}
                       </p>
                       <p>
-                        <strong>주민등록번호:</strong>{" "}
+                        <strong>주민등록번호:</strong>
                         {formatRegistrationNumber(opponent.registration_number)}
                       </p>
                     </Box>

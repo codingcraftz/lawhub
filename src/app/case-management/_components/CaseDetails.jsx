@@ -26,7 +26,7 @@ const CaseDetails = ({ caseData, onClose }) => {
       <Dialog.Content
         style={{ minWidth: 500, maxWidth: 1000, width: "fit-content" }}
       >
-        <Dialog.Title>사건 정보</Dialog.Title>
+        <Dialog.Title> {caseData.title}</Dialog.Title>
         <Dialog.Close asChild>
           <Button
             variant="ghost"
@@ -37,10 +37,7 @@ const CaseDetails = ({ caseData, onClose }) => {
             <Cross2Icon />
           </Button>
         </Dialog.Close>
-        <Box padding="2" display="flex" flexDirection="column" gap="2">
-          <Box as="div" style={{ fontSize: "1.25rem", fontWeight: "bold" }}>
-            {caseData.title}
-          </Box>
+        <Flex direction="column" gap="2">
           <Box as="div" className="py-2">
             {caseData.description || "없음"}
           </Box>
@@ -50,9 +47,11 @@ const CaseDetails = ({ caseData, onClose }) => {
           <Box as="div">
             <strong>상대방:</strong> {opponentNames}
           </Box>
-          <Box as="div">
-            <strong>담당자:</strong> {staffNames}
-          </Box>
+          {staffNames && (
+            <Box as="div">
+              <strong>담당자:</strong> {staffNames}
+            </Box>
+          )}
           <Box as="div" style={{ color: "var(--slate-9)" }}>
             <strong>시작일:</strong>{" "}
             {new Date(caseData.start_date).toLocaleDateString("ko-KR", {
@@ -76,7 +75,7 @@ const CaseDetails = ({ caseData, onClose }) => {
               확인
             </Button>
           </Flex>
-        </Box>
+        </Flex>
       </Dialog.Content>
     </Dialog.Root>
   );

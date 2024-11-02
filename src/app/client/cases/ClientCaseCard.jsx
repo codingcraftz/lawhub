@@ -2,11 +2,13 @@
 
 "use client";
 
-import React from "react";
-import { Card, Flex, Text, Badge } from "@radix-ui/themes";
+import React, { useState } from "react";
+import { Card, Flex, Text, Badge, Button } from "@radix-ui/themes";
 import { getCategoryColor } from "@/utils/util";
+import CaseDetails from "@/app/case-management/_components/CaseDetails";
 
 const ClientCaseCard = ({ caseItem, onClick }) => {
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const categoryStyle = getCategoryColor(caseItem.case_categories.name);
   if (
     !caseItem ||
@@ -41,52 +43,73 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
   //     : "없음";
 
   return (
-    <Card
-      className="w-full cursor-pointer p-4 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-lg"
-      onClick={onClick}
-    >
-      <Flex direction="column" gap="2">
-        <Flex justify="between" align="center">
-          <Text size="5" weight="bold">
-            {caseItem.title}
+    <>
+      <Card
+        className="w-full cursor-pointer p-4 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-lg"
+        onClick={onClick}
+      >
+        <Flex direction="column" gap="2">
+          <Flex justify="between" align="center">
+            <Text size="5" weight="bold">
+              {caseItem.title}
+            </Text>
+            <Badge
+              className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}
+              style={{
+                ...categoryStyle,
+              }}
+            >
+              {caseItem.case_categories.name}
+            </Badge>
+          </Flex>
+          <div style={{ flexGrow: 1 }} />
+          <Text size="3">
+            <strong>의뢰인:</strong> {clientNames}
           </Text>
-          <Badge
-            className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}
-            style={{
-              ...categoryStyle,
-            }}
-          >
-            {caseItem.case_categories.name}
-          </Badge>
-        </Flex>
-        <div style={{ flexGrow: 1 }} />
-        <Text size="3">
-          <strong>의뢰인:</strong> {clientNames}
-        </Text>
-        <Text size="3">
-          <strong>상대방:</strong> {opponentNames}
-        </Text>
+          <Text size="3">
+            <strong>상대방:</strong> {opponentNames}
+          </Text>
 
-        <Text size="2" color="gray">
-          <strong>시작일:</strong>{" "}
-          {new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          })}
-        </Text>
-        {caseItem.end_date && (
           <Text size="2" color="gray">
-            <strong>종료일:</strong>{" "}
-            {new Date(caseItem.end_date).toLocaleDateString("ko-KR", {
+            <strong>시작일:</strong>{" "}
+            {new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
               year: "numeric",
               month: "2-digit",
               day: "2-digit",
             })}
           </Text>
-        )}
-      </Flex>
-    </Card>
+          {caseItem.end_date && (
+            <Text size="2" color="gray">
+              <strong>종료일:</strong>{" "}
+              {new Date(caseItem.end_date).toLocaleDateString("ko-KR", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              })}
+            </Text>
+          )}
+          <Button
+            className="flex-1"
+            variant="soft"
+            color="blue"
+            size="1"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDetailsModalOpen(true);
+            }}
+          >
+            사건 정보
+          </Button>
+        </Flex>
+      </Card>
+      {/* Case Details Modal */}
+      {isDetailsModalOpen && (
+        <CaseDetails
+          caseData={caseItem}
+          onClose={() => setIsDetailsModalOpen(false)}
+        />
+      )}
+    </>
   );
 };
 

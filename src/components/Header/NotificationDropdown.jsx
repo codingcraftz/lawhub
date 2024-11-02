@@ -96,7 +96,7 @@ const NotificationDropdown = () => {
   const handleNotificationClick = async (notification) => {
     await markAsRead(notification.id);
     if (notification.type === "배정") {
-      router.push("/boards");
+      router.push("/case-management");
     } else if (notification.type === "요청") {
       router.push("/todos");
     }

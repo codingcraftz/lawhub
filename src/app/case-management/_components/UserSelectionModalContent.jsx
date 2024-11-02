@@ -102,12 +102,17 @@ const UserSelectionModalContent = ({
             />
             <Tooltip
               content={
-                <Box style={{ padding: "0.5rem", fontSize: "12px" }}>
-                  <p>
+                <Box
+                  style={{
+                    padding: "0.5rem",
+                    fontSize: "12px",
+                  }}
+                >
+                  <p style={{ color: "var(--gray-12)" }}>
                     <strong>생년월일:</strong> {formatDate(user.birth_date)}
                   </p>
-                  <p>
-                    <strong>전화번호:</strong>{" "}
+                  <p style={{ color: "var(--gray-12)" }}>
+                    <strong>전화번호:</strong>
                     {formatPhoneNumber(user.phone_number)}
                   </p>
                 </Box>

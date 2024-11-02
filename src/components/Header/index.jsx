@@ -13,7 +13,7 @@ import { useTheme } from "next-themes";
 import NotificationDropdown from "./NotificationDropdown";
 
 const NAV_LIST = [
-  { title: "사건 관리", path: "/boards", roles: ["admin", "staff"] },
+  { title: "사건 관리", path: "/case-management", roles: ["admin", "staff"] },
   { title: "일정 관리", path: "/todos", roles: ["admin", "staff"] },
   { title: "나의 사건", path: "/client/cases", roles: ["client"] },
 ];
