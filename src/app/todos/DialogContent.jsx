@@ -103,7 +103,15 @@ const DialogContent = ({ selectedRequest, user }) => {
             <Flex justify="between">
               <Text size="2" color="gray">
                 {comment.user?.name} (
-                {new Date(comment.created_at).toLocaleString("ko-KR")})
+                {new Date(comment.created_at).toLocaleString("ko-KR", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+                )
               </Text>
               {comment.user_id === user.id && (
                 <Flex gap="1">
