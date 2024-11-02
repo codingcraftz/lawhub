@@ -16,6 +16,11 @@ const NAV_LIST = [
   { title: "사건 관리", path: "/case-management", roles: ["admin", "staff"] },
   { title: "일정 관리", path: "/todos", roles: ["admin", "staff"] },
   { title: "나의 사건", path: "/client/cases", roles: ["client"] },
+  {
+    title: "공지 및 피드백",
+    path: "/updates",
+    roles: ["admin", "staff", "client"],
+  },
 ];
 
 const Header = () => {

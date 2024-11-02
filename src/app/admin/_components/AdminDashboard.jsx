@@ -7,6 +7,7 @@ import { Tabs, Box, Text } from "@radix-ui/themes";
 import UserManagement from "./UserManagement";
 import CaseCategoryManagement from "./CaseCategoryManagement";
 import UserApproval from "./UserApproval";
+import FeedbackManagement from "./FeedbackManagement";
 
 const AdminDashboard = () => {
   return (
@@ -18,6 +19,7 @@ const AdminDashboard = () => {
         <Tabs.List>
           <Tabs.Trigger value="users">사용자 관리</Tabs.Trigger>
           <Tabs.Trigger value="approvals">회원 승인</Tabs.Trigger>{" "}
+          <Tabs.Trigger value="feedback">피드백 관리</Tabs.Trigger>
         </Tabs.List>
 
         <Tabs.Content value="users">
@@ -30,6 +32,10 @@ const AdminDashboard = () => {
 
         <Tabs.Content value="approvals">
           <UserApproval />
+        </Tabs.Content>
+
+        <Tabs.Content value="feedback">
+          <FeedbackManagement />
         </Tabs.Content>
       </Tabs.Root>
     </Box>

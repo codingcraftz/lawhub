@@ -47,7 +47,13 @@ const UserManagement = () => {
     <Box>
       <Flex justify="between" align="center" mb="4">
         <Button
-          className="ml-auto mt-2"
+          size="3"
+          style={{
+            position: "fixed",
+            bottom: "2rem",
+            right: "2rem",
+            zIndex: 1000,
+          }}
           onClick={() => {
             setEditingUser(null);
             setIsDialogOpen(true);
