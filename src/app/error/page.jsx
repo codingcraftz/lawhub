@@ -23,7 +23,8 @@ const ErrorPage = () => {
       style={{
         display: "flex",
         justifyContent: "center",
-        marginTop: "2rem",
+        alignItems: "center",
+        height: "100vh",
         padding: "1rem",
       }}
     >

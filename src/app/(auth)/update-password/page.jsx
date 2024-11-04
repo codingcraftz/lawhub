@@ -3,8 +3,10 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { Box, Button, Text, Card, Flex } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
+import { passwordResetSchema } from "@/utils/schema";
 
 const UpdatePasswordPage = () => {
   const router = useRouter();
@@ -15,7 +17,10 @@ const UpdatePasswordPage = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    resolver: yupResolver(passwordResetSchema),
+    mode: "onChange",
+  });
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
@@ -38,53 +43,40 @@ const UpdatePasswordPage = () => {
   };
 
   return (
-    <Box
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-      }}
-    >
-      <Card style={{ width: "100%", maxWidth: "400px", padding: "2rem" }}>
+    <Box className="flex justify-center items-center min-h-screen px-4 sm:px-6 md:px-8">
+      <Card className="w-full max-w-md p-6 sm:p-8 md:p-10 lg:w-1/3">
         <form onSubmit={handleSubmit(onSubmit)}>
           <Flex direction="column" gap="3">
             <Text size="5" weight="bold">
               새 비밀번호 설정
             </Text>
-            <input
-              type="password"
-              placeholder="새 비밀번호"
-              {...register("password", {
-                required: "비밀번호를 입력해주세요.",
-                minLength: {
-                  value: 8,
-                  message: "비밀번호는 최소 8자 이상이어야 합니다.",
-                },
-              })}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            <Text
-              color="red"
-              size="1"
-              style={{ minHeight: "20px", marginTop: "4px" }}
-            >
-              {errors.password?.message || " "}
-            </Text>
+            {["password", "passwordConfirm"].map((field) => (
+              <Box key={field} className="mt-2">
+                <input
+                  type="password"
+                  placeholder={
+                    field === "password" ? "새 비밀번호" : "비밀번호 확인"
+                  }
+                  {...register(field)}
+                  className="w-full p-2 border rounded-md"
+                  style={{
+                    border: "1px solid var(--gray-6)",
+                  }}
+                />
+                <Text color="red" size="1" className="min-h-[20px] mt-1">
+                  {errors[field]?.message || " "}
+                </Text>
+              </Box>
+            ))}
             <Button
               type="submit"
               disabled={isSubmitting}
-              style={{ width: "100%", padding: "0.75rem" }}
+              className="w-full py-2 mt-4"
             >
               {isSubmitting ? "비밀번호 변경 중..." : "비밀번호 변경"}
             </Button>
             {message && (
-              <Text color="green" size="2" align="center">
+              <Text color="green" size="2" align="center" className="mt-2">
                 {message}
               </Text>
             )}

@@ -21,7 +21,6 @@ export const passwordResetSchema = yup.object().shape({
     .oneOf([yup.ref("password"), null], "비밀번호가 일치하지 않습니다")
     .required("비밀번호 확인은 필수입니다"),
 });
-
 export const signupSchema = yup.object().shape({
   email: yup
     .string()
