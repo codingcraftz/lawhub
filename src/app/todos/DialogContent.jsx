@@ -169,6 +169,7 @@ const DialogContent = ({ selectedRequest, user }) => {
               textAlign: "center",
               fontWeight: "bold",
               fontSize: "1rem",
+              marginTop: "1rem",
             }}
           >
             해당 요청은 완료되었습니다.
