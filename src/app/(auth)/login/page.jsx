@@ -3,19 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Card } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
 import * as Dialog from "@radix-ui/react-dialog";
-import { loginSchema, passwordResetSchema } from "@/utils/schema";
+import { emailSchema, loginSchema } from "@/utils/schema";
 
 const LoginPage = () => {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false); // 메일 전송 중 상태
   const router = useRouter();
   const { user } = useUser();
 
@@ -28,12 +28,13 @@ const LoginPage = () => {
     resolver: yupResolver(loginSchema),
     mode: "onChange",
   });
+
   const {
     register: resetRegister,
     handleSubmit: handleResetSubmit,
     formState: { errors: resetErrors },
   } = useForm({
-    resolver: yupResolver(passwordResetSchema),
+    resolver: yupResolver(emailSchema),
   });
 
   useEffect(() => {
@@ -66,19 +67,23 @@ const LoginPage = () => {
   };
 
   const onForgotPassword = async (data) => {
+    setIsSending(true); // 전송 중 상태 활성화
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
+
       if (error) throw error;
 
-      setModalMessage("비밀번호 복구 이메일이 전송되었습니다.");
+      setModalMessage("비밀번호 재설정을 위한 링크가 이메일로 전송되었습니다.");
       setIsModalOpen(true);
       setIsForgotPasswordOpen(false);
     } catch (error) {
       console.error("Password reset error:", error);
-      setModalMessage("비밀번호 복구 요청 중 오류가 발생했습니다.");
+      setModalMessage("비밀번호 재설정 요청 중 오류가 발생했습니다.");
       setIsModalOpen(true);
+    } finally {
+      setIsSending(false); // 전송 완료 후 버튼 상태 복원
     }
   };
 
@@ -134,11 +139,23 @@ const LoginPage = () => {
             >
               로그인
             </Button>
-            <Text size="2" align="center">
-              계정이 없으신가요?{" "}
-              <Link href="/signup" style={{ color: "var(--accent-9)" }}>
-                회원가입
-              </Link>
+            <Flex justify="space-between" align="center">
+              <Text size="2" align="center">
+                계정이 없으신가요?{" "}
+                <Link href="/signup" style={{ color: "var(--accent-9)" }}>
+                  회원가입
+                </Link>
+              </Text>
+            </Flex>
+
+            <Text
+              as="button"
+              size="2"
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(true)}
+              style={{ color: "var(--accent-9)", cursor: "pointer" }}
+            >
+              비밀번호를 잊으셨나요?
             </Text>
           </Flex>
         </form>
@@ -172,7 +189,7 @@ const LoginPage = () => {
               marginBottom: "1rem",
             }}
           >
-            오류
+            확인
           </Dialog.Title>
           <Dialog.Description
             style={{
@@ -260,6 +277,7 @@ const LoginPage = () => {
             </Text>
             <Button
               type="submit"
+              disabled={isSending} // 전송 중에는 비활성화
               style={{
                 width: "100%",
                 padding: "0.75rem",
@@ -268,7 +286,7 @@ const LoginPage = () => {
                 fontWeight: "500",
               }}
             >
-              비밀번호 복구
+              {isSending ? "메일 전송 중..." : "비밀번호 복구 링크 전송"}
             </Button>
           </form>
         </Dialog.Content>

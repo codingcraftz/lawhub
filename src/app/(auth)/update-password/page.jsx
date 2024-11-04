@@ -1,16 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Box, Button, Text, Card, Flex } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
 
-const ResetPasswordPage = () => {
+const UpdatePasswordPage = () => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [sessionVerified, setSessionVerified] = useState(false);
 
   const {
     register,
@@ -18,40 +17,10 @@ const ResetPasswordPage = () => {
     formState: { errors },
   } = useForm();
 
-  useEffect(() => {
-    const verifySession = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const token_hash = params.get("token_hash");
-      const type = params.get("type");
-
-      console.log("Token Hash:", token_hash); // 디버깅: token_hash 확인
-      console.log("Type:", type); // 디버깅: type 확인
-
-      if (!token_hash || !type) {
-        setMessage("유효하지 않거나 만료된 링크입니다.");
-        return;
-      }
-
-      const { error } = await supabase.auth.verifyOtp({
-        type,
-        token_hash,
-      });
-
-      if (error) {
-        console.error("Token verification error:", error); // 디버깅: error 확인
-        setMessage("링크 인증 중 오류가 발생했습니다.");
-      } else {
-        console.log("Token verification successful"); // 디버깅: 성공 메시지
-        setSessionVerified(true);
-      }
-    };
-
-    verifySession();
-  }, []);
-
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
+      // 새 비밀번호 설정
       const { error } = await supabase.auth.updateUser({
         password: data.password,
       });
@@ -61,31 +30,12 @@ const ResetPasswordPage = () => {
       setMessage("비밀번호가 성공적으로 변경되었습니다.");
       setTimeout(() => router.push("/login"), 2000);
     } catch (error) {
-      console.error("Password reset error:", error);
+      console.error("Password update error:", error);
       setMessage("비밀번호 변경 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (message && !sessionVerified) {
-    return (
-      <Box
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <Text color="red">{message}</Text>
-      </Box>
-    );
-  }
-
-  if (!sessionVerified) {
-    return null; // 로딩 인디케이터를 표시하거나 null을 반환합니다.
-  }
 
   return (
     <Box
@@ -145,4 +95,4 @@ const ResetPasswordPage = () => {
   );
 };
 
-export default ResetPasswordPage;
+export default UpdatePasswordPage;

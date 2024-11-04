@@ -22,7 +22,9 @@
     "@react-three/drei": "^9.115.0",
     "@react-three/fiber": "^8.17.10",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
+    "crypto": "^1.0.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^11.11.10",
     "gsap": "^3.12.5",
@@ -42,6 +44,8 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8",
     "eslint-config-next": "14.2.11",
+    "fs": "0.0.1-security",
+    "nodemailer": "^6.9.16",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11"
   }

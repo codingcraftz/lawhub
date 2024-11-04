@@ -24,9 +24,6 @@ const ResetPasswordPage = () => {
       const token_hash = params.get("token_hash");
       const type = params.get("type");
 
-      console.log("Token Hash:", token_hash); // 디버깅: token_hash 확인
-      console.log("Type:", type); // 디버깅: type 확인
-
       if (!token_hash || !type) {
         setMessage("유효하지 않거나 만료된 링크입니다.");
         return;
@@ -38,10 +35,9 @@ const ResetPasswordPage = () => {
       });
 
       if (error) {
-        console.error("Token verification error:", error); // 디버깅: error 확인
+        console.error("Token verification error:", error);
         setMessage("링크 인증 중 오류가 발생했습니다.");
       } else {
-        console.log("Token verification successful"); // 디버깅: 성공 메시지
         setSessionVerified(true);
       }
     };
@@ -84,7 +80,7 @@ const ResetPasswordPage = () => {
   }
 
   if (!sessionVerified) {
-    return null; // 로딩 인디케이터를 표시하거나 null을 반환합니다.
+    return null; // Optionally show a loading indicator
   }
 
   return (
