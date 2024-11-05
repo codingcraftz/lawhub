@@ -53,7 +53,7 @@ const CaseManagementPage = () => {
             *,
             case_categories (id, name),
             case_clients (client:users (id, name)),
-            case_staff (staff:users (id, name)),
+            case_staff!inner (staff:users (id, name)),
             case_opponents (opponent:opponents (id, name))
           `,
           { count: "exact" },
