@@ -24,6 +24,13 @@ const CaseManagementPage = () => {
     scheduled: initialState,
     closed: initialState,
   });
+
+  const [searchCaseData, setSearchCaseData] = useState({
+    ongoing: initialState,
+    scheduled: initialState,
+    closed: initialState,
+  });
+
   const [selectedCase, setSelectedCase] = useState(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const { register, handleSubmit, reset } = useForm({
@@ -37,8 +44,6 @@ const CaseManagementPage = () => {
   const pageSize = 9;
   const { user } = useUser();
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchCount, setSearchCount] = useState(0);
   const [searchPage, setSearchPage] = useState(1);
 
   useRoleRedirect(["staff", "admin"], "/login");
@@ -59,7 +64,9 @@ const CaseManagementPage = () => {
 
   useEffect(() => {
     if (isSearching) {
-      fetchSearchResults();
+      fetchSearchResults("ongoing");
+      fetchSearchResults("scheduled");
+      fetchSearchResults("closed");
     }
   }, [isSearching, searchPage]);
 
@@ -68,37 +75,80 @@ const CaseManagementPage = () => {
       try {
         if (!user) return;
 
-        let query = supabase.from("cases").select(
-          `
-            *,
-            case_categories (id, name),
-            case_clients (client:users (id, name)),
-            case_staff (staff:users (id, name)),
-            case_opponents (opponent:opponents (id, name))
-          `,
-          { count: "exact" },
-        );
+        if (user.role === "admin") {
+          // 관리자(admin)일 경우 모든 사건을 조회
+          const { data, error, count } = await supabase
+            .from("cases")
+            .select(
+              `
+                *,
+                case_categories (id, name),
+                case_clients (client:users (id, name)),
+                case_staff (staff:users (id, name)),
+                case_opponents (opponent:opponents (id, name))
+              `,
+              { count: "exact" },
+            )
+            .eq("status", status)
+            .order("start_date", { ascending: false })
+            .range(
+              (caseData[status].page - 1) * pageSize,
+              caseData[status].page * pageSize - 1,
+            );
 
-        if (user.role === "staff") {
-          query = query.eq("case_staff.staff_id", user.id);
+          if (error) throw error;
+
+          setCaseData((prevData) => ({
+            ...prevData,
+            [status]: { ...prevData[status], cases: data, count },
+          }));
+        } else if (user.role === "staff") {
+          // 직원(staff)일 경우 자신이 담당자인 사건의 ID를 먼저 조회
+          const { data: caseStaffs, error: caseStaffError } = await supabase
+            .from("case_staff")
+            .select("case_id")
+            .eq("staff_id", user.id);
+
+          if (caseStaffError) throw caseStaffError;
+
+          const caseIds = caseStaffs.map((cs) => cs.case_id);
+
+          if (caseIds.length === 0) {
+            setCaseData((prevData) => ({
+              ...prevData,
+              [status]: { ...prevData[status], cases: [], count: 0 },
+            }));
+            return;
+          }
+
+          // 해당 사건 ID로 사건을 조회, 모든 case_staff 포함
+          const { data, error, count } = await supabase
+            .from("cases")
+            .select(
+              `
+                *,
+                case_categories (id, name),
+                case_clients (client:users (id, name)),
+                case_staff (staff:users (id, name)),
+                case_opponents (opponent:opponents (id, name))
+              `,
+              { count: "exact" },
+            )
+            .in("id", caseIds)
+            .eq("status", status)
+            .order("start_date", { ascending: false })
+            .range(
+              (caseData[status].page - 1) * pageSize,
+              caseData[status].page * pageSize - 1,
+            );
+
+          if (error) throw error;
+
+          setCaseData((prevData) => ({
+            ...prevData,
+            [status]: { ...prevData[status], cases: data, count },
+          }));
         }
-
-        query = query
-          .eq("status", status)
-          .order("start_date", { ascending: false })
-          .range(
-            (caseData[status].page - 1) * pageSize,
-            caseData[status].page * pageSize - 1,
-          );
-
-        const { data, error, count } = await query;
-
-        if (error) throw error;
-
-        setCaseData((prevData) => ({
-          ...prevData,
-          [status]: { ...prevData[status], cases: data, count },
-        }));
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
       }
@@ -106,110 +156,119 @@ const CaseManagementPage = () => {
     [user, caseData],
   );
 
-  const fetchSearchResults = async () => {
-    try {
-      const { searchTerm, searchCategory } = formValues;
-      let caseIds = [];
-      if (searchCategory === "client") {
-        // 의뢰인 검색
-        const { data: clients, error: clientError } = await supabase
-          .from("users")
-          .select("id")
-          .ilike("name", `%${searchTerm}%`);
+  const fetchSearchResults = useCallback(
+    async (status) => {
+      try {
+        const { searchTerm, searchCategory } = formValues;
+        let caseIds = [];
 
-        if (clientError) throw clientError;
+        // 검색 조건에 따라 caseIds를 가져옵니다.
+        if (searchCategory === "client") {
+          const { data: clients, error: clientError } = await supabase
+            .from("users")
+            .select("id")
+            .ilike("name", `%${searchTerm}%`);
 
-        const clientIds = clients.map((client) => client.id);
+          if (clientError) throw clientError;
+          const clientIds = clients.map((client) => client.id);
 
-        const { data: caseClients, error: caseClientError } = await supabase
-          .from("case_clients")
-          .select("case_id")
-          .in("client_id", clientIds);
+          const { data: caseClients, error: caseClientError } = await supabase
+            .from("case_clients")
+            .select("case_id")
+            .in("client_id", clientIds);
 
-        if (caseClientError) throw caseClientError;
+          if (caseClientError) throw caseClientError;
+          caseIds = caseClients.map((cc) => cc.case_id);
+        } else if (searchCategory === "staff") {
+          const { data: staff, error: staffError } = await supabase
+            .from("users")
+            .select("id")
+            .ilike("name", `%${searchTerm}%`);
 
-        caseIds = caseClients.map((cc) => cc.case_id);
-      } else if (searchCategory === "staff") {
-        // 담당자 검색
-        const { data: staff, error: staffError } = await supabase
-          .from("users")
-          .select("id")
-          .ilike("name", `%${searchTerm}%`);
+          if (staffError) throw staffError;
+          const staffIds = staff.map((s) => s.id);
 
-        if (staffError) throw staffError;
+          const { data: caseStaffs, error: caseStaffError } = await supabase
+            .from("case_staff")
+            .select("case_id")
+            .in("staff_id", staffIds);
 
-        const staffIds = staff.map((s) => s.id);
+          if (caseStaffError) throw caseStaffError;
+          caseIds = caseStaffs.map((cs) => cs.case_id);
+        } else if (searchCategory === "opponent") {
+          const { data: opponents, error: opponentError } = await supabase
+            .from("opponents")
+            .select("id")
+            .ilike("name", `%${searchTerm}%`);
 
-        const { data: caseStaffs, error: caseStaffError } = await supabase
-          .from("case_staff")
-          .select("case_id")
-          .in("staff_id", staffIds);
+          if (opponentError) throw opponentError;
+          const opponentIds = opponents.map((o) => o.id);
 
-        if (caseStaffError) throw caseStaffError;
+          const { data: caseOpponents, error: caseOpponentError } =
+            await supabase
+              .from("case_opponents")
+              .select("case_id")
+              .in("opponent_id", opponentIds);
 
-        caseIds = caseStaffs.map((cs) => cs.case_id);
-      } else if (searchCategory === "opponent") {
-        // 상대방 검색
-        const { data: opponents, error: opponentError } = await supabase
-          .from("opponents")
-          .select("id")
-          .ilike("name", `%${searchTerm}%`);
+          if (caseOpponentError) throw caseOpponentError;
+          caseIds = caseOpponents.map((co) => co.case_id);
+        }
 
-        if (opponentError) throw opponentError;
+        // staff 역할의 사용자에 대한 접근 제어
+        if (user.role === "staff") {
+          // staff가 담당자로 등록된 case들만 가져오기 위해 추가 조건
+          const { data: caseStaffs, error: caseStaffError } = await supabase
+            .from("case_staff")
+            .select("case_id")
+            .eq("staff_id", user.id);
 
-        const opponentIds = opponents.map((o) => o.id);
+          if (caseStaffError) throw caseStaffError;
+          const staffCaseIds = caseStaffs.map((cs) => cs.case_id);
 
-        const { data: caseOpponents, error: caseOpponentError } = await supabase
-          .from("case_opponents")
-          .select("case_id")
-          .in("opponent_id", opponentIds);
+          // 검색 조건과 staff 접근 제어 조건 결합
+          caseIds = caseIds.filter((id) => staffCaseIds.includes(id));
+        }
 
-        if (caseOpponentError) throw caseOpponentError;
+        // 상태별로 검색 결과를 가져옵니다.
+        const { data, error, count } = await supabase
+          .from("cases")
+          .select(
+            `
+            *,
+            case_categories (id, name),
+            case_clients (client:users (id, name)),
+            case_staff (staff:users (id, name)),
+            case_opponents (opponent:opponents (id, name))
+          `,
+            { count: "exact" },
+          )
+          .in("id", caseIds)
+          .eq("status", status)
+          .order("start_date", { ascending: false })
+          .range(
+            (searchCaseData[status].page - 1) * pageSize,
+            searchCaseData[status].page * pageSize - 1,
+          );
 
-        caseIds = caseOpponents.map((co) => co.case_id);
+        if (error) throw error;
+
+        setSearchCaseData((prevData) => ({
+          ...prevData,
+          [status]: { ...prevData[status], cases: data, count },
+        }));
+      } catch (error) {
+        console.error(`Error fetching search ${status} cases:`, error);
       }
-
-      let queryBuilder = supabase.from("cases").select(
-        `
-        *,
-        case_categories (id, name),
-        case_clients (
-          client:users (id, name)
-        ),
-        case_staff (
-          staff:users (id, name)
-        ),
-        case_opponents (
-          opponent:opponents (id, name)
-        )
-      `,
-        { count: "exact" },
-      );
-
-      if (caseIds.length > 0) {
-        queryBuilder = queryBuilder.in("id", caseIds);
-      } else {
-        queryBuilder = queryBuilder.eq(
-          "id",
-          "00000000-0000-0000-0000-000000000000",
-        );
-      }
-
-      const { data, error, count } = await queryBuilder
-        .order("start_date", { ascending: false })
-        .range((searchPage - 1) * pageSize, searchPage * pageSize - 1);
-
-      if (error) throw error;
-
-      setSearchResults(data);
-      setSearchCount(count);
-    } catch (error) {
-      console.error("Error fetching search results:", error);
-    }
-  };
+    },
+    [formValues, user, searchCaseData, pageSize],
+  );
 
   const handlePageChange = (status, newPage) => {
     if (isSearching) {
+      setSearchCaseData((prevData) => ({
+        ...prevData,
+        [status]: { ...prevData[status], page: newPage },
+      }));
       setSearchPage(newPage);
     } else {
       setCaseData((prevData) => ({
@@ -227,20 +286,36 @@ const CaseManagementPage = () => {
     setSelectedCase(null);
   };
 
-  const hasCases = (status) => caseData[status].cases.length > 0;
-  const totalPages = (status) => Math.ceil(caseData[status].count / pageSize);
+  const hasCases = (status, isSearch) =>
+    isSearch
+      ? searchCaseData[status].cases.length > 0
+      : caseData[status].cases.length > 0;
+
+  const totalPagesCalc = (status, isSearch) =>
+    isSearch
+      ? Math.ceil(searchCaseData[status].count / pageSize)
+      : Math.ceil(caseData[status].count / pageSize);
 
   const onSearch = (data) => {
     setFormValues(data);
     setIsSearching(true);
     setSearchPage(1);
+    // Reset searchCaseData pages to 1
+    setSearchCaseData({
+      ongoing: { ...initialState, page: 1 },
+      scheduled: { ...initialState, page: 1 },
+      closed: { ...initialState, page: 1 },
+    });
   };
 
   const clearSearch = () => {
     setIsSearching(false);
     reset();
-    setSearchResults([]);
-    setSearchCount(0);
+    setSearchCaseData({
+      ongoing: initialState,
+      scheduled: initialState,
+      closed: initialState,
+    });
     setSearchPage(1);
   };
 
@@ -349,34 +424,48 @@ const CaseManagementPage = () => {
             </Button>
           </Flex>
 
-          {searchResults.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {searchResults.map((caseItem) => (
-                  <CaseCard
-                    key={caseItem.id}
-                    caseItem={caseItem}
-                    onClick={() => setSelectedCase(caseItem)}
-                    isAdmin={user?.role === "admin"}
-                    fetchCases={fetchSearchResults}
+          <Tabs.Root defaultValue="ongoing">
+            <Tabs.List>
+              <Tabs.Trigger value="ongoing">진행중인 사건</Tabs.Trigger>
+              <Tabs.Trigger value="scheduled">진행예정 사건</Tabs.Trigger>
+              <Tabs.Trigger value="closed">종료된 사건</Tabs.Trigger>
+            </Tabs.List>
+
+            {["ongoing", "scheduled", "closed"].map((status) => (
+              <Tabs.Content key={status} value={status}>
+                {hasCases(status, true) ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                    {searchCaseData[status].cases.map((caseItem) => (
+                      <CaseCard
+                        key={caseItem.id}
+                        caseItem={caseItem}
+                        onClick={() => setSelectedCase(caseItem)}
+                        isAdmin={user?.role === "admin"}
+                        fetchCases={() => fetchSearchResults(status)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Flex justify="center">
+                    <Text size="3" className="text-center mt-8">
+                      {status === "ongoing"
+                        ? "진행중인 사건이 없습니다."
+                        : status === "scheduled"
+                          ? "진행예정 사건이 없습니다."
+                          : "종료된 사건이 없습니다."}
+                    </Text>
+                  </Flex>
+                )}
+                {totalPagesCalc(status, true) > 1 && (
+                  <Pagination
+                    currentPage={searchCaseData[status].page}
+                    totalPages={totalPagesCalc(status, true)}
+                    onPageChange={(page) => handlePageChange(status, page)}
                   />
-                ))}
-              </div>
-              {Math.ceil(searchCount / pageSize) > 1 && (
-                <Pagination
-                  currentPage={searchPage}
-                  totalPages={Math.ceil(searchCount / pageSize)}
-                  onPageChange={(page) => handlePageChange(null, page)}
-                />
-              )}
-            </>
-          ) : (
-            <Flex justify="center">
-              <Text size="3" className="text-center mt-8">
-                검색 결과가 없습니다.
-              </Text>
-            </Flex>
-          )}
+                )}
+              </Tabs.Content>
+            ))}
+          </Tabs.Root>
         </>
       ) : (
         <Tabs.Root defaultValue="ongoing">
@@ -388,7 +477,7 @@ const CaseManagementPage = () => {
 
           {["ongoing", "scheduled", "closed"].map((status) => (
             <Tabs.Content key={status} value={status}>
-              {hasCases(status) ? (
+              {hasCases(status, false) ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                   {caseData[status].cases.map((caseItem) => (
                     <CaseCard
@@ -411,10 +500,10 @@ const CaseManagementPage = () => {
                   </Text>
                 </Flex>
               )}
-              {totalPages(status) > 1 && (
+              {totalPagesCalc(status, false) > 1 && (
                 <Pagination
                   currentPage={caseData[status].page}
-                  totalPages={totalPages(status)}
+                  totalPages={totalPagesCalc(status, false)}
                   onPageChange={(page) => handlePageChange(status, page)}
                 />
               )}
