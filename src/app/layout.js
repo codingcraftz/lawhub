@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import "./layout.css";
 import { Nanum_Gothic } from "next/font/google";
 import "react-datepicker/dist/react-datepicker.css";
+import Footer from "@/components/Footer";
 
 const nanumGothic = Nanum_Gothic({
   subsets: ["latin"],
@@ -32,14 +33,17 @@ export default function RootLayout({ children }) {
               style={{ minHeight: "100vh" }}
             >
               <Header />
+
               <div
                 style={{
+                  flex: 1,
                   backgroundColor: "var(--gray-2)",
                   width: "100%",
                 }}
               >
                 {children}
               </div>
+              <Footer />
             </Theme>
           </ThemeProvider>
         </UserProvider>
