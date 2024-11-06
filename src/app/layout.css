@@ -8,10 +8,6 @@ svg {
   color: var(--gray-12);
 }
 
-/* * {
-  font-size: 18px;
-} */
-
 html,
 body {
   box-sizing: border-box;
@@ -31,6 +27,8 @@ a {
 
 .radix-themes {
   background-color: var(--gray-2);
+  display: flex;
+  flex-direction: column;
 }
 
 div[data-radix-popper-content-wrapper] {
