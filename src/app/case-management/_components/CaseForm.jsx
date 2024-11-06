@@ -21,6 +21,7 @@ const schema = yup.object().shape({
 });
 
 const clientRoles = [
+  "미정",
   "원고",
   "피고",
   "신청인",
@@ -39,7 +40,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isOpponentModalOpen, setIsOpponentModalOpen] = useState(false);
-  const [clientRole, setClientRole] = useState("의뢰인");
+  const [clientRole, setClientRole] = useState("미정");
   const [isScheduled, setIsScheduled] = useState(
     caseData?.status === "scheduled",
   );

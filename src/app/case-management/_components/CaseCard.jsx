@@ -12,7 +12,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const categoryStyle = getCategoryColor(caseItem.case_categories.name);
+  const categoryStyle = getCategoryColor(caseItem.case_categories?.name);
 
   if (
     !caseItem ||
@@ -63,7 +63,7 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
             <Text size="3">
               <strong>의뢰인:</strong> {clientNames}
             </Text>
-            {caseItem.client_role && (
+            {caseItem.client_role && caseItem.client_role !== "미정" && (
               <Badge
                 size="3"
                 style={{
