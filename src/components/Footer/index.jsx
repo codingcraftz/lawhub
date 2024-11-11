@@ -12,6 +12,9 @@ const Footer = () => {
     <footer className="p-4" style={{ background: "var(--gray-2)" }}>
       <div className="container mx-auto text-center">
         <div className="mb-4">
+          <Link href="/term-of-service" className="mr-4">
+            이용약관
+          </Link>
           <Link href="/privacy-policy" className="mr-4">
             개인정보처리방침
           </Link>

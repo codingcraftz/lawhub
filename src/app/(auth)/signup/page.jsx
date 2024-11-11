@@ -101,28 +101,28 @@ const SignupPage = () => {
               회원가입
             </Text>
             {[
-              "email",
-              "name",
-              "phoneNumber",
-              "password",
-              "passwordConfirm",
-            ].map((field) => (
+              { field: "email", placeholder: "이메일 (필수)", type: "email" },
+              { field: "name", placeholder: "이름 (필수)", type: "text" },
+              {
+                field: "phoneNumber",
+                placeholder: "전화번호 (필수)",
+                type: "text",
+              },
+              {
+                field: "password",
+                placeholder: "비밀번호 (필수)",
+                type: "password",
+              },
+              {
+                field: "passwordConfirm",
+                placeholder: "비밀번호 확인 (필수)",
+                type: "password",
+              },
+            ].map(({ field, placeholder, type }) => (
               <Box key={field}>
                 <input
-                  type={
-                    field.includes("password")
-                      ? "password"
-                      : field === "email"
-                        ? "email"
-                        : "text"
-                  }
-                  placeholder={
-                    field === "phoneNumber"
-                      ? "전화번호"
-                      : field === "passwordConfirm"
-                        ? "비밀번호 확인"
-                        : field
-                  }
+                  type={type}
+                  placeholder={placeholder}
                   {...register(field)}
                   className="w-full p-2 border rounded-md"
                   style={{
@@ -140,7 +140,7 @@ const SignupPage = () => {
                 name="birthDate"
                 render={({ field }) => (
                   <CustomDatePicker
-                    title="생년월일"
+                    title="생년월일 (필수)"
                     selectedDate={field.value}
                     onDateChange={(date) =>
                       field.onChange(
@@ -163,7 +163,7 @@ const SignupPage = () => {
                   border: "1px solid var(--gray-6)",
                 }}
               >
-                <option value="">성별 선택</option>
+                <option value="">성별 선택 (필수)</option>
                 <option value="male">남성</option>
                 <option value="female">여성</option>
                 <option value="other">기타</option>
@@ -174,7 +174,23 @@ const SignupPage = () => {
             </Box>
             <Flex gap="2" align="center">
               <input type="checkbox" {...register("agreeTerms")} />
-              <Text size="2">이용약관 및 개인정보 처리방침에 동의합니다</Text>
+              <Text size="2">
+                <span className="text-red-500">(필수) </span>
+                <Link
+                  className="text-blue-500 underline"
+                  href="/term-of-service"
+                >
+                  이용약관
+                </Link>
+                {" 및 "}
+                <Link
+                  className="text-blue-500 underline"
+                  href="/privacy-policy"
+                >
+                  개인정보처리방침
+                </Link>
+                에 동의합니다
+              </Text>
             </Flex>
             <Text color="red" size="1" className="min-h-[20px] mt-1">
               {errors.agreeTerms?.message || " "}
