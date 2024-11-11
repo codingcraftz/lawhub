@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { Box, Text, Card } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -7,17 +7,21 @@ import dynamic from "next/dynamic";
 const Logo3D = dynamic(() => import("../components/Logo3D"), { ssr: false });
 
 const HomePage = () => {
-  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('Service worker registered:', registration);
-      })
-      .catch((error) => {
-        console.error('Service worker registration failed:', error);
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((registration) => {
+            console.log("Service worker registered:", registration);
+          })
+          .catch((error) => {
+            console.error("Service worker registration failed:", error);
+          });
       });
-  });
+    }
+  }, []);
+
   return (
     <Box className="w-full min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 sm:px-6 lg:px-8">
       <Box className="w-full h-32 sm:h-48 md:h-64 flex items-center justify-center">
