@@ -5,9 +5,9 @@ const TermsOfService = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">이용약관</h1>
       <p className="mb-4">
-        본 약관은 LawHub(이하 "회사")가 제공하는 서비스(이하 "서비스")를
-        이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항 등을 규정함을
-        목적으로 합니다.
+        본 약관은 LawHub(이하 &quot;회사&quot;)가 제공하는 서비스(이하
+        &quot;서비스&quot;)를 이용함에 있어 회사와 이용자의 권리, 의무 및
+        책임사항 등을 규정함을 목적으로 합니다.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-2">1. 목적</h2>
@@ -18,15 +18,17 @@ const TermsOfService = () => {
 
       <h2 className="text-xl font-semibold mt-6 mb-2">2. 용어의 정의</h2>
       <ul className="list-disc list-inside mb-4">
-        <li>"서비스"란 회사가 제공하는 온라인 서비스를 의미합니다.</li>
         <li>
-          "이용자"란 회사의 서비스에 접속하여 본 약관에 따라 회사가 제공하는
-          서비스를 이용하는 회원 및 비회원을 말합니다.
+          &quot;서비스&quot;란 회사가 제공하는 온라인 서비스를 의미합니다.
         </li>
         <li>
-          "회원"이란 회사에 개인정보를 제공하여 회원등록을 한 자로서, 회사의
-          정보를 지속적으로 제공받으며, 회사가 제공하는 서비스를 계속적으로
-          이용할 수 있는 자를 말합니다.
+          &quot;이용자&quot;란 회사의 서비스에 접속하여 본 약관에 따라 회사가
+          제공하는 서비스를 이용하는 회원 및 비회원을 말합니다.
+        </li>
+        <li>
+          &quot;회원&quot;이란 회사에 개인정보를 제공하여 회원등록을 한 자로서,
+          회사의 정보를 지속적으로 제공받으며, 회사가 제공하는 서비스를
+          계속적으로 이용할 수 있는 자를 말합니다.
         </li>
       </ul>
 
