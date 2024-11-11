@@ -1,4 +1,4 @@
-// public/sw.js
+// worker/sw.js
 
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute } from "workbox-precaching";

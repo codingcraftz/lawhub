@@ -20,6 +20,7 @@ export default function SendNotificationPage() {
 
   const sendNotification = async () => {
     if (!selectedUserId || !message) return;
+    console.log(selectedUserId);
 
     await fetch("/api/sendNotification", {
       method: "POST",

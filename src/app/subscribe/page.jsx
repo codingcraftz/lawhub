@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase"; // Supabase 클라이언트 설정을 가져옵니다.
+import { useUser } from "@/hooks/useUser";
 
-export default function NotificationPermission({ user_id }) {
+export default function NotificationPermission() {
   const [permissionStatus, setPermissionStatus] = useState("default");
+  const { user } = useUser();
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -22,12 +25,17 @@ export default function NotificationPermission({ user_id }) {
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
       });
 
-      // 구독 정보를 저장하는 요청
-      await fetch("/api/saveSubscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscription, user_id }),
-      });
+      // Supabase 클라이언트를 통해 구독 정보 직접 삽입
+      const { error } = await supabase
+        .from("notifications_subscriptions")
+        .insert([{ user_id: user.id, subscription }]);
+
+      if (error) {
+        console.error("Error saving subscription:", error);
+        alert("구독 정보를 저장하는 중 오류가 발생했습니다.");
+      } else {
+        alert("구독 정보가 성공적으로 저장되었습니다.");
+      }
     }
   };
 
