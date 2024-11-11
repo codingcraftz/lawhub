@@ -1,3 +1,5 @@
+// src/components/LoadingSpinner/index.jsx
+
 import "./index.css";
 
 const LoadingSpinner = () => {
