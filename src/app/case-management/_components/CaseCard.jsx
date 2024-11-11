@@ -83,11 +83,15 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
           </Text>
           <Text size="2" color="gray">
             <strong>시작일:</strong>{" "}
-            {new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            })}
+            {caseItem.start_date ? (
+              new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              })
+            ) : (
+              <Text>시작 예정 사건입니다.</Text>
+            )}
           </Text>
           {caseItem.end_date && (
             <Text size="2" color="gray">

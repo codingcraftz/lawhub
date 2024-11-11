@@ -16,8 +16,15 @@ import CustomDatePicker from "@/components/CustomDatePicker";
 const schema = yup.object().shape({
   title: yup.string().required("제목은 필수입니다"),
   description: yup.string(),
-  start_date: yup.date().required("시작일을 입력해주세요"),
   category_id: yup.string().required("카테고리를 선택해주세요"),
+  start_date: yup
+    .date()
+    .nullable()
+    .when("isDateUndefined", {
+      is: true,
+      then: (schema) => schema.nullable().notRequired(),
+      otherwise: (schema) => schema.required("시작일을 입력해주세요"),
+    }),
 });
 
 const clientRoles = [
@@ -40,6 +47,9 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isOpponentModalOpen, setIsOpponentModalOpen] = useState(false);
+  const [isDateUndefined, setIsDateUndefined] = useState(
+    caseData?.start_date === null,
+  );
   const [clientRole, setClientRole] = useState("미정");
   const [isScheduled, setIsScheduled] = useState(
     caseData?.status === "scheduled",
@@ -49,11 +59,19 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
     control,
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: caseData || {},
   });
+  const handleDateUndefinedChange = (checked) => {
+    setIsDateUndefined(checked);
+    setValue("isDateUndefined", checked);
+    if (checked) {
+      setValue("start_date", null); // 시작일을 null로 설정
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -256,7 +274,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           )}
         </Box>
 
-        {/* 카테고리 선택 */}
         <Box>
           <select
             {...register("category_id")}
@@ -281,7 +298,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           )}
         </Box>
 
-        {/* 사건 설명 */}
         <Box>
           <textarea
             placeholder="사건 설명"
@@ -297,21 +313,33 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         </Box>
 
         <Box>
-          <Controller
-            control={control}
-            name="start_date"
-            render={({ field }) => (
-              <CustomDatePicker
-                title="사건 시작 날짜 선택"
-                selectedDate={field.value}
-                onDateChange={(date) => field.onChange(date)}
+          <Flex align="center" gap="3">
+            <Text size="3">시작 날짜</Text>
+            <Box>
+              <input
+                className="mr-1"
+                type="checkbox"
+                checked={isDateUndefined}
+                onChange={(e) => handleDateUndefinedChange(e.target.checked)}
               />
-            )}
-          />
+              <label htmlFor="date-undefined-checkbox">미정</label>
+            </Box>
+          </Flex>
+          {!isDateUndefined && (
+            <Controller
+              control={control}
+              name="start_date"
+              render={({ field }) => (
+                <CustomDatePicker
+                  title="사건 시작 날짜 선택"
+                  selectedDate={field.value}
+                  onDateChange={(date) => field.onChange(date)}
+                />
+              )}
+            />
+          )}
           {errors.start_date && (
-            <Text color="red" size="2">
-              {errors.start_date.message}
-            </Text>
+            <Text color="red">{errors.start_date.message}</Text>
           )}
         </Box>
         <Box>
@@ -335,7 +363,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           </select>
         </Box>
 
-        {/* 의뢰인 선택 */}
         <Box>
           <Button
             className="mr-2"
