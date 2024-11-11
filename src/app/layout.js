@@ -18,9 +18,10 @@ const nanumGothic = Nanum_Gothic({
 export const metadata = {
   title: "LawHub",
   description: "Legal management service",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/LawHub_Logo_192.png",
-    apple: "/LawHub_Logo_192.png",
+    icon: "/LawHub_logo_192.png",
+    apple: "/LawHub_logo_192.png",
   },
 };
 
