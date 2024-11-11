@@ -1,9 +1,14 @@
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-});
+const withPWA = require("next-pwa");
+const isProduction = process.env.NODE_ENV === "production";
 
-module.exports = withPWA({
-  // 기타 설정
-});
+const config = {
+  // ...원래 next config 파일
+};
+
+const nextConfig = withPWA({
+  dest: "public",
+  disable: !isProduction,
+  runtimeCaching: [],
+})(config);
+
+module.exports = nextConfig;
