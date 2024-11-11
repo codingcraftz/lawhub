@@ -1,3 +1,5 @@
+// src/app/loading.js
+
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Loading = () => {

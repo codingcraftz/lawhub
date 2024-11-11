@@ -431,7 +431,7 @@ const CaseManagementPage = () => {
           </Flex>
           {/* 추가된 부분: 검색어를 표시하는 메시지 */}
           <Text size="4" weight="medium" className="mb-4">
-            &quot;[{category}] {formValues.searchTerm}&quot;로 검색한
+            &quot;[{category}] {formValues.searchTerm}&quot;을(를) 검색한
             결과입니다.
           </Text>
 
