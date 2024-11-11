@@ -17,12 +17,27 @@ const nanumGothic = Nanum_Gothic({
 
 export const metadata = {
   title: "LawHub",
-  description: "Legal management platform",
+  description: "Legal management service",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/LawHub_logo_192.png",
+    shortcut: "/LawHub_logo_192.png",
+    apple: "/LawHub_logo_192.png",
+    other: {
+      rel: "apple-touch-icon-precomposed",
+      url: "/LawHub_logo_192.png",
+    },
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
+      <head>
+        <meta name="theme-color" content="#000000" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body className={`${nanumGothic.className} root-portal`}>
         <UserProvider>
           <ThemeProvider attribute="class">
