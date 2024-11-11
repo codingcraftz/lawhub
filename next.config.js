@@ -7,7 +7,6 @@ const config = {
 
 const nextConfig = withPWA({
   dest: "public",
-  disable: !isProduction,
   runtimeCaching: [],
 })(config);
 
