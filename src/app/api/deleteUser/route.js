@@ -6,8 +6,6 @@ import { supabaseAdmin } from "@/utils/supabaseAdmin";
 export async function POST(request) {
   try {
     const { id } = await request.json();
-
-    // 사용자 삭제
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
 
     if (error) throw error;
