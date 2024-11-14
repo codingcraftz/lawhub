@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
+import AppInstallPrompt from "@/components/AppInstallPrompt";
 
 export default function NotificationSettings() {
   const [permissionStatus, setPermissionStatus] = useState("default");
