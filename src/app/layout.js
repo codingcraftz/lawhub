@@ -15,10 +15,10 @@ const nanumGothic = Nanum_Gothic({
   weight: ["400", "700"],
 });
 
-const APP_NAME = "PWA App";
-const APP_DEFAULT_TITLE = "My Awesome PWA App";
-const APP_TITLE_TEMPLATE = "%s - PWA App";
-const APP_DESCRIPTION = "Best PWA app in the world!";
+const APP_NAME = "LawHub";
+const APP_DEFAULT_TITLE = "LawHub";
+const APP_TITLE_TEMPLATE = "%s - legal services ";
+const APP_DESCRIPTION = "Legal services";
 
 export const metadata = {
   applicationName: APP_NAME,

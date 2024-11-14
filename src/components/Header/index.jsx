@@ -21,7 +21,7 @@ const NAV_LIST = [
     path: "/updates",
     roles: ["admin", "staff", "client"],
   },
-  { title: "test", path: "/subscribe", roles: ["admin", "staff", "client"] },
+  { title: "test", path: "/subscribe", roles: ["admin"] },
 ];
 
 const Header = () => {
