@@ -9,6 +9,16 @@ export default function NotificationSettings() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { user } = useUser();
 
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    // iOS 설치 유도 확인
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (isIOS && !localStorage.getItem("iosInstalled")) {
+      setShowInstallPrompt(true);
+    }
+  }, []);
+
   useEffect(() => {
     // 브라우저 알림 권한 상태 설정
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -73,6 +83,9 @@ export default function NotificationSettings() {
 
   return (
     <div className="flex flex-col items-center space-y-6 p-6 bg-gray-100 rounded-lg shadow-lg max-w-md mx-auto mt-8">
+      {showInstallPrompt && (
+        <AppInstallPrompt onDismiss={() => setShowInstallPrompt(false)} />
+      )}
       <h1 className="text-2xl font-bold text-gray-800 mb-4">알림 설정</h1>
 
       {/* Step 1: 브라우저 알림 권한 요청 */}
