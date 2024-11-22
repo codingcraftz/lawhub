@@ -100,7 +100,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
           case_timeline_id: result.data[0].id,
           requester_id: user.id,
           receiver_id: data.requested_to,
-          status: "pending",
+          status: "ongoing",
         });
 
         await supabase.from("notifications").insert({

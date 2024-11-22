@@ -102,7 +102,6 @@ const TodosPage = () => {
           throw new Error("Error completing request in requests table");
         }
 
-        // 2. case_timelines 테이블에서 type 업데이트
         const { error: timelineError } = await supabase
           .from("case_timelines")
           .update({ type: "요청완료" })
@@ -112,8 +111,16 @@ const TodosPage = () => {
           throw new Error("Error updating type in case_timelines table");
         }
 
-        // 완료 후 데이터 재로딩
-        fetchRequests("sent", requestsSent.page);
+        setRequestsReceived((prev) => ({
+          ...prev,
+          data: prev.data.filter((request) => request.id !== requestId),
+        }));
+
+        setRequestsSent((prev) => ({
+          ...prev,
+          data: prev.data.filter((request) => request.id !== requestId),
+        }));
+
         fetchRequests("closed", closedRequests.page);
       } catch (error) {
         console.error(error.message);
@@ -141,6 +148,9 @@ const TodosPage = () => {
               onRequestClick={setSelectedRequest}
               paginationData={requestsReceived}
               onPageChange={(page) => handlePageChange("received", page)}
+              onRequestComplete={(requestId, timelineId) =>
+                handleRequestCompletion(requestId, timelineId)
+              }
             />
           </Tabs.Content>
 
