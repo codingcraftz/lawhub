@@ -34,14 +34,6 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
           .join(", ")
       : "없음";
 
-  // const staffNames =
-  //   caseItem.case_staff && caseItem.case_staff.length > 0
-  //     ? caseItem.case_staff
-  //         .map((s) => s.staff && s.staff.name)
-  //         .filter((name) => name)
-  //         .join(", ")
-  //     : "없음";
-
   return (
     <>
       <Card
