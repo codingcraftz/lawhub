@@ -1,10 +1,6 @@
-import withPWAInit from "@ducanh2912/next-pwa";
+// next.config.js 또는 next.config.mjs
+const nextConfig = {
+  reactStrictMode: false, // StrictMode 비활성화
+};
 
-const withPWA = withPWAInit({
-  dest: "public",
-  customWorkerDir: "worker", // 커스텀 워커 디렉토리 설정
-});
-
-export default withPWA({
-  // Your Next.js config
-});
+export default nextConfig; // 또는 module.exports = nextConfig;
