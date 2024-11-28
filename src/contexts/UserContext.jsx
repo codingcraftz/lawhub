@@ -4,7 +4,7 @@
 
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import * as Dialog from "@radix-ui/react-dialog"; // 알림 모달에 필요한 Dialog 가져오기
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@radix-ui/themes";
 import { useRouter } from "next/navigation";
 
@@ -12,15 +12,14 @@ export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 상태 추가
-  const [modalMessage, setModalMessage] = useState(""); // 모달 메시지 상태 추가
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
   const router = useRouter();
 
   const fetchUser = useCallback(async () => {
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
-    console.log(authUser);
 
     if (authUser) {
       const { data: profile, error } = await supabase

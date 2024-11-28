@@ -180,7 +180,7 @@ const CaseCompactView = ({ fetchLimit = 20 }) => {
                           className="border px-4 py-2 truncate"
                           style={{ borderColor: "var(--gray-6)" }}
                         >
-                          <Text size="4">{caseItem.title}</Text>
+                          <Text>{caseItem.title}</Text>
                         </td>
                         <td
                           className="border px-4 py-2 truncate"

@@ -75,7 +75,6 @@ const DialogContent = ({ selectedRequest, user }) => {
     }
   };
 
-  console.log(selectedRequest);
   return (
     <Dialog.Content style={{ maxWidth: 600 }}>
       <Dialog.Title>
