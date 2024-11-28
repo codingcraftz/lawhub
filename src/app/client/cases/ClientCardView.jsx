@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Tabs, Dialog, Button } from "@radix-ui/themes";
+import { Box, Flex, Text, Tabs, Dialog, Button } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import ClientCaseCard from "./ClientCaseCard";
 import ClientCaseTimeline from "./ClientCaseTimeline";
