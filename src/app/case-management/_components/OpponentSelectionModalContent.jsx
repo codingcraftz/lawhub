@@ -137,7 +137,6 @@ const OpponentSelectionModalContent = ({
             }}
           />
 
-          {/* 상대방 목록 */}
           <Box mt="3" style={{ maxHeight: "300px", overflowY: "auto" }}>
             {filteredOpponents.map((opponent) => (
               <Flex key={opponent.id} align="center" mt="2">
@@ -149,16 +148,22 @@ const OpponentSelectionModalContent = ({
                 />
                 <Tooltip
                   content={
-                    <Box style={{ padding: "0.5rem", fontSize: "12px" }}>
+                    <Box
+                      style={{
+                        padding: "0.5rem",
+                        fontSize: "12px",
+                        color: "var(--gray-12)",
+                      }}
+                    >
                       <p>
-                        <strong>전화번호:</strong>
+                        <strong>전화번호: </strong>
                         {formatPhoneNumber(opponent.phone_number)}
                       </p>
                       <p>
-                        <strong>주소:</strong> {opponent.address}
+                        <strong>주소: </strong> {opponent.address}
                       </p>
                       <p>
-                        <strong>주민등록번호:</strong>
+                        <strong>주민등록번호: </strong>
                         {formatRegistrationNumber(opponent.registration_number)}
                       </p>
                     </Box>
