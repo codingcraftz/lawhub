@@ -24,7 +24,7 @@ const getTypeColor = (type) => {
   }
 };
 
-const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
+const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
   const [editingDeadline, setEditingDeadline] = useState(null);
@@ -219,6 +219,9 @@ const CaseTimeline = ({ caseId, caseStatus, onClose }) => {
   return (
     <Box>
       <Flex direction="column" gap="4">
+        <Text style={{ color: "var(--gray-9)", fontSize: "0.9rem" }}>
+          {description}
+        </Text>
         {deadlines.length > 0 && (
           <Box mb="4">
             <Flex direction="column" gap="2">

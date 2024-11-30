@@ -23,7 +23,7 @@ import { supabase } from "@/utils/supabase";
 import DialogContent from "@/app/todos/DialogContent";
 import { useUser } from "@/hooks/useUser";
 
-const ClientCaseTimeline = ({ caseId, onClose }) => {
+const ClientCaseTimeline = ({ caseId, description, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
   const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
@@ -108,143 +108,154 @@ const ClientCaseTimeline = ({ caseId, onClose }) => {
   };
 
   return (
-    <Box>
-      {deadlines.length > 0 && (
-        <Box mb="4">
-          <Flex direction="column" gap="2">
-            {deadlines.map((deadline) => (
-              <Flex
-                key={deadline.id}
-                justify="between"
-                align="center"
-                className="p-2 border rounded-md"
-                style={{
-                  backgroundColor: "var(--gray-2)",
-                  border: "1px solid var(--gray-6)",
-                }}
-              >
-                <Text size="3" weight="bold">
-                  {deadline.type}
-                </Text>
-                <Text size="2" color="gray">
-                  {new Date(deadline.deadline_date).toLocaleDateString(
-                    "ko-KR",
-                    {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                    },
-                  )}
-                </Text>
-              </Flex>
-            ))}
-          </Flex>
-        </Box>
-      )}
-
-      <Flex direction="column" gap="4">
-        <Text size="5" weight="bold">
-          사건 타임라인
-        </Text>
-        <Flex direction="column" gap="3">
-          {timelineItems.map((item) => (
-            <Box
-              key={item.id}
-              style={{
-                borderLeft: "2px solid var(--gray-6)",
-                paddingLeft: "1rem",
-                position: "relative",
-              }}
-            >
-              <Box
-                style={{
-                  width: "10px",
-                  height: "10px",
-                  borderRadius: "50%",
-                  background: "var(--gray-6)",
-                  position: "absolute",
-                  left: "-6px",
-                  top: "6px",
-                }}
-              />
-              <Flex justify="between" align="center">
-                <Flex align="center" gap="2">
-                  <Text size="2" color="gray">
-                    {new Date(item.created_at).toLocaleString("ko-KR", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    })}
-                  </Text>
-                  {item.type === "요청" ? (
-                    <Flex>
-                      <Badge className={getTypeColor(item.type)}>
-                        요청(진행중)
-                      </Badge>
-                    </Flex>
-                  ) : item.type === "요청완료" ? (
-                    <Flex>
-                      <Badge className={getTypeColor(item.type)}>
-                        요청(완료)
-                      </Badge>
-                    </Flex>
-                  ) : (
-                    <Badge className={getTypeColor(item.type)}>
-                      {item.type}
-                    </Badge>
-                  )}
-                  {(item.type === "요청" || item.type === "요청완료") && (
-                    <Button
-                      size="1"
-                      variant="ghost"
-                      onClick={() => openCommentDialog(item)}
-                    >
-                      요청 상세 보기
-                    </Button>
-                  )}
-                </Flex>
-              </Flex>
-              <Flex className="justify-between">
-                <Text size="3" mt="1">
-                  {item.description}
-                </Text>
-                <Text
-                  size="2"
-                  color="gray"
-                  mt="1"
+    <>
+      <Text
+        style={{
+          color: "var(--gray-9)",
+          fontSize: "0.9rem",
+          display: "inline-block",
+          paddingBottom: "1rem",
+        }}
+      >
+        {description}
+      </Text>
+      <Box>
+        {deadlines.length > 0 && (
+          <Box mb="4">
+            <Flex direction="column" gap="2">
+              {deadlines.map((deadline) => (
+                <Flex
+                  key={deadline.id}
+                  justify="between"
+                  align="center"
+                  className="p-2 border rounded-md"
                   style={{
-                    flexShrink: 0,
-                    whiteSpace: "nowrap",
-                    marginLeft: "8px",
+                    backgroundColor: "var(--gray-2)",
+                    border: "1px solid var(--gray-6)",
                   }}
                 >
-                  {item.created_by?.name &&
-                    (item.type === "요청" && item.requested_to?.name
-                      ? `${item.created_by.name} → ${item.requested_to.name}`
-                      : item.created_by.name)}
-                </Text>
-              </Flex>
-            </Box>
-          ))}
+                  <Text size="3" weight="bold">
+                    {deadline.type}
+                  </Text>
+                  <Text size="2" color="gray">
+                    {new Date(deadline.deadline_date).toLocaleDateString(
+                      "ko-KR",
+                      {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                      },
+                    )}
+                  </Text>
+                </Flex>
+              ))}
+            </Flex>
+          </Box>
+        )}
+
+        <Flex direction="column" gap="4">
+          <Text size="5" weight="bold">
+            사건 타임라인
+          </Text>
+          <Flex direction="column" gap="3">
+            {timelineItems.map((item) => (
+              <Box
+                key={item.id}
+                style={{
+                  borderLeft: "2px solid var(--gray-6)",
+                  paddingLeft: "1rem",
+                  position: "relative",
+                }}
+              >
+                <Box
+                  style={{
+                    width: "10px",
+                    height: "10px",
+                    borderRadius: "50%",
+                    background: "var(--gray-6)",
+                    position: "absolute",
+                    left: "-6px",
+                  }}
+                />
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Text size="2" color="gray">
+                      {new Date(item.created_at).toLocaleString("ko-KR", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                    </Text>
+                    {item.type === "요청" ? (
+                      <Flex>
+                        <Badge className={getTypeColor(item.type)}>
+                          요청(진행중)
+                        </Badge>
+                      </Flex>
+                    ) : item.type === "요청완료" ? (
+                      <Flex>
+                        <Badge className={getTypeColor(item.type)}>
+                          요청(완료)
+                        </Badge>
+                      </Flex>
+                    ) : (
+                      <Badge className={getTypeColor(item.type)}>
+                        {item.type}
+                      </Badge>
+                    )}
+                    {(item.type === "요청" || item.type === "요청완료") && (
+                      <Button
+                        size="1"
+                        variant="ghost"
+                        onClick={() => openCommentDialog(item)}
+                      >
+                        요청 상세 보기
+                      </Button>
+                    )}
+                  </Flex>
+                </Flex>
+                <Flex className="justify-between">
+                  <Text size="3" mt="1">
+                    {item.description}
+                  </Text>
+                  <Text
+                    size="2"
+                    color="gray"
+                    mt="1"
+                    style={{
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                      marginLeft: "8px",
+                    }}
+                  >
+                    {item.created_by?.name &&
+                      (item.type === "요청" && item.requested_to?.name
+                        ? `${item.created_by.name} → ${item.requested_to.name}`
+                        : item.created_by.name)}
+                  </Text>
+                </Flex>
+              </Box>
+            ))}
+          </Flex>
+          <Flex justify="end" mt="4">
+            <Button size="2" onClick={onClose}>
+              확인
+            </Button>
+          </Flex>
         </Flex>
-        <Flex justify="end" mt="4">
-          <Button size="2" onClick={onClose}>
-            확인
-          </Button>
-        </Flex>
-      </Flex>
-      {isCommentDialogOpen && selectedRequest && (
-        <Dialog.Root
-          open={isCommentDialogOpen}
-          onOpenChange={closeCommentDialog}
-        >
-          <DialogContent selectedRequest={selectedRequest} user={user} />
-        </Dialog.Root>
-      )}
-    </Box>
+        {isCommentDialogOpen && selectedRequest && (
+          <Dialog.Root
+            open={isCommentDialogOpen}
+            onOpenChange={closeCommentDialog}
+          >
+            <DialogContent selectedRequest={selectedRequest} user={user} />
+          </Dialog.Root>
+        )}
+      </Box>
+    </>
   );
 };
 
