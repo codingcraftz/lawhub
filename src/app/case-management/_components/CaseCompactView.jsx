@@ -130,9 +130,15 @@ const CaseCompactView = ({ fetchLimit = 20 }) => {
           <Tabs.Content key={status} value={status}>
             {caseData[status].cases.length > 0 ? (
               <>
-                <table className="w-full table-auto">
-                  <thead>
+                <table className="w-full table-auto text-sm">
+                  <thead className="font-semibold">
                     <tr style={{ backgroundColor: "var(--gray-6)" }}>
+                      <th
+                        className="border px-4 py-2 text-left"
+                        style={{ borderColor: "var(--gray-6)" }}
+                      >
+                        타입
+                      </th>
                       <th
                         className="border px-4 py-2 text-left"
                         style={{ borderColor: "var(--gray-6)" }}
@@ -176,6 +182,13 @@ const CaseCompactView = ({ fetchLimit = 20 }) => {
                           backgroundColor: "var(--gray-1)",
                         }}
                       >
+                        <td
+                          className="border px-4 py-2 truncate"
+                          style={{ borderColor: "var(--gray-6)" }}
+                        >
+                          <Text>{caseItem.case_categories.name}</Text>
+                        </td>
+
                         <td
                           className="border px-4 py-2 truncate"
                           style={{ borderColor: "var(--gray-6)" }}
