@@ -72,7 +72,7 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
       } finally {
-        setIsFetching(false); // 호출 종료 시 상태 변경
+        setIsFetching(false);
       }
     },
     [user, caseData, fetchLimit, isFetching],
@@ -82,7 +82,7 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
     if (user && currentTab) {
       fetchCases(currentTab);
     }
-  }, [user, currentTab]); // 의존성 명확히
+  }, [user, currentTab]);
 
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
@@ -205,6 +205,7 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
             </Dialog.Close>
             <ClientCaseTimeline
               caseId={selectedCase.id}
+              description={selectedCase.description}
               onClose={() => setSelectedCase(null)}
             />
           </Dialog.Content>

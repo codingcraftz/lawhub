@@ -156,6 +156,7 @@ const ClientCardView = ({ pageSize = 9 }) => {
             </Dialog.Close>
             <ClientCaseTimeline
               caseId={selectedCase.id} // 사건 ID 전달
+              description={selectedCase.description}
               onClose={() => setSelectedCase(null)} // 닫기 핸들러
             />
           </Dialog.Content>

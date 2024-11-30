@@ -269,6 +269,7 @@ const CaseCompactView = ({ fetchLimit = 20 }) => {
             <CaseTimeline
               caseId={selectedCase?.id}
               caseStatus={selectedCase?.status}
+              description={selectedCase?.description}
               onClose={() => setSelectedCase(null)}
             />
           </Dialog.Content>
