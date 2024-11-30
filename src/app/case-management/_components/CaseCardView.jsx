@@ -11,7 +11,7 @@ import Pagination from "@/components/Pagination";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 import { useForm } from "react-hook-form";
 
-const CaseCardView = () => {
+const CaseCardView = ({ newCaseTrigger }) => {
   const initialState = {
     cases: [],
     count: 0,
@@ -31,7 +31,6 @@ const CaseCardView = () => {
   });
 
   const [selectedCase, setSelectedCase] = useState(null);
-  const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const { register, handleSubmit, reset } = useForm({
     defaultValues: { searchTerm: "", searchCategory: "client" },
   });
@@ -58,6 +57,7 @@ const CaseCardView = () => {
     caseData.ongoing.page,
     caseData.scheduled.page,
     caseData.closed.page,
+    newCaseTrigger,
   ]);
 
   const fetchCases = useCallback(
