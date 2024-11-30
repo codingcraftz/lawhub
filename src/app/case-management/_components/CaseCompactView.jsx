@@ -7,7 +7,8 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import CaseTimeline from "./CaseTimeline";
 import { useUser } from "@/hooks/useUser";
 
-const CaseCompactView = ({ fetchLimit = 20 }) => {
+const CaseCompactView = ({ newCaseTrigger }) => {
+  const fetchLimit = 20;
   const initialState = {
     cases: [],
     page: 1,
@@ -111,7 +112,7 @@ const CaseCompactView = ({ fetchLimit = 20 }) => {
     if (user) {
       fetchCases(currentTab);
     }
-  }, [user, currentTab]);
+  }, [user, currentTab, newCaseTrigger]);
 
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
