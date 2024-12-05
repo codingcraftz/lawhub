@@ -8,11 +8,13 @@ import CaseForm from "@/app/case-management/_components/CaseForm";
 import { getCategoryColor, getClientRoleColor } from "@/utils/util";
 import CaseDetails from "./CaseDetails";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import { useRouter } from "next/navigation";
 
-const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
+const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const categoryStyle = getCategoryColor(caseItem.case_categories?.name);
+  const router = useRouter();
 
   if (
     !caseItem ||
@@ -36,11 +38,15 @@ const CaseCard = ({ caseItem, onClick, isAdmin, fetchCases }) => {
     ? caseItem.case_staff.map((s) => s.staff && s.staff.name).join(", ")
     : "없음";
 
+  const handleCardClick = () => {
+    router.push(`/cases/${caseItem.id}`);
+  };
+
   return (
     <>
       <Card
         className="w-full cursor-pointer p-4 rounded-lg shadow-md transition-shadow duration-300 hover:shadow-lg"
-        onClick={onClick}
+        onClick={handleCardClick}
       >
         <Flex className="h-full" direction="column" gap="2">
           <Flex justify="between" align="flex-start">

@@ -1,3 +1,5 @@
+// src/app/case-management/page.jsx
+
 "use client";
 
 import React, { useState } from "react";
@@ -5,18 +7,45 @@ import { Dialog, Button, Switch } from "@radix-ui/themes";
 import CaseCompactView from "./_components/CaseCompactView";
 import CaseForm from "./_components/CaseForm";
 import CaseCardView from "./_components/CaseCardView";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const CaseManagementPage = () => {
-  const [isCompactView, setIsCompactView] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const viewParam = searchParams.get("view");
+  const isCompactView = viewParam === "compact";
+
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
-  const [newCaseTrigger, setNewCaseTrigger] = useState(0); // 데이터 갱신 트리거
+  const [newCaseTrigger, setNewCaseTrigger] = useState(0);
 
   const handleCaseSuccess = () => {
-    // 데이터 갱신 트리거를 증가시켜 뷰에서 데이터 갱신하도록 알림
     setNewCaseTrigger((prev) => prev + 1);
     setIsNewCaseModalOpen(false);
     setSelectedCase(null);
+  };
+
+  const updateSearchParams = (params) => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        currentParams.delete(key);
+      } else {
+        currentParams.set(key, value);
+      }
+    });
+
+    const newSearch = currentParams.toString();
+    const newPath = newSearch ? `?${newSearch}` : "";
+
+    router.push(newPath);
+  };
+
+  const handleCompactViewToggle = (checked) => {
+    const newView = checked ? "compact" : "card";
+    updateSearchParams({ view: newView });
   };
 
   return (
@@ -27,7 +56,7 @@ const CaseManagementPage = () => {
           <div className="flex items-center">
             <Switch
               checked={isCompactView}
-              onCheckedChange={setIsCompactView}
+              onCheckedChange={handleCompactViewToggle}
               id="compactViewSwitch"
               className="ml-2"
             />

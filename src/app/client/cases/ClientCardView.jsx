@@ -1,35 +1,61 @@
+// src/app/client/cases/ClientCardView.jsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Tabs, Dialog, Button } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { Box, Flex, Text, Tabs } from "@radix-ui/themes";
 import ClientCaseCard from "./ClientCaseCard";
-import ClientCaseTimeline from "./ClientCaseTimeline";
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 const ClientCardView = ({ pageSize = 9 }) => {
-  const initialState = {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const initialTab = searchParams.get("tab") || "ongoing";
+  const [currentTab, setCurrentTab] = useState(initialTab);
+
+  const initialPage = parseInt(searchParams.get("page")) || 1;
+
+  // Make initialState a function that takes status as an argument
+  const initialState = (status) => ({
     cases: [],
     count: 0,
-    page: 1,
-  };
-
-  const [caseData, setCaseData] = useState({
-    ongoing: initialState,
-    scheduled: initialState,
-    closed: initialState,
+    page: initialTab === status ? initialPage : 1,
   });
 
-  const [currentTab, setCurrentTab] = useState("ongoing");
-  const [selectedCase, setSelectedCase] = useState(null); // 선택된 사건
+  const [caseData, setCaseData] = useState({
+    ongoing: initialState("ongoing"),
+    scheduled: initialState("scheduled"),
+    closed: initialState("closed"),
+  });
+
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
+  const updateSearchParams = (params) => {
+    const currentParams = new URLSearchParams(window.location.search);
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        currentParams.delete(key);
+      } else {
+        currentParams.set(key, value);
+      }
+    });
+
+    const newSearch = currentParams.toString();
+    const newPath = pathname + (newSearch ? `?${newSearch}` : "");
+
+    router.push(newPath);
+  };
+
   const fetchCases = useCallback(
     async (status) => {
-      if (!user || !user.id || isLoading) return;
+      if (!user || isLoading) return;
 
       setIsLoading(true);
 
@@ -45,7 +71,7 @@ const ClientCardView = ({ pageSize = 9 }) => {
           `,
             { count: "exact" },
           )
-          .eq("case_clients.client_id", user.id) // 현재 사용자 관련 사건만
+          .eq("case_clients.client_id", user.id)
           .eq("status", status)
           .order("start_date", { ascending: false })
           .range(
@@ -63,20 +89,36 @@ const ClientCardView = ({ pageSize = 9 }) => {
             count,
           },
         }));
+
+        // Save the current tab's page number in the URL
+        if (status === currentTab) {
+          updateSearchParams({ page: caseData[status].page });
+        }
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
       } finally {
         setIsLoading(false);
       }
     },
-    [user, isLoading, caseData, pageSize],
+    [user, isLoading, caseData, pageSize, currentTab],
   );
 
   useEffect(() => {
     if (user) {
       fetchCases(currentTab);
     }
+    // Only re-fetch when currentTab or the page for the current tab changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentTab, caseData[currentTab].page]);
+
+  const handleTabChange = (value) => {
+    setCurrentTab(value);
+    updateSearchParams({ tab: value, page: 1 }); // Reset page to 1 when tab changes
+    setCaseData((prevData) => ({
+      ...prevData,
+      [value]: { ...prevData[value], page: 1 },
+    }));
+  };
 
   const handlePageChange = (newPage) => {
     setCaseData((prevData) => ({
@@ -85,14 +127,12 @@ const ClientCardView = ({ pageSize = 9 }) => {
     }));
   };
 
-  const totalPages = Math.ceil(caseData[currentTab].count / pageSize);
-
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
       <Tabs.Root
-        defaultValue="ongoing"
+        defaultValue={initialTab}
         value={currentTab}
-        onValueChange={(value) => setCurrentTab(value)}
+        onValueChange={handleTabChange}
       >
         <Tabs.List>
           <Tabs.Trigger value="ongoing">진행중인 사건</Tabs.Trigger>
@@ -100,68 +140,47 @@ const ClientCardView = ({ pageSize = 9 }) => {
           <Tabs.Trigger value="closed">종료된 사건</Tabs.Trigger>
         </Tabs.List>
 
-        {["ongoing", "scheduled", "closed"].map((status) => (
-          <Tabs.Content key={status} value={status}>
-            {caseData[status].cases.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                  {caseData[status].cases.map((caseItem) => (
-                    <ClientCaseCard
-                      key={caseItem.id}
-                      caseItem={caseItem}
-                      onClick={() => setSelectedCase(caseItem)} // 클릭한 사건 저장
-                    />
-                  ))}
-                </div>
-                {totalPages > 1 && (
-                  <Pagination
-                    currentPage={caseData[status].page}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                  />
-                )}
-              </>
-            ) : (
-              <Flex justify="center">
-                <Text size="3" className="text-center mt-8">
-                  {status === "ongoing"
-                    ? "진행중인 사건이 없습니다."
-                    : status === "scheduled"
-                      ? "진행예정 사건이 없습니다."
-                      : "종료된 사건이 없습니다."}
-                </Text>
-              </Flex>
-            )}
-          </Tabs.Content>
-        ))}
-      </Tabs.Root>
+        {["ongoing", "scheduled", "closed"].map((status) => {
+          const totalPages = Math.ceil(caseData[status].count / pageSize);
 
-      {selectedCase && (
-        <Dialog.Root
-          open={!!selectedCase}
-          onOpenChange={() => setSelectedCase(null)}
-        >
-          <Dialog.Content style={{ maxWidth: 600 }}>
-            <Dialog.Title>{selectedCase.title} 타임라인</Dialog.Title>
-            <Dialog.Close asChild>
-              <Button
-                variant="ghost"
-                color="gray"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
-                onClick={() => setSelectedCase(null)}
-              >
-                <Cross2Icon />
-              </Button>
-            </Dialog.Close>
-            <ClientCaseTimeline
-              caseId={selectedCase.id} // 사건 ID 전달
-              description={selectedCase.description}
-              onClose={() => setSelectedCase(null)} // 닫기 핸들러
-            />
-          </Dialog.Content>
-        </Dialog.Root>
-      )}
+          return (
+            <Tabs.Content key={status} value={status}>
+              {caseData[status].cases.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                    {caseData[status].cases.map((caseItem) => (
+                      <ClientCaseCard
+                        key={caseItem.id}
+                        caseItem={caseItem}
+                        onClick={() =>
+                          router.push(`/client/cases/${caseItem.id}`)
+                        }
+                      />
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <Pagination
+                      currentPage={caseData[status].page}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  )}
+                </>
+              ) : (
+                <Flex justify="center">
+                  <Text size="3" className="text-center mt-8">
+                    {status === "ongoing"
+                      ? "진행중인 사건이 없습니다."
+                      : status === "scheduled"
+                        ? "진행예정 사건이 없습니다."
+                        : "종료된 사건이 없습니다."}
+                  </Text>
+                </Flex>
+              )}
+            </Tabs.Content>
+          );
+        })}
+      </Tabs.Root>
     </Box>
   );
 };
