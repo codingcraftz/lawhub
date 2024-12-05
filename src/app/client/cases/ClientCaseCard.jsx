@@ -59,7 +59,7 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
             <Text size="3">
               <strong>의뢰인:</strong> {clientNames}
             </Text>
-            {caseItem.client_role && (
+            {caseItem?.client_role !== "미정" && (
               <Badge
                 size="3"
                 style={{

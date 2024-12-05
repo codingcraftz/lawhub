@@ -1,11 +1,12 @@
+// src/app/case-management/_components/CaseCompactView.jsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex, Tabs, Button, Dialog } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
-import CaseTimeline from "./CaseTimeline";
+import { Box, Text, Flex, Tabs, Button } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const CaseCompactView = ({ newCaseTrigger }) => {
   const fetchLimit = 20;
@@ -16,15 +17,51 @@ const CaseCompactView = ({ newCaseTrigger }) => {
     loading: false,
   };
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const initialTab = searchParams.get("tab") || "ongoing";
+  const initialPage = parseInt(searchParams.get("page")) || 1;
+
   const [caseData, setCaseData] = useState({
-    ongoing: initialState,
-    scheduled: initialState,
-    closed: initialState,
+    ongoing: {
+      ...initialState,
+      page: initialTab === "ongoing" ? initialPage : 1,
+    },
+    scheduled: {
+      ...initialState,
+      page: initialTab === "scheduled" ? initialPage : 1,
+    },
+    closed: {
+      ...initialState,
+      page: initialTab === "closed" ? initialPage : 1,
+    },
   });
 
-  const [currentTab, setCurrentTab] = useState("ongoing");
-  const [selectedCase, setSelectedCase] = useState(null);
+  const [currentTab, setCurrentTab] = useState(initialTab);
   const { user } = useUser();
+
+  const updateSearchParams = (params) => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        currentParams.delete(key);
+      } else {
+        currentParams.set(key, value);
+      }
+    });
+
+    const newSearch = currentParams.toString();
+    const newPath = newSearch ? `?${newSearch}` : "";
+
+    router.push(newPath);
+  };
+
+  const handleTabChange = (value) => {
+    setCurrentTab(value);
+    updateSearchParams({ tab: value, page: 1 }); // 탭 변경 시 페이지를 1로 초기화
+  };
 
   const fetchCases = useCallback(
     async (status) => {
@@ -97,6 +134,11 @@ const CaseCompactView = ({ newCaseTrigger }) => {
             loading: false,
           },
         }));
+
+        // 현재 탭에 해당하는 페이지 번호를 URL에 저장
+        if (status === currentTab) {
+          updateSearchParams({ page: prevData[status].page });
+        }
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
         setCaseData((prevData) => ({
@@ -105,7 +147,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
         }));
       }
     },
-    [user, caseData, fetchLimit],
+    [user, caseData, fetchLimit, currentTab],
   );
 
   useEffect(() => {
@@ -114,12 +156,16 @@ const CaseCompactView = ({ newCaseTrigger }) => {
     }
   }, [user, currentTab, newCaseTrigger]);
 
+  const handleClick = (caseId) => {
+    router.push(`/cases/${caseId}`);
+  };
+
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
       <Tabs.Root
-        defaultValue="ongoing"
+        defaultValue={currentTab}
         value={currentTab}
-        onValueChange={(value) => setCurrentTab(value)}
+        onValueChange={handleTabChange}
       >
         <Tabs.List>
           <Tabs.Trigger value="ongoing">진행중인 사건</Tabs.Trigger>
@@ -177,7 +223,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
                       <tr
                         className="hover:opacity-30"
                         key={caseItem.id}
-                        onClick={() => setSelectedCase(caseItem)}
+                        onClick={() => handleClick(caseItem.id)}
                         style={{
                           cursor: "pointer",
                           backgroundColor: "var(--gray-1)",
@@ -262,33 +308,6 @@ const CaseCompactView = ({ newCaseTrigger }) => {
           </Tabs.Content>
         ))}
       </Tabs.Root>
-
-      {selectedCase && (
-        <Dialog.Root
-          open={!!selectedCase}
-          onOpenChange={() => setSelectedCase(null)}
-        >
-          <Dialog.Content style={{ maxWidth: 600 }}>
-            <Dialog.Title>{selectedCase?.title} 타임라인</Dialog.Title>
-            <Dialog.Close asChild>
-              <Button
-                variant="ghost"
-                color="gray"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
-              >
-                <Cross2Icon />
-              </Button>
-            </Dialog.Close>
-            <CaseTimeline
-              caseId={selectedCase?.id}
-              caseStatus={selectedCase?.status}
-              description={selectedCase?.description}
-              onClose={() => setSelectedCase(null)}
-            />
-          </Dialog.Content>
-        </Dialog.Root>
-      )}
     </Box>
   );
 };

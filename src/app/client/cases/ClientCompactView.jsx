@@ -1,36 +1,70 @@
+// src/app/client/cases/ClientCompactView.jsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex, Tabs, Button, Dialog } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
-import ClientCaseTimeline from "./ClientCaseTimeline";
+import { Box, Text, Flex, Tabs, Button } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 const ClientCompactView = ({ fetchLimit = 20 }) => {
-  const initialState = {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const initialTab = searchParams.get("tab") || "ongoing";
+  const [currentTab, setCurrentTab] = useState(initialTab);
+
+  const initialPage = parseInt(searchParams.get("page")) || 1;
+
+  const initialState = (status) => ({
     cases: [],
-    page: 1,
+    page: initialTab === status ? initialPage : 1,
     hasMore: true,
     loading: false,
-  };
-
-  const [caseData, setCaseData] = useState({
-    ongoing: initialState,
-    scheduled: initialState,
-    closed: initialState,
   });
 
-  const [currentTab, setCurrentTab] = useState("ongoing"); // Tabs 초기값과 일치
-  const [selectedCase, setSelectedCase] = useState(null);
+  const [caseData, setCaseData] = useState({
+    ongoing: initialState("ongoing"),
+    scheduled: initialState("scheduled"),
+    closed: initialState("closed"),
+  });
+
   const { user } = useUser();
-  const [isFetching, setIsFetching] = useState(false); // 중복 호출 방지 상태
+  const [isFetching, setIsFetching] = useState(false);
+
+  const updateSearchParams = (params) => {
+    const currentParams = new URLSearchParams(window.location.search);
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        currentParams.delete(key);
+      } else {
+        currentParams.set(key, value);
+      }
+    });
+
+    const newSearch = currentParams.toString();
+    const newPath = pathname + (newSearch ? `?${newSearch}` : "");
+
+    router.push(newPath);
+  };
+
+  const handleTabChange = (value) => {
+    setCurrentTab(value);
+    updateSearchParams({ tab: value, page: 1 });
+    setCaseData((prevData) => ({
+      ...prevData,
+      [value]: { ...prevData[value], page: 1, cases: [], hasMore: true },
+    }));
+  };
 
   const fetchCases = useCallback(
     async (status) => {
       if (!user || !user.id || isFetching || caseData[status].loading) return;
 
-      setIsFetching(true); // 호출 시작 시 상태 변경
+      setIsFetching(true);
       setCaseData((prevData) => ({
         ...prevData,
         [status]: { ...prevData[status], loading: true },
@@ -47,7 +81,7 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
             case_opponents (opponent:opponents (id, name))
           `,
           )
-          .eq("case_clients.client_id", user.id) // 클라이언트 사건만 조회
+          .eq("case_clients.client_id", user.id)
           .eq("status", status)
           .order("start_date", { ascending: false })
           .range(
@@ -69,13 +103,18 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
             loading: false,
           },
         }));
+
+        // 현재 탭의 페이지 번호를 URL에 저장
+        if (status === currentTab) {
+          updateSearchParams({ page: caseData[status].page - 1 });
+        }
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
       } finally {
         setIsFetching(false);
       }
     },
-    [user, caseData, fetchLimit, isFetching],
+    [user, caseData, fetchLimit, isFetching, currentTab],
   );
 
   useEffect(() => {
@@ -84,12 +123,16 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
     }
   }, [user, currentTab]);
 
+  const handleClick = (caseItem) => {
+    router.push(`/client/cases/${caseItem.id}`);
+  };
+
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
       <Tabs.Root
-        defaultValue="ongoing"
+        defaultValue={initialTab}
         value={currentTab}
-        onValueChange={(value) => setCurrentTab(value)}
+        onValueChange={handleTabChange}
       >
         <Tabs.List>
           <Tabs.Trigger value="ongoing">진행중인 사건</Tabs.Trigger>
@@ -110,7 +153,6 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
                       >
                         종류
                       </th>
-
                       <th
                         className="border px-4 py-2 text-left"
                         style={{ borderColor: "var(--gray-6)" }}
@@ -136,7 +178,7 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
                       <tr
                         className="hover:opacity-30"
                         key={caseItem.id}
-                        onClick={() => setSelectedCase(caseItem)}
+                        onClick={() => handleClick(caseItem)}
                         style={{
                           cursor: "pointer",
                           backgroundColor: "var(--gray-1)",
@@ -198,33 +240,6 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
           </Tabs.Content>
         ))}
       </Tabs.Root>
-
-      {selectedCase && (
-        <Dialog.Root
-          open={!!selectedCase}
-          onOpenChange={() => setSelectedCase(null)}
-        >
-          <Dialog.Content style={{ maxWidth: 600 }}>
-            <Dialog.Title>{selectedCase.title} 타임라인</Dialog.Title>
-            <Dialog.Close asChild>
-              <Button
-                variant="ghost"
-                color="gray"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
-                onClick={() => setSelectedCase(null)}
-              >
-                <Cross2Icon />
-              </Button>
-            </Dialog.Close>
-            <ClientCaseTimeline
-              caseId={selectedCase.id}
-              description={selectedCase.description}
-              onClose={() => setSelectedCase(null)}
-            />
-          </Dialog.Content>
-        </Dialog.Root>
-      )}
     </Box>
   );
 };

@@ -240,11 +240,6 @@ const ClientCaseTimeline = ({ caseId, description, onClose }) => {
               </Box>
             ))}
           </Flex>
-          <Flex justify="end" mt="4">
-            <Button size="2" onClick={onClose}>
-              확인
-            </Button>
-          </Flex>
         </Flex>
         {isCommentDialogOpen && selectedRequest && (
           <Dialog.Root

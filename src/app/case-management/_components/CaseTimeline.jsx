@@ -452,13 +452,9 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
             </Dialog.Root>
           )}
 
-          {isAdmin && caseStatus !== "closed" ? (
+          {isAdmin && caseStatus !== "closed" && (
             <Button size="2" color="red" onClick={handleCaseCompletion}>
               사건 종결
-            </Button>
-          ) : (
-            <Button size="2" onClick={onClose}>
-              확인
             </Button>
           )}
         </Flex>
