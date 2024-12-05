@@ -8,6 +8,9 @@ export default function Home() {
   console.log(files);
 
   // 파일 목록 가져오기
+  //  const nginxFileListUrl = "http://203.0.113.1:3001/uploads";
+  // const response = await fetch(nginxFileListUrl);
+
   useEffect(() => {
     fetch("/api/files")
       .then((res) => res.json())
