@@ -86,4 +86,5 @@ const DeadlineSidebar = React.forwardRef(
   },
 );
 
+DeadlineSidebar.displayName = "Sidebar";
 export default DeadlineSidebar;
