@@ -134,3 +134,25 @@ html.light .react-datepicker__day--disabled {
 .react-datepicker__input-container {
   width: 100%;
 }
+
+.rbc-day-bg {
+  background: var(--gray-3);
+  cursor: pointer;
+}
+
+.rbc-off-range-bg {
+  background: var(--gray-6) !important;
+  cursor: none;
+}
+
+.rbc-day-bg:hover {
+  background: var(--gray-8);
+}
+.rbc-today:hover {
+  background: #eaf6ff;
+  opacity: 0.9;
+}
+
+.rbc-current {
+  color: var(--gray-12);
+}

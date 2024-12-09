@@ -119,9 +119,12 @@ const ClientCaseTimeline = ({ caseId, description, onClose }) => {
       >
         {description}
       </Text>
+      <Text size="5" weight="bold">
+        사건 기일
+      </Text>
       <Box>
-        {deadlines.length > 0 && (
-          <Box mb="4">
+        <Box className="mb-12">
+          {deadlines.length > 0 ? (
             <Flex direction="column" gap="2">
               {deadlines.map((deadline) => (
                 <Flex
@@ -144,101 +147,109 @@ const ClientCaseTimeline = ({ caseId, description, onClose }) => {
                         year: "numeric",
                         month: "2-digit",
                         day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
                       },
                     )}
                   </Text>
                 </Flex>
               ))}
             </Flex>
-          </Box>
-        )}
+          ) : (
+            <Text>등록된 기일이 없습니다.</Text>
+          )}
+        </Box>
 
         <Flex direction="column" gap="4">
           <Text size="5" weight="bold">
             사건 타임라인
           </Text>
           <Flex direction="column" gap="3">
-            {timelineItems.map((item) => (
-              <Box
-                key={item.id}
-                style={{
-                  borderLeft: "2px solid var(--gray-6)",
-                  paddingLeft: "1rem",
-                  position: "relative",
-                }}
-              >
+            {timelineItems.length > 0 ? (
+              timelineItems.map((item) => (
                 <Box
+                  key={item.id}
                   style={{
-                    width: "10px",
-                    height: "10px",
-                    borderRadius: "50%",
-                    background: "var(--gray-6)",
-                    position: "absolute",
-                    left: "-6px",
+                    borderLeft: "2px solid var(--gray-6)",
+                    paddingLeft: "1rem",
+                    position: "relative",
                   }}
-                />
-                <Flex justify="between" align="center">
-                  <Flex align="center" gap="2">
-                    <Text size="2" color="gray">
-                      {new Date(item.created_at).toLocaleString("ko-KR", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </Text>
-                    {item.type === "요청" ? (
-                      <Flex>
-                        <Badge className={getTypeColor(item.type)}>
-                          요청(진행중)
-                        </Badge>
-                      </Flex>
-                    ) : item.type === "요청완료" ? (
-                      <Flex>
-                        <Badge className={getTypeColor(item.type)}>
-                          요청(완료)
-                        </Badge>
-                      </Flex>
-                    ) : (
-                      <Badge className={getTypeColor(item.type)}>
-                        {item.type}
-                      </Badge>
-                    )}
-                    {(item.type === "요청" || item.type === "요청완료") && (
-                      <Button
-                        size="1"
-                        variant="ghost"
-                        onClick={() => openCommentDialog(item)}
-                      >
-                        요청 상세 보기
-                      </Button>
-                    )}
-                  </Flex>
-                </Flex>
-                <Flex className="justify-between">
-                  <Text size="3" mt="1">
-                    {item.description}
-                  </Text>
-                  <Text
-                    size="2"
-                    color="gray"
-                    mt="1"
+                >
+                  <Box
                     style={{
-                      flexShrink: 0,
-                      whiteSpace: "nowrap",
-                      marginLeft: "8px",
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      background: "var(--gray-6)",
+                      position: "absolute",
+                      left: "-6px",
                     }}
-                  >
-                    {item.created_by?.name &&
-                      (item.type === "요청" && item.requested_to?.name
-                        ? `${item.created_by.name} → ${item.requested_to.name}`
-                        : item.created_by.name)}
-                  </Text>
-                </Flex>
-              </Box>
-            ))}
+                  />
+                  <Flex justify="between" align="center">
+                    <Flex align="center" gap="2">
+                      <Text size="2" color="gray">
+                        {new Date(item.created_at).toLocaleString("ko-KR", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </Text>
+                      {item.type === "요청" ? (
+                        <Flex>
+                          <Badge className={getTypeColor(item.type)}>
+                            요청(진행중)
+                          </Badge>
+                        </Flex>
+                      ) : item.type === "요청완료" ? (
+                        <Flex>
+                          <Badge className={getTypeColor(item.type)}>
+                            요청(완료)
+                          </Badge>
+                        </Flex>
+                      ) : (
+                        <Badge className={getTypeColor(item.type)}>
+                          {item.type}
+                        </Badge>
+                      )}
+                      {(item.type === "요청" || item.type === "요청완료") && (
+                        <Button
+                          size="1"
+                          variant="ghost"
+                          onClick={() => openCommentDialog(item)}
+                        >
+                          요청 상세 보기
+                        </Button>
+                      )}
+                    </Flex>
+                  </Flex>
+                  <Flex className="justify-between">
+                    <Text size="3" mt="1">
+                      {item.description}
+                    </Text>
+                    <Text
+                      size="2"
+                      color="gray"
+                      mt="1"
+                      style={{
+                        flexShrink: 0,
+                        whiteSpace: "nowrap",
+                        marginLeft: "8px",
+                      }}
+                    >
+                      {item.created_by?.name &&
+                        (item.type === "요청" && item.requested_to?.name
+                          ? `${item.created_by.name} → ${item.requested_to.name}`
+                          : item.created_by.name)}
+                    </Text>
+                  </Flex>
+                </Box>
+              ))
+            ) : (
+              <Text>등록된 기록이 없습니다.</Text>
+            )}
           </Flex>
         </Flex>
         {isCommentDialogOpen && selectedRequest && (

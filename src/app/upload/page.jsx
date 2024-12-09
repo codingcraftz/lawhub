@@ -2,66 +2,109 @@
 
 import React, { useState, useEffect } from "react";
 
-export default function Home() {
-  const [files, setFiles] = useState([]);
+export default function TimelineFiles() {
   const [selectedFile, setSelectedFile] = useState(null);
-  console.log(files);
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const timelineId = "123";
 
-  // 파일 목록 가져오기
-  //  const nginxFileListUrl = "http://203.0.113.1:3001/uploads";
-  // const response = await fetch(nginxFileListUrl);
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch(
+        `http://211.44.133.202:3001/files/${timelineId}`,
+      );
+      const data = await response.json();
+      setFiles(data);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  };
 
   useEffect(() => {
-    fetch("/api/files")
-      .then((res) => res.json())
-      .then((data) => setFiles(data))
-      .catch((err) => console.error(err));
+    fetchFiles();
   }, []);
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
-
     if (!selectedFile) {
       alert("Please select a file to upload");
       return;
     }
 
     const formData = new FormData();
-    const normalizedFileName = selectedFile.name.normalize("NFC");
-    console.log(selectedFile);
-    formData.append("file", selectedFile, normalizedFileName);
+    formData.append("file", selectedFile);
+
+    setUploading(true);
 
     try {
       const response = await fetch("http://211.44.133.202:3001/upload", {
         method: "POST",
         body: formData,
+        headers: {
+          "timeline-id": timelineId,
+        },
       });
-      const result = await response.json();
-      alert(`File uploaded successfully: ${result.filePath}`);
+
+      if (!response.ok) {
+        alert("Failed to upload file.");
+        return;
+      }
+
+      alert("File uploaded successfully");
+      fetchFiles();
     } catch (error) {
-      console.error("Error during file upload:", error);
-      alert("An error occurred while uploading the file.");
+      console.error("Error uploading file:", error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileDelete = async (fileId) => {
+    try {
+      const response = await fetch(
+        `http://211.44.133.202:3001/files/${fileId}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        alert("Failed to delete file.");
+        return;
+      }
+
+      alert("File deleted successfully.");
+      fetchFiles();
+    } catch (error) {
+      console.error("Error deleting file:", error);
     }
   };
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>File Upload & Download</h1>
-      {/* 파일 업로드 */}
+      <h1>Timeline Files</h1>
+
       <form onSubmit={handleFileUpload}>
         <input
           type="file"
           onChange={(e) => setSelectedFile(e.target.files[0])}
+          disabled={uploading}
         />
-        <button type="submit">Upload File</button>
+        <button type="submit" disabled={uploading}>
+          {uploading ? "Uploading..." : "Upload File"}
+        </button>
       </form>
-      <h2>Uploaded Files</h2>
+
       <ul>
-        {files.map((file, index) => (
-          <li key={index}>
-            <a href={file.url} download>
-              {file.name}
+        {files.map((file) => (
+          <li key={file.id}>
+            <a
+              href={`http://211.44.133.202:3001/${file.filePath}`}
+              target="_blank"
+            >
+              {file.original_name}
             </a>
+            <button onClick={() => handleFileDelete(file.id)}>Delete</button>
           </li>
         ))}
       </ul>

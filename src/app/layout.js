@@ -76,6 +76,8 @@ export default function RootLayout({ children }) {
 
               <div
                 style={{
+                  display: "flex",
+                  flexDirection: "column",
                   flex: 1,
                   backgroundColor: "var(--gray-2)",
                   width: "100%",

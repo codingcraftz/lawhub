@@ -83,7 +83,6 @@ const CaseManagementPage = () => {
         )}
       </main>
 
-      {/* 새 사건 등록 모달 */}
       <Dialog.Root
         open={isNewCaseModalOpen}
         onOpenChange={setIsNewCaseModalOpen}

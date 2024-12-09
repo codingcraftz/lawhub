@@ -12,17 +12,33 @@ const Footer = () => {
     <footer className="p-4" style={{ background: "var(--gray-2)" }}>
       <div className="container mx-auto text-center">
         <div className="mb-4">
-          <Link href="/term-of-service" className="mr-4">
+          <Link
+            href="/term-of-service"
+            className="mr-4 text-sm"
+            style={{ color: "var(--gray-10)" }}
+          >
             이용약관
           </Link>
-          <Link href="/privacy-policy" className="mr-4">
+          <Link
+            href="/privacy-policy"
+            className="mr-4 text-sm"
+            style={{ color: "var(--gray-10)" }}
+          >
             개인정보처리방침
           </Link>
-          <Link href="/updates" className="mr-4">
+          <Link
+            href="/updates"
+            className="mr-4 text-sm"
+            style={{ color: "var(--gray-10)" }}
+          >
             고객센터
           </Link>
           <button onClick={() => setIsOpen(!isOpen)}>
-            <Flex align="center">
+            <Flex
+              align="center"
+              className="text-sm"
+              style={{ color: "var(--gray-10)" }}
+            >
               사업자 정보
               {isOpen ? (
                 <ChevronUpIcon width="1rem" height="1rem" />

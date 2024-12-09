@@ -6,6 +6,7 @@ import React from "react";
 import DatePicker from "react-datepicker";
 import { ko } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
+import { Box } from "@radix-ui/themes";
 
 const CustomDatePicker = ({
   selectedDate,
@@ -27,7 +28,7 @@ const CustomDatePicker = ({
       placeholderText={title}
       showYearDropdown
       showMonthDropdown
-      showTimeSelect={showTimeSelect} // 시간 선택 옵션
+      showTimeSelect={showTimeSelect}
       timeFormat={timeFormat}
       timeIntervals={timeIntervals}
       dropdownMode="select"
