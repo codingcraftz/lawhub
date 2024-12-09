@@ -100,7 +100,6 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
             className="flex-1"
             variant="soft"
             color="blue"
-            size="1"
             onClick={(e) => {
               e.stopPropagation();
               setIsDetailsModalOpen(true);

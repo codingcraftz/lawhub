@@ -10,6 +10,7 @@ import RequestTable from "./RequestTable";
 import { supabase } from "@/utils/supabase";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 import TodoList from "./TodoList";
+import DeadlinesCalendar from "./DeadlinesCalender";
 
 const pageSize = 5;
 
@@ -184,7 +185,7 @@ const TodosPage = () => {
             <DialogContent selectedRequest={selectedRequest} user={user} />
           </Dialog.Root>
         )}
-        <TodoList />
+        <DeadlinesCalendar />
       </Box>
     </>
   );

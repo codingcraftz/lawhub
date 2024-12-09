@@ -104,7 +104,6 @@ const ClientCompactView = ({ fetchLimit = 20 }) => {
           },
         }));
 
-        // 현재 탭의 페이지 번호를 URL에 저장
         if (status === currentTab) {
           updateSearchParams({ page: caseData[status].page - 1 });
         }

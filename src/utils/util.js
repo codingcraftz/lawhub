@@ -6,6 +6,7 @@ export const getCategoryColor = (category) => {
     파산: { backgroundColor: "var(--orange-3)", color: "var(--orange-12)" },
     회생: { backgroundColor: "var(--purple-3)", color: "var(--purple-12)" },
     비송: { backgroundColor: "var(--yellow-3)", color: "var(--yellow-12)" },
+    가사: { backgroundColor: "var(--teal-3)", color: "var(--teal-12)" },
   };
   return (
     colors[category] || {
