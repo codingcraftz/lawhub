@@ -43,7 +43,7 @@ const ClientCaseCard = ({ caseItem, onClick }) => {
         <Flex direction="column" gap="2">
           <Flex justify="between" align="center">
             <Text size="5" weight="bold">
-              {caseItem.title}
+              {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_subject || ""}`}
             </Text>
             <Badge
               className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}

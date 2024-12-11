@@ -15,6 +15,7 @@ import {
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
 import CaseForm from "@/app/case-management/_components/CaseForm";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const PAGE_SIZE = 12; // 한 페이지에 보여줄 카드 수
 

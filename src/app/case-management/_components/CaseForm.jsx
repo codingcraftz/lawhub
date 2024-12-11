@@ -17,13 +17,10 @@ import { CASE_TYPE_OPTIONS } from "@/utils/caseType";
 
 const schema = yup.object().shape({
   court_name: yup.string(),
-  case_year: yup
-    .number()
-    .nullable() // null 값을 허용
-    .typeError("숫자만 입력 가능합니다."), // 숫자가 아닌 값에 대한 에러 메시지,
+  case_year: yup.number().nullable().typeError("숫자만 입력 가능합니다."),
   case_type: yup.string(),
   case_subject: yup.string(),
-  case_number: yup.number().nullable().typeError("숫자만 입력 가능합니다."), // 숫자가 아닌 값에 대한 에러 메시지,
+  case_number: yup.number().nullable().typeError("숫자만 입력 가능합니다."),
 
   description: yup.string(),
   category_id: yup.string().required("사건 유형을 선택해주세요."),
