@@ -1,59 +1,8 @@
-export const getCategoryColor = (category) => {
-  const colors = {
-    민사: { backgroundColor: "var(--sky-3)", color: "var(--sky-12)" },
-    형사: { backgroundColor: "var(--red-3)", color: "var(--red-12)" },
-    집행: { backgroundColor: "var(--green-3)", color: "var(--green-12)" },
-    파산: { backgroundColor: "var(--orange-3)", color: "var(--orange-12)" },
-    회생: { backgroundColor: "var(--purple-3)", color: "var(--purple-12)" },
-    비송: { backgroundColor: "var(--yellow-3)", color: "var(--yellow-12)" },
-    가사: { backgroundColor: "var(--teal-3)", color: "var(--teal-12)" },
-  };
-  return (
-    colors[category] || {
-      backgroundColor: "var(--gray-3)",
-      color: "var(--gray-12)",
-    }
-  );
-};
-
-export function getClientRoleColor(role) {
-  switch (role) {
-    case "원고":
-      return "var(--red-9)";
-    case "피고":
-      return "var(--blue-9)";
-    case "신청인":
-      return "var(--green-9)";
-    case "피신청인":
-      return "var(--orange-9)";
-    case "고소인":
-      return "var(--purple-9)";
-    case "피고소인":
-      return "var(--teal-9)";
-    case "채권자":
-      return "var(--yellow-9)";
-    case "채무자":
-      return "var(--gray-9)";
-    default:
-      return "var(--black)";
-  }
-}
-
-export const CASE_CATEGORIES = [
-  { id: "2624cb63-0e85-4718-9bfe-e862c48f644f", name: "형사" },
-  { id: "3b7533ca-eb4f-48d7-bcb6-7d9453a3b674", name: "가사" },
-  { id: "6e503815-4bde-46b6-9d7c-86a95a00e2d9", name: "비송" },
-  { id: "822561a3-518b-49a1-adce-4eee49f3b2f1", name: "회생" },
-  { id: "92d0978e-2d45-49c3-93b9-e0dfa5d1c325", name: "집행" },
-  { id: "aea55ab8-cecc-42d7-88a6-28eb8a4a1c07", name: "민사" },
-  { id: "e7999ab1-2463-40ed-903f-64c51bda7bd7", name: "파산" },
-];
-
 export const COURT_LIST = [
   {
     id: 1,
     name: "대법원",
-    city: "대법",
+    city: "서울",
   },
   {
     id: 2,
@@ -103,17 +52,17 @@ export const COURT_LIST = [
   {
     id: 11,
     name: "법원공무원교육원",
-    city: "법원",
+    city: "서울",
   },
   {
     id: 12,
     name: "법원도서관",
-    city: "법원",
+    city: "서울",
   },
   {
     id: 13,
     name: "법원행정처",
-    city: "법원",
+    city: "서울",
   },
   {
     id: 14,
@@ -213,52 +162,52 @@ export const COURT_LIST = [
   {
     id: 33,
     name: "의정부지방법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 34,
     name: "의정부지방법원 고양지원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 35,
     name: "의정부지방법원 고양지원 파주시법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 36,
     name: "의정부지방법원 남양주지원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 37,
     name: "의정부지방법원 남양주지원 가평군법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 38,
     name: "의정부지방법원 동두천시법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 39,
     name: "의정부지방법원 연천군법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 40,
     name: "의정부지방법원 철원군법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 41,
     name: "의정부지방법원 포천시법원",
-    city: "의정",
+    city: "의정부",
   },
   {
     id: 42,
     name: "사법연수원",
-    city: "사법",
+    city: "",
   },
   {
     id: 43,
@@ -513,7 +462,7 @@ export const COURT_LIST = [
   {
     id: 93,
     name: "특허법원 [대전]",
-    city: "특허",
+    city: "대전",
   },
   {
     id: 94,
@@ -1041,3 +990,10 @@ export const COURT_LIST = [
     city: "제주",
   },
 ];
+
+const getUniqueCities = (courtList) => {
+  const cities = [...new Set(courtList.map((court) => court.city))];
+  return cities.filter((city) => city !== "");
+};
+
+export const COURT_CITIES = getUniqueCities(COURT_LIST);

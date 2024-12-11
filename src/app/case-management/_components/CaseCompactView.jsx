@@ -1,14 +1,13 @@
-// src/app/case-management/_components/CaseCompactView.jsx
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex, Tabs, Button } from "@radix-ui/themes";
+import { Box, Text, Flex, Tabs, Button, Dialog } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
 import { useRouter, useSearchParams } from "next/navigation";
+import CaseForm from "@/app/case-management/_components/CaseForm";
 
-const CaseCompactView = ({ newCaseTrigger }) => {
+const CaseCompactView = ({ clientId, newCaseTrigger }) => {
   const fetchLimit = 20;
   const initialState = {
     cases: [],
@@ -19,9 +18,8 @@ const CaseCompactView = ({ newCaseTrigger }) => {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const initialTab = searchParams.get("tab") || "ongoing";
-  const initialPage = parseInt(searchParams.get("page")) || 1;
+  const initialPage = 1;
 
   const [caseData, setCaseData] = useState({
     ongoing: {
@@ -40,6 +38,9 @@ const CaseCompactView = ({ newCaseTrigger }) => {
 
   const [currentTab, setCurrentTab] = useState(initialTab);
   const { user } = useUser();
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(null);
 
   const updateSearchParams = (params) => {
     const currentParams = new URLSearchParams(searchParams.toString());
@@ -63,9 +64,18 @@ const CaseCompactView = ({ newCaseTrigger }) => {
     updateSearchParams({ tab: value, page: 1 }); // 탭 변경 시 페이지를 1로 초기화
   };
 
+  const handleClick = (caseItem) => {
+    router.push(`/cases/${caseItem.id}`);
+  };
+
   const fetchCases = useCallback(
     async (status) => {
-      if (!user || caseData[status].loading || !caseData[status].hasMore)
+      if (
+        !user ||
+        !clientId ||
+        caseData[status].loading ||
+        !caseData[status].hasMore
+      )
         return;
 
       setCaseData((prevData) => ({
@@ -78,13 +88,14 @@ const CaseCompactView = ({ newCaseTrigger }) => {
           .from("cases")
           .select(
             `
-            *,
-            case_categories (id, name),
-            case_clients (client:users (id, name)),
-            case_staff (staff:users (id, name)),
-            case_opponents (opponent:opponents (id, name))
-          `,
+          *,
+          case_categories (id, name),
+          case_clients!inner (client:users (id, name)),
+          case_staff (staff:users (id, name)),
+          case_opponents (opponent:opponents (id, name))
+        `,
           )
+          .eq("case_clients.client_id", clientId)
           .eq("status", status)
           .order("start_date", { ascending: true })
           .range(
@@ -92,6 +103,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
             caseData[status].page * fetchLimit - 1,
           );
 
+        // role이 staff인 경우 자신이 담당자로 등록된 사건만 필터링
         if (user.role === "staff") {
           const { data: caseStaffs, error } = await supabase
             .from("case_staff")
@@ -134,11 +146,6 @@ const CaseCompactView = ({ newCaseTrigger }) => {
             loading: false,
           },
         }));
-
-        // 현재 탭에 해당하는 페이지 번호를 URL에 저장
-        if (status === currentTab) {
-          updateSearchParams({ page: prevData[status].page });
-        }
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
         setCaseData((prevData) => ({
@@ -147,7 +154,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
         }));
       }
     },
-    [user, caseData, fetchLimit, currentTab],
+    [user, clientId, caseData, fetchLimit],
   );
 
   useEffect(() => {
@@ -156,8 +163,15 @@ const CaseCompactView = ({ newCaseTrigger }) => {
     }
   }, [user, currentTab, newCaseTrigger]);
 
-  const handleClick = (caseId) => {
-    router.push(`/cases/${caseId}`);
+  const handleEditClick = (caseItem) => {
+    setSelectedCase(caseItem);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    setSelectedCase(null);
+    fetchCases(currentTab);
   };
 
   return (
@@ -177,73 +191,74 @@ const CaseCompactView = ({ newCaseTrigger }) => {
           <Tabs.Content key={status} value={status}>
             {caseData[status].cases.length > 0 ? (
               <>
-                <table className="w-full table-auto text-sm">
+                <table className="w-full table-auto text-sm mt-5">
                   <thead className="font-semibold">
                     <tr style={{ backgroundColor: "var(--gray-6)" }}>
                       <th
-                        className="border px-4 py-2 text-left"
+                        className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
                         타입
                       </th>
                       <th
-                        className="border px-4 py-2 text-left"
+                        className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
-                        사건명
+                        사건번호
                       </th>
                       <th
-                        className="border px-4 py-2 text-left"
+                        className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
                         의뢰인
                       </th>
                       <th
-                        className="border px-4 py-2 text-left"
+                        className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
                         상대방
                       </th>
                       <th
-                        className="border px-4 py-2 text-left"
+                        className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
                         담당자
                       </th>
                       <th
-                        className="border px-4 py-2 text-left"
+                        className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
                         시작날짜
+                      </th>
+                      <th
+                        className="border px-4 py-2"
+                        style={{ borderColor: "var(--gray-6)" }}
+                      >
+                        수정
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {caseData[status].cases.map((caseItem) => (
                       <tr
-                        className="hover:opacity-30"
                         key={caseItem.id}
-                        onClick={() => handleClick(caseItem.id)}
-                        style={{
-                          cursor: "pointer",
-                          backgroundColor: "var(--gray-1)",
-                        }}
+                        className="hover:opacity-30 cursor-pointer"
+                        onClick={() => handleClick(caseItem)}
                       >
                         <td
-                          className="border px-4 py-2 truncate"
+                          className="border px-4 py-2"
                           style={{ borderColor: "var(--gray-6)" }}
                         >
-                          <Text>{caseItem.case_categories.name}</Text>
+                          {caseItem.case_categories.name}
                         </td>
-
                         <td
-                          className="border px-4 py-2 truncate"
+                          className="border px-4 py-2"
                           style={{ borderColor: "var(--gray-6)" }}
                         >
-                          <Text>{caseItem.title}</Text>
+                          {caseItem.title}
                         </td>
                         <td
-                          className="border px-4 py-2 truncate"
+                          className="border px-4 py-2"
                           style={{ borderColor: "var(--gray-6)" }}
                         >
                           {caseItem.case_clients
@@ -251,7 +266,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
                             .join(", ")}
                         </td>
                         <td
-                          className="border px-4 py-2 truncate"
+                          className="border px-4 py-2"
                           style={{ borderColor: "var(--gray-6)" }}
                         >
                           {caseItem.case_opponents
@@ -259,7 +274,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
                             .join(", ")}
                         </td>
                         <td
-                          className="border px-4 py-2 truncate"
+                          className="border px-4 py-2"
                           style={{ borderColor: "var(--gray-6)" }}
                         >
                           {caseItem.case_staff
@@ -272,12 +287,21 @@ const CaseCompactView = ({ newCaseTrigger }) => {
                         >
                           {new Date(caseItem.start_date).toLocaleDateString(
                             "ko-KR",
-                            {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                            },
                           )}
+                        </td>
+                        <td
+                          className="border px-4 py-2"
+                          style={{ borderColor: "var(--gray-6)" }}
+                        >
+                          <Button
+                            size="1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(caseItem);
+                            }}
+                          >
+                            수정
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -308,6 +332,28 @@ const CaseCompactView = ({ newCaseTrigger }) => {
           </Tabs.Content>
         ))}
       </Tabs.Root>
+
+      {/* 수정 모달 */}
+      <Dialog.Root open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <Dialog.Content style={{ maxWidth: 500 }}>
+          <Dialog.Title>사건 수정</Dialog.Title>
+          <Dialog.Close asChild>
+            <Button
+              variant="ghost"
+              color="gray"
+              size="1"
+              style={{ position: "absolute", top: 8, right: 8 }}
+            >
+              닫기
+            </Button>
+          </Dialog.Close>
+          <CaseForm
+            caseData={selectedCase}
+            onSuccess={handleEditSuccess}
+            onClose={() => setIsEditModalOpen(false)}
+          />
+        </Dialog.Content>
+      </Dialog.Root>
     </Box>
   );
 };

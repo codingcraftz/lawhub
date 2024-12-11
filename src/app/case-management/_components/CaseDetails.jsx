@@ -26,7 +26,9 @@ const CaseDetails = ({ caseData, onClose }) => {
       <Dialog.Content
         style={{ minWidth: 500, maxWidth: 1000, width: "fit-content" }}
       >
-        <Dialog.Title> {caseData.title}</Dialog.Title>
+        <Dialog.Title>
+          {` ${caseData.court_name || ""} ${caseData.case_year || ""} ${caseData.case_type || ""} ${caseData.case_subject || ""}`}
+        </Dialog.Title>
         <Dialog.Close asChild>
           <Button
             variant="ghost"
@@ -53,7 +55,7 @@ const CaseDetails = ({ caseData, onClose }) => {
             </Box>
           )}
           <Box as="div" style={{ color: "var(--slate-9)" }}>
-            <strong>시작일:</strong>{" "}
+            <strong>의뢰 개시일:</strong>{" "}
             {new Date(caseData.start_date).toLocaleDateString("ko-KR", {
               year: "numeric",
               month: "2-digit",

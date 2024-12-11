@@ -112,7 +112,7 @@ const UserSelectionModalContent = ({
                     <strong>생년월일: </strong> {formatDate(user.birth_date)}
                   </p>
                   <p style={{ color: "var(--gray-12)" }}>
-                    <strong>전화번호: </strong>
+                    <strong>전화번호:</strong>
                     {formatPhoneNumber(user.phone_number)}
                   </p>
                 </Box>

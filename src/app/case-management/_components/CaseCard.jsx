@@ -15,6 +15,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const categoryStyle = getCategoryColor(caseItem.case_categories?.name);
   const router = useRouter();
+  console.log(isAdmin);
 
   if (
     !caseItem ||
@@ -51,7 +52,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
         <Flex className="h-full" direction="column" gap="2">
           <Flex justify="between" align="flex-start">
             <Text size="5" weight="bold" style={{ flex: 1 }}>
-              {caseItem.title}
+              {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_subject || ""}`}
             </Text>
             <Badge
               className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}
@@ -63,8 +64,8 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
               {caseItem.case_categories.name}
             </Badge>
           </Flex>
-          <div style={{ flexGrow: 1 }} />
 
+          <div style={{ flexGrow: 1 }} />
           <Flex align="center">
             <Text size="3">
               <strong>의뢰인:</strong> {clientNames}
@@ -88,7 +89,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
             <strong>담당자:</strong> {staffNames}
           </Text>
           <Text size="2" color="gray">
-            <strong>시작일:</strong>{" "}
+            <strong>의뢰 개시일:</strong>{" "}
             {caseItem.start_date ? (
               new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
                 year: "numeric",
@@ -143,7 +144,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
       {/* Edit Modal for Admin */}
       {isAdmin && (
         <Dialog.Root open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <Dialog.Content style={{ maxWidth: 500 }}>
+          <Dialog.Content style={{ maxWidth: 700 }}>
             <Dialog.Title>사건 수정</Dialog.Title>
             <Dialog.Close asChild>
               <Button

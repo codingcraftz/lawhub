@@ -75,10 +75,9 @@ export default function RootLayout({ children }) {
               <Header />
 
               <div
+                className="flex flex-col flex-1 w-full px-4"
                 style={{
-                  flex: 1,
                   backgroundColor: "var(--gray-2)",
-                  width: "100%",
                 }}
               >
                 {children}

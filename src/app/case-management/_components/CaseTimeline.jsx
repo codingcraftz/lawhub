@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Box, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
-import { PlusIcon } from "@radix-ui/react-icons";
+import { Box, Flex, Text, Button, Dialog, Badge } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
-import TimelineForm from "./TimeLineForm";
+import {
+  PlusIcon,
+  FileIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  Cross2Icon,
+} from "@radix-ui/react-icons";
 import DeadlineForm from "./DeadlineForm";
 import { useUser } from "@/hooks/useUser";
+import TimelineForm from "./TimeLineForm";
 import DialogContent from "@/app/todos/DialogContent";
+import FileUploadDropZone from "@/components/FileUploadDropZone";
 
 const getTypeColor = (type) => {
   switch (type) {
@@ -28,17 +35,29 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
   const [timelineItems, setTimelineItems] = useState([]);
   const [deadlines, setDeadlines] = useState([]);
   const [editingDeadline, setEditingDeadline] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeadlineDialogOpen, setIsDeadlineDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
   const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [fileLists, setFileLists] = useState({});
+  const [uploadingFiles, setUploadingFiles] = useState({});
+  const [expandedFileSections, setExpandedFileSections] = useState({});
   const { user } = useUser();
 
-  useEffect(() => {
+  const isAdmin = user?.role === "admin" || user?.role === "staff";
+
+  const handleFormSuccess = () => {
     fetchTimelineItems();
+    setIsDialogOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleSuccess = (message) => {
     fetchDeadlines();
-  }, [caseId]);
+    alert(message);
+    setIsDeadlineDialogOpen(false);
+  };
 
   const openCommentDialog = async (item) => {
     try {
@@ -74,44 +93,10 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
     setIsCommentDialogOpen(false);
   };
 
-  const handleEditDeadline = (deadline) => {
-    setEditingDeadline(deadline);
-    setIsDeadlineDialogOpen(true);
-  };
-
-  const handleDeleteDeadline = async (id) => {
-    if (window.confirm("정말로 이 기일을 삭제하시겠습니까?")) {
-      try {
-        const { error } = await supabase
-          .from("case_deadlines")
-          .delete()
-          .eq("id", id);
-        if (error) throw error;
-        fetchDeadlines();
-      } catch (error) {
-        console.error("기일 삭제 중 오류:", error);
-        alert("기일 삭제 중 오류가 발생했습니다.");
-      }
-    }
-  };
-
-  const fetchTimelineItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("case_timelines")
-        .select("*, created_by(id, name), requested_to(id, name)")
-        .eq("case_id", caseId)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Error fetching timeline items:", error);
-      } else {
-        setTimelineItems(data);
-      }
-    } catch (error) {
-      console.error("Error fetching timeline items:", error);
-    }
-  };
+  useEffect(() => {
+    fetchDeadlines();
+    fetchTimelineItems();
+  }, [caseId]);
 
   const fetchDeadlines = async () => {
     try {
@@ -131,73 +116,131 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
     }
   };
 
+  const fetchTimelineItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("case_timelines")
+        .select("*, created_by(id, name), requested_to(id, name)")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching timeline items:", error);
+      } else {
+        setTimelineItems(data);
+        for (const item of data) {
+          fetchFilesForTimeline(item.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching timeline items:", error);
+    }
+  };
+
+  const handleEditDeadline = (deadline) => {
+    setEditingDeadline({
+      ...deadline,
+      start: new Date(deadline.deadline_date),
+      title: deadline.type,
+    });
+    setIsDeadlineDialogOpen(true);
+  };
+
   const handleEdit = (item) => {
     setEditingItem(item);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id, type) => {
-    if (window.confirm("정말로 이 항목을 삭제하시겠습니까?")) {
+  const handleDeleteDeadline = async (deadlineId) => {
+    if (window.confirm("정말로 이 기일을 삭제하시겠습니까?")) {
       try {
-        if (type === "요청" || type === "요청완료") {
-          // requests와 request_comments 삭제
-          const { data: requestData, error: requestError } = await supabase
-            .from("requests")
-            .select("id")
-            .eq("case_timeline_id", id);
-
-          if (requestError) throw requestError;
-
-          if (requestData && requestData.length > 0) {
-            const requestIds = requestData.map((request) => request.id);
-
-            // request_comments 삭제
-            const { error: commentError } = await supabase
-              .from("request_comments")
-              .delete()
-              .in("request_id", requestIds);
-
-            if (commentError) throw commentError;
-
-            // requests 삭제
-            const { error: deleteRequestError } = await supabase
-              .from("requests")
-              .delete()
-              .eq("case_timeline_id", id);
-
-            if (deleteRequestError) throw deleteRequestError;
-          }
-        }
-
-        // case_timelines에서 항목 삭제
-        const { error: timelineError } = await supabase
-          .from("case_timelines")
+        const { error } = await supabase
+          .from("case_deadlines")
           .delete()
-          .eq("id", id);
+          .eq("id", deadlineId);
 
-        if (timelineError) throw timelineError;
+        if (error) throw error;
 
-        fetchTimelineItems(); // 타임라인 업데이트
+        alert("기일이 성공적으로 삭제되었습니다.");
+        fetchDeadlines();
       } catch (error) {
-        console.error("타임라인 항목 삭제 중 오류:", error);
-        alert("타임라인 항목 삭제 중 오류가 발생했습니다.");
+        console.error("Error deleting deadline:", error);
+        alert("기일 삭제 중 오류가 발생했습니다.");
       }
     }
   };
 
-  const handleDeadlineFormSuccess = () => {
-    fetchDeadlines();
-    setIsDeadlineDialogOpen(false);
-    setEditingDeadline(null);
+  const fetchFilesForTimeline = async (timelineId) => {
+    try {
+      const { data, error } = await supabase
+        .from("files")
+        .select("*")
+        .eq("entity", "timeline")
+        .eq("entity_id", timelineId);
+
+      if (error) {
+        console.error("Error fetching files:", error);
+      } else {
+        setFileLists((prev) => ({ ...prev, [timelineId]: data }));
+      }
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
   };
 
-  const handleFormSuccess = () => {
-    fetchTimelineItems();
-    setIsDialogOpen(false);
-    setEditingItem(null);
+  const handleFileUpload = async (timelineId, file) => {
+    if (!file) return;
+    setUploadingFiles((prev) => ({ ...prev, [timelineId]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("http://211.44.133.202:3001/upload", {
+        method: "POST",
+        body: formData,
+        headers: { "timeline-id": timelineId },
+      });
+
+      if (!response.ok) {
+        throw new Error("File upload failed");
+      }
+
+      alert("파일이 성공적으로 업로드되었습니다.");
+      fetchFilesForTimeline(timelineId);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("파일 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setUploadingFiles((prev) => ({ ...prev, [timelineId]: false }));
+    }
   };
 
-  const isAdmin = user?.role === "admin";
+  const handleFileDelete = async (fileId, timelineId) => {
+    if (window.confirm("정말로 이 파일을 삭제하시겠습니까?")) {
+      try {
+        const { error } = await supabase
+          .from("files")
+          .delete()
+          .eq("id", fileId);
+
+        if (error) throw error;
+
+        alert("파일이 성공적으로 삭제되었습니다.");
+        fetchFilesForTimeline(timelineId);
+      } catch (error) {
+        console.error("Error deleting file:", error);
+        alert("파일 삭제 중 오류가 발생했습니다.");
+      }
+    }
+  };
+
+  const toggleFileSection = (itemId) => {
+    setExpandedFileSections((prev) => ({
+      ...prev,
+      [itemId]: !prev[itemId],
+    }));
+  };
 
   const handleCaseCompletion = async () => {
     if (window.confirm("정말로 이 사건을 완료하시겠습니까?")) {
@@ -207,7 +250,6 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
           .update({ status: "closed" })
           .eq("id", caseId);
         if (error) throw error;
-        onClose();
         window.location.reload();
       } catch (error) {
         console.error("Error completing case:", error);
@@ -222,60 +264,87 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
         <Text style={{ color: "var(--gray-9)", fontSize: "0.9rem" }}>
           {description}
         </Text>
-        {deadlines.length > 0 && (
-          <Box mb="4">
-            <Flex direction="column" gap="2">
-              {deadlines.map((deadline) => (
-                <Flex
-                  key={deadline.id}
-                  justify="between"
-                  align="center"
-                  className="p-2 border rounded-md"
-                  style={{
-                    backgroundColor: "var(--gray-2)",
-                    border: "1px solid var(--gray-6)",
-                  }}
+
+        <Flex direction="column" gap="2">
+          {deadlines.map((deadline) => (
+            <Flex
+              key={deadline.id}
+              justify="between"
+              align="center"
+              className="p-2 border rounded-md"
+              style={{
+                backgroundColor: "var(--gray-2)",
+                border: "1px solid var(--gray-6)",
+              }}
+            >
+              <Flex direction="row" align="center" gap="3">
+                <Text size="3" weight="bold">
+                  {deadline.type}
+                </Text>
+                <Text size="2" weight="gray">
+                  {deadline.location}
+                </Text>
+
+                <Text size="2" color="gray">
+                  {new Date(deadline.deadline_date).toLocaleDateString(
+                    "ko-KR",
+                    {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  )}
+                </Text>
+              </Flex>
+              <Flex gap="2">
+                <Button
+                  size="1"
+                  onClick={() => handleEditDeadline(deadline)}
+                  variant="soft"
+                  style={{ display: "flex", alignItems: "center" }}
                 >
-                  <Text size="3" weight="bold">
-                    {deadline.type}
-                  </Text>
-                  <Flex gap="3">
-                    <Text size="2" color="gray">
-                      {new Date(deadline.deadline_date).toLocaleDateString(
-                        "ko-KR",
-                        {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        },
-                      )}
-                    </Text>
-                    {isAdmin && caseStatus !== "closed" && (
-                      <Flex gap="2">
-                        <Button
-                          size="1"
-                          variant="soft"
-                          onClick={() => handleEditDeadline(deadline)}
-                        >
-                          수정
-                        </Button>
-                        <Button
-                          size="1"
-                          variant="soft"
-                          color="red"
-                          onClick={() => handleDeleteDeadline(deadline.id)}
-                        >
-                          삭제
-                        </Button>
-                      </Flex>
-                    )}
-                  </Flex>
-                </Flex>
-              ))}
+                  수정
+                </Button>
+                <Button
+                  size="1"
+                  variant="soft"
+                  color="red"
+                  onClick={() => handleDeleteDeadline(deadline.id)}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  삭제
+                </Button>
+              </Flex>
             </Flex>
+          ))}
+        </Flex>
+        {deadlines.length > 0 && (
+          <Box className="ml-auto" mb="4">
+            {caseStatus !== "closed" && (
+              <Dialog.Root
+                open={isDeadlineDialogOpen}
+                onOpenChange={setIsDeadlineDialogOpen}
+              >
+                <Dialog.Trigger asChild>
+                  <Button size="2" onClick={() => setEditingDeadline(null)}>
+                    <PlusIcon /> 기일 추가
+                  </Button>
+                </Dialog.Trigger>
+                <Dialog.Content style={{ overflow: "visible" }}>
+                  <Dialog.Title>
+                    {editingDeadline ? "기일 수정" : "새 기일 추가"}
+                  </Dialog.Title>
+                  <DeadlineForm
+                    caseId={caseId}
+                    onSuccess={handleSuccess}
+                    editingDeadline={editingDeadline}
+                    onClose={() => setIsDeadlineDialogOpen(false)}
+                  />
+                </Dialog.Content>
+              </Dialog.Root>
+            )}
           </Box>
         )}
 
@@ -283,12 +352,231 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
           <Text size="5" weight="bold">
             사건 타임라인
           </Text>
+        </Flex>
+        {/* 타임라인 리스트 */}
+        <Flex direction="column" gap="3">
+          {timelineItems.map((item) => {
+            const fileCount = fileLists[item.id]?.length || 0;
+            const isFileSectionOpen = expandedFileSections[item.id] || false;
 
+            return (
+              <Box
+                key={item.id}
+                style={{
+                  paddingLeft: "1.5rem",
+                  position: "relative",
+                  borderLeft: "2px solid var(--gray-6)",
+                  paddingLeft: "1rem",
+                }}
+              >
+                <Box
+                  style={{
+                    width: "10px",
+                    height: "10px",
+                    borderRadius: "50%",
+                    background: "var(--gray-6)",
+                    position: "absolute",
+                    left: "-6px",
+                  }}
+                />
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Text size="2" color="gray">
+                      {new Date(item.created_at).toLocaleString("ko-KR", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                    </Text>
+                    {item.type === "요청" ? (
+                      <Flex>
+                        <Badge className={getTypeColor(item.type)}>
+                          요청(진행중)
+                        </Badge>
+                      </Flex>
+                    ) : item.type === "요청완료" ? (
+                      <Flex>
+                        <Badge className={getTypeColor(item.type)}>
+                          요청(완료)
+                        </Badge>
+                      </Flex>
+                    ) : (
+                      <Badge className={getTypeColor(item.type)}>
+                        {item.type}
+                      </Badge>
+                    )}
+                    {(item.type === "요청" || item.type === "요청완료") && (
+                      <Button
+                        size="1"
+                        variant="ghost"
+                        onClick={() => openCommentDialog(item)}
+                      >
+                        요청 상세 보기
+                      </Button>
+                    )}
+                  </Flex>
+
+                  {isAdmin && caseStatus !== "closed" && (
+                    <Flex gap="2">
+                      <Button
+                        size="1"
+                        variant="soft"
+                        onClick={() => handleEdit(item)}
+                      >
+                        수정
+                      </Button>
+                      <Button
+                        size="1"
+                        variant="soft"
+                        color="red"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        삭제
+                      </Button>
+                    </Flex>
+                  )}
+                </Flex>
+                <Flex
+                  className="justify-between"
+                  style={{ flexWrap: "nowrap", gap: "8px" }}
+                >
+                  <Text
+                    size="3"
+                    mt="1"
+                    style={{ flexGrow: 1, overflow: "hidden" }}
+                  >
+                    {item.description}
+                  </Text>
+                  <Text
+                    size="2"
+                    color="gray"
+                    mt="1"
+                    style={{
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                      marginLeft: "8px",
+                    }}
+                  >
+                    {item.created_by?.name &&
+                      ((item.type === "요청" || item.type === "요청완료") &&
+                      item.requested_to?.name
+                        ? `${item.created_by.name} → ${item.requested_to.name}`
+                        : item.created_by.name)}
+                  </Text>
+                </Flex>
+
+                {/* 파일 섹션 토글링 버튼 */}
+                <Box mt="2">
+                  <Button
+                    size="1"
+                    variant="ghost"
+                    onClick={() => toggleFileSection(item.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <FileIcon />
+                    첨부파일 ({fileCount}개)
+                    {isFileSectionOpen ? (
+                      <ChevronUpIcon />
+                    ) : (
+                      <ChevronDownIcon />
+                    )}
+                  </Button>
+                </Box>
+
+                {isFileSectionOpen && (
+                  <Box
+                    mt="2"
+                    style={{
+                      backgroundColor: "var(--gray-1)",
+                      border: "1px solid var(--gray-6)",
+                      borderRadius: "4px",
+                      padding: "1rem",
+                    }}
+                  >
+                    <Text size="2" weight="bold" mb="2">
+                      첨부 파일 목록
+                    </Text>
+                    <Flex direction="column" gap="2">
+                      {fileLists[item.id]?.length > 0 ? (
+                        fileLists[item.id].map((file) => (
+                          <Flex
+                            key={file.id}
+                            justify="between"
+                            align="center"
+                            style={{
+                              backgroundColor: "var(--gray-2)",
+                              borderRadius: "4px",
+                              padding: "0.5rem",
+                              border: "1px solid var(--gray-3)",
+                            }}
+                          >
+                            <a
+                              className="text-sm"
+                              href={`http://211.44.133.202:3001/download/${file.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "var(--blue-9)" }}
+                            >
+                              {file.original_name}
+                            </a>
+                            <Button
+                              size="1"
+                              variant="ghost"
+                              color="red"
+                              onClick={() => handleFileDelete(file.id, item.id)}
+                            >
+                              <Cross2Icon />
+                            </Button>
+                          </Flex>
+                        ))
+                      ) : (
+                        <Text size="2" color="gray">
+                          첨부된 파일이 없습니다.
+                        </Text>
+                      )}
+                    </Flex>
+
+                    {/* 업로드 섹션 */}
+                    <Box mt="4">
+                      <Text size="2" weight="bold" mb="2">
+                        파일 업로드
+                      </Text>
+                      <FileUploadDropZone
+                        timelineId={item.id}
+                        onFileUpload={handleFileUpload}
+                      />
+                      <Flex direction="column" gap="2">
+                        {uploadingFiles[item.id] && (
+                          <Text size="2" color="gray">
+                            업로드 중...
+                          </Text>
+                        )}
+                      </Flex>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Flex>
+        <Flex justify="between" mt="4">
+          {isAdmin && caseStatus !== "closed" && (
+            <Button size="2" color="red" onClick={handleCaseCompletion}>
+              사건 종결
+            </Button>
+          )}
           {caseStatus !== "closed" && (
             <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Dialog.Trigger>
                 <Button size="2" onClick={() => setEditingItem(null)}>
-                  <PlusIcon /> 새 항목 추가
+                  <PlusIcon /> 타임라인 추가
                 </Button>
               </Dialog.Trigger>
               <Dialog.Content>
@@ -303,159 +591,6 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
                 />
               </Dialog.Content>
             </Dialog.Root>
-          )}
-        </Flex>
-
-        {/* 타임라인 리스트 */}
-        <Flex direction="column" gap="3">
-          {timelineItems.map((item) => (
-            <Box
-              key={item.id}
-              style={{
-                paddingLeft: "1.5rem",
-                position: "relative",
-                borderLeft: "2px solid var(--gray-6)",
-                paddingLeft: "1rem",
-              }}
-            >
-              <Box
-                style={{
-                  width: "10px",
-                  height: "10px",
-                  borderRadius: "50%",
-                  background: "var(--gray-6)",
-                  position: "absolute",
-                  left: "-6px",
-                }}
-              />
-              <Flex justify="between" align="center">
-                <Flex align="center" gap="2">
-                  <Text size="2" color="gray">
-                    {new Date(item.created_at).toLocaleString("ko-KR", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    })}
-                  </Text>
-                  {item.type === "요청" ? (
-                    <Flex>
-                      <Badge className={getTypeColor(item.type)}>
-                        요청(진행중)
-                      </Badge>
-                    </Flex>
-                  ) : item.type === "요청완료" ? (
-                    <Flex>
-                      <Badge className={getTypeColor(item.type)}>
-                        요청(완료)
-                      </Badge>
-                    </Flex>
-                  ) : (
-                    <Badge className={getTypeColor(item.type)}>
-                      {item.type}
-                    </Badge>
-                  )}
-                  {(item.type === "요청" || item.type === "요청완료") && (
-                    <Button
-                      size="1"
-                      variant="ghost"
-                      onClick={() => openCommentDialog(item)}
-                    >
-                      요청 상세 보기
-                    </Button>
-                  )}
-                </Flex>
-                {isAdmin && caseStatus !== "closed" && (
-                  <Flex gap="2">
-                    <Button
-                      size="1"
-                      variant="soft"
-                      onClick={() => handleEdit(item)}
-                    >
-                      수정
-                    </Button>
-                    <Button
-                      size="1"
-                      variant="soft"
-                      color="red"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      삭제
-                    </Button>
-                  </Flex>
-                )}
-              </Flex>
-              <Flex
-                className="justify-between"
-                style={{ flexWrap: "nowrap", gap: "8px" }}
-              >
-                <Text
-                  size="3"
-                  mt="1"
-                  style={{ flexGrow: 1, overflow: "hidden" }}
-                >
-                  {item.description}
-                </Text>
-                <Text
-                  size="2"
-                  color="gray"
-                  mt="1"
-                  style={{
-                    flexShrink: 0,
-                    whiteSpace: "nowrap",
-                    marginLeft: "8px",
-                  }}
-                >
-                  {item.created_by?.name &&
-                    ((item.type === "요청" || item.type === "요청완료") &&
-                    item.requested_to?.name
-                      ? `${item.created_by.name} → ${item.requested_to.name}`
-                      : item.created_by.name)}
-                </Text>
-              </Flex>
-            </Box>
-          ))}
-        </Flex>
-        <Flex justify="between" mt="4">
-          {caseStatus !== "closed" && (
-            <Dialog.Root
-              open={isDeadlineDialogOpen}
-              onOpenChange={setIsDeadlineDialogOpen}
-            >
-              <Dialog.Trigger>
-                <Button size="2" onClick={() => setIsDeadlineDialogOpen(true)}>
-                  <PlusIcon /> 기일 추가
-                </Button>
-              </Dialog.Trigger>
-              <Dialog.Content
-                style={{
-                  overflow: "visible",
-                  position: "relative",
-                  zIndex: 1000,
-                }}
-              >
-                <Dialog.Title>
-                  {editingDeadline ? "기일 수정" : "새 기일 추가"}
-                </Dialog.Title>
-                <DeadlineForm
-                  caseId={caseId}
-                  onSuccess={handleDeadlineFormSuccess}
-                  onClose={() => {
-                    setIsDeadlineDialogOpen(false);
-                    setEditingDeadline(null);
-                  }}
-                  editingDeadline={editingDeadline} // 수정할 데이터를 전달
-                />
-              </Dialog.Content>
-            </Dialog.Root>
-          )}
-
-          {isAdmin && caseStatus !== "closed" && (
-            <Button size="2" color="red" onClick={handleCaseCompletion}>
-              사건 종결
-            </Button>
           )}
         </Flex>
       </Flex>

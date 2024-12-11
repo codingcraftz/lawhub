@@ -9,7 +9,7 @@ import DialogContent from "./DialogContent";
 import RequestTable from "./RequestTable";
 import { supabase } from "@/utils/supabase";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
-import TodoList from "./TodoList";
+import DeadlinesCalendar from "./DeadlinesCalender";
 
 const pageSize = 5;
 
@@ -131,7 +131,7 @@ const TodosPage = () => {
 
   return (
     <>
-      <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
+      <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col gap-2">
         <Text size="5" weight="bold">
           요청 관리
         </Text>
@@ -184,7 +184,13 @@ const TodosPage = () => {
             <DialogContent selectedRequest={selectedRequest} user={user} />
           </Dialog.Root>
         )}
-        <TodoList />
+
+        <Text className="mt-10" size="5" weight="bold">
+          일정 관리
+        </Text>
+        <Box className="my-2">
+          <DeadlinesCalendar />
+        </Box>
       </Box>
     </>
   );
