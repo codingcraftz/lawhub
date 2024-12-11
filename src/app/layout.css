@@ -135,24 +135,53 @@ html.light .react-datepicker__day--disabled {
   width: 100%;
 }
 
+/* 캘린더 전체 영역의 기본 스타일 */
 .rbc-day-bg {
   background: var(--gray-3);
   cursor: pointer;
-}
-
-.rbc-off-range-bg {
-  background: var(--gray-6) !important;
-  cursor: none;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease; /* 부드러운 전환 */
 }
 
 .rbc-day-bg:hover {
-  background: var(--gray-8);
-}
-.rbc-today:hover {
-  background: #eaf6ff;
-  opacity: 0.9;
+  background: var(--gray-8); /* Hover 시 배경색 변경 */
+  transform: scale(1.02); /* 살짝 확대 효과 */
+  cursor: pointer;
 }
 
-.rbc-current {
-  color: var(--gray-12);
+/* 오늘 날짜 강조 */
+.rbc-today {
+  background: #adcdef !important;
+  opacity: 0.9;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.rbc-today:hover {
+  background: #eaf6ff !important;
+  opacity: 1;
+  transform: scale(1.02); /* Hover 시 강조 */
+  cursor: pointer;
+}
+
+/* 월별 뷰의 범위를 벗어난 날짜 스타일 */
+.rbc-off-range-bg {
+  background: var(--gray-6) !important;
+  cursor: default; /* 비활성화된 날짜에는 pointer 대신 기본 커서 */
+  pointer-events: none; /* 클릭 불가로 설정 */
+}
+
+/* 더 보기 버튼 */
+.rbc-show-more {
+  background: none !important;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.rbc-show-more:hover {
+  color: var(--blue-12);
 }

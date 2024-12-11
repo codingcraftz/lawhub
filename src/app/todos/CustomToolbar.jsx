@@ -29,31 +29,64 @@ const CustomToolbar = (props) => {
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         justifyContent: "space-between",
-        marginBottom: "1rem",
         alignItems: "center",
+        marginBottom: "1rem",
       }}
     >
-      <div>
-        <button onClick={() => onNavigate("PREV")}>이전</button>
-        <button onClick={() => onNavigate("TODAY")}>오늘</button>
-        <button onClick={() => onNavigate("NEXT")}>다음</button>
-      </div>
-      <div>
-        <select onChange={handleYearChange} value={currentYear}>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+        <select
+          className="text-lg border border-gray-400 rounded-lg"
+          onChange={handleYearChange}
+          value={currentYear}
+          style={{
+            marginRight: "8px",
+            padding: "4px 8px",
+            background: "var(--gray-2)",
+          }}
+        >
           {years.map((year) => (
             <option key={year} value={year}>
               {year}년
             </option>
           ))}
         </select>
-        <select onChange={handleMonthChange} value={currentMonth}>
+        <select
+          className="text-lg border border-gray-400 rounded-lg"
+          onChange={handleMonthChange}
+          value={currentMonth}
+          style={{ padding: "4px 8px", background: "var(--gray-2)" }}
+        >
           {months.map((month) => (
             <option key={month} value={month}>
               {month + 1}월
             </option>
           ))}
         </select>
+      </div>
+      <div className="flex w-full justify-end gap-1">
+        <button
+          className="hover:opacity-30 border border-gray-400 rounded-md"
+          onClick={() => onNavigate("PREV")}
+          style={{ padding: "4px 8px" }}
+        >
+          이전
+        </button>
+        <button
+          className="hover:opacity-30 border border-gray-400 rounded-md"
+          onClick={() => onNavigate("TODAY")}
+          style={{ padding: "4px 8px" }}
+        >
+          오늘
+        </button>
+        <button
+          className="hover:opacity-30 border border-gray-400 rounded-md"
+          onClick={() => onNavigate("NEXT")}
+          style={{ padding: "4px 8px" }}
+        >
+          다음
+        </button>
       </div>
     </div>
   );

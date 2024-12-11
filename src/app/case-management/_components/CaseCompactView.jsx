@@ -7,7 +7,7 @@ import { useUser } from "@/hooks/useUser";
 import { useRouter, useSearchParams } from "next/navigation";
 import CaseForm from "@/app/case-management/_components/CaseForm";
 
-const CaseCompactView = ({ newCaseTrigger }) => {
+const CaseCompactView = ({ clientId, newCaseTrigger }) => {
   const fetchLimit = 20;
   const initialState = {
     cases: [],
@@ -18,9 +18,8 @@ const CaseCompactView = ({ newCaseTrigger }) => {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const initialTab = searchParams.get("tab") || "ongoing";
-  const initialPage = parseInt(searchParams.get("page")) || 1;
+  const initialPage = 1;
 
   const [caseData, setCaseData] = useState({
     ongoing: {
@@ -71,7 +70,12 @@ const CaseCompactView = ({ newCaseTrigger }) => {
 
   const fetchCases = useCallback(
     async (status) => {
-      if (!user || caseData[status].loading || !caseData[status].hasMore)
+      if (
+        !user ||
+        !clientId ||
+        caseData[status].loading ||
+        !caseData[status].hasMore
+      )
         return;
 
       setCaseData((prevData) => ({
@@ -84,13 +88,14 @@ const CaseCompactView = ({ newCaseTrigger }) => {
           .from("cases")
           .select(
             `
-            *,
-            case_categories (id, name),
-            case_clients (client:users (id, name)),
-            case_staff (staff:users (id, name)),
-            case_opponents (opponent:opponents (id, name))
-          `,
+          *,
+          case_categories (id, name),
+          case_clients!inner (client:users (id, name)),
+          case_staff (staff:users (id, name)),
+          case_opponents (opponent:opponents (id, name))
+        `,
           )
+          .eq("case_clients.client_id", clientId)
           .eq("status", status)
           .order("start_date", { ascending: true })
           .range(
@@ -98,6 +103,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
             caseData[status].page * fetchLimit - 1,
           );
 
+        // role이 staff인 경우 자신이 담당자로 등록된 사건만 필터링
         if (user.role === "staff") {
           const { data: caseStaffs, error } = await supabase
             .from("case_staff")
@@ -140,11 +146,6 @@ const CaseCompactView = ({ newCaseTrigger }) => {
             loading: false,
           },
         }));
-
-        // 현재 탭에 해당하는 페이지 번호를 URL에 저장
-        if (status === currentTab) {
-          updateSearchParams({ page: prevData[status].page });
-        }
       } catch (error) {
         console.error(`Error fetching ${status} cases:`, error);
         setCaseData((prevData) => ({
@@ -153,7 +154,7 @@ const CaseCompactView = ({ newCaseTrigger }) => {
         }));
       }
     },
-    [user, caseData, fetchLimit, currentTab],
+    [user, clientId, caseData, fetchLimit],
   );
 
   useEffect(() => {
