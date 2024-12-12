@@ -30,7 +30,7 @@ const CaseDetails = ({ caseData, onClose, onSuccess, isAdmin }) => {
           style={{ minWidth: 500, maxWidth: 1000, width: "fit-content" }}
         >
           <Dialog.Title>
-            {` ${caseData.court_name || ""} ${caseData.case_year || ""} ${caseData.case_type || ""} ${caseData.case_subject || ""}`}
+            {` ${caseData.court_name || ""} ${caseData.case_year || ""} ${caseData.case_type || ""} ${caseData.case_number || ""} ${caseData.case_subject || ""}`}
           </Dialog.Title>
           <Dialog.Close asChild>
             <Button

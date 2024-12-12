@@ -82,7 +82,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
         <Flex className="h-full" direction="column" gap="2">
           <Flex justify="between" align="flex-start">
             <Text size="5" weight="bold" style={{ flex: 1 }}>
-              {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_subject || ""}`}
+              {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_number || ""} ${caseItem.case_subject || ""}`}
             </Text>
             <Badge
               className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}
