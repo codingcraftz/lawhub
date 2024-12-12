@@ -1,3 +1,5 @@
+// src/app/case-management/page.jsx
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -17,7 +19,7 @@ import Pagination from "@/components/Pagination";
 import CaseForm from "@/app/case-management/_components/CaseForm";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
-const PAGE_SIZE = 12; // 한 페이지에 보여줄 카드 수
+const PAGE_SIZE = 12;
 
 const ClientManagementPage = () => {
   useRoleRedirect(["staff", "admin"], "/login");
@@ -26,11 +28,11 @@ const ClientManagementPage = () => {
   const [filteredClients, setFilteredClients] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchQuery, setSearchQuery] = useState(""); // 검색어 상태
+  const [searchQuery, setSearchQuery] = useState("");
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [newCaseTrigger, setNewCaseTrigger] = useState(0);
-  const [showOngoingOnly, setShowOngoingOnly] = useState(false); // 진행 중 필터
+  const [showOngoingOnly, setShowOngoingOnly] = useState(false);
 
   const router = useRouter();
   const { user } = useUser();

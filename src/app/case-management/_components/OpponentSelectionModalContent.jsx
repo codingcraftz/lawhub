@@ -1,5 +1,7 @@
+// src/app/case-mangement/_components/OpponentSelectionModalContent
+
 import React, { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { supabase } from "@/utils/supabase";

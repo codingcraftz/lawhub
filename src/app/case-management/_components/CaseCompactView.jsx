@@ -1,11 +1,15 @@
+// src/app/case-management/_components/CaseCardView.jsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex, Tabs, Button, Dialog } from "@radix-ui/themes";
+import { Box, Text, Flex, Tabs, Button } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
 import { useRouter, useSearchParams } from "next/navigation";
-import CaseForm from "@/app/case-management/_components/CaseForm";
+import { calculateExpenses, calculateInterest } from "@/utils/util";
+import CaseDetails from "./CaseDetails";
+import BondDetails from "./BondDetails";
 
 const CaseCompactView = ({ clientId, newCaseTrigger }) => {
   const fetchLimit = 20;
@@ -38,13 +42,14 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
 
   const [currentTab, setCurrentTab] = useState(initialTab);
   const { user } = useUser();
+  const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isBondDetailsOpen, setIsBondDetailsOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
 
   const updateSearchParams = (params) => {
     const currentParams = new URLSearchParams(searchParams.toString());
-
     Object.entries(params).forEach(([key, value]) => {
       if (value === null || value === undefined || value === "") {
         currentParams.delete(key);
@@ -55,7 +60,6 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
 
     const newSearch = currentParams.toString();
     const newPath = newSearch ? `?${newSearch}` : "";
-
     router.push(newPath);
   };
 
@@ -65,6 +69,7 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
   };
 
   const handleClick = (caseItem) => {
+    // 사건 상세 페이지로 이동
     router.push(`/cases/${caseItem.id}`);
   };
 
@@ -92,7 +97,8 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
           case_categories (id, name),
           case_clients!inner (client:users (id, name)),
           case_staff (staff:users (id, name)),
-          case_opponents (opponent:opponents (id, name))
+          case_opponents (opponent:opponents (id, name)),
+          bonds!bonds_case_id_fkey (principal, interest_1_rate, interest_1_start_date, interest_1_end_date, interest_2_rate, interest_2_start_date, interest_2_end_date, expenses)
         `,
           )
           .eq("case_clients.client_id", clientId)
@@ -163,15 +169,15 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
     }
   }, [user, currentTab, newCaseTrigger]);
 
-  const handleEditClick = (caseItem) => {
+  const handleBondClick = (e, caseItem) => {
+    e.stopPropagation();
     setSelectedCase(caseItem);
-    setIsEditModalOpen(true);
+    setIsBondDetailsOpen(true);
   };
-
-  const handleEditSuccess = () => {
-    setIsEditModalOpen(false);
-    setSelectedCase(null);
-    fetchCases(currentTab);
+  const handleDetailsClick = (e, caseItem) => {
+    e.stopPropagation();
+    setSelectedCase(caseItem);
+    setIsDetailsModalOpen(true);
   };
 
   return (
@@ -204,13 +210,19 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
                         className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
-                        사건번호
+                        수임 원금
                       </th>
                       <th
                         className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
-                        의뢰인
+                        원리금
+                      </th>
+                      <th
+                        className="border px-4 py-2"
+                        style={{ borderColor: "var(--gray-6)" }}
+                      >
+                        비용
                       </th>
                       <th
                         className="border px-4 py-2"
@@ -228,83 +240,130 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
                         className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
-                        시작날짜
+                        의뢰인
                       </th>
                       <th
                         className="border px-4 py-2"
                         style={{ borderColor: "var(--gray-6)" }}
                       >
-                        수정
+                        채권 정보
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {caseData[status].cases.map((caseItem) => (
-                      <tr
-                        key={caseItem.id}
-                        className="hover:opacity-30 cursor-pointer"
-                        onClick={() => handleClick(caseItem)}
-                      >
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
+                    {caseData[status].cases.map((caseItem) => {
+                      const bondsData = caseItem?.bonds?.[0];
+                      const total1Interest = calculateInterest(
+                        bondsData?.principal,
+                        bondsData?.interest_1_rate,
+                        bondsData?.interest_1_start_date,
+                        bondsData?.interest_1_end_date,
+                      );
+                      const total2Interest = calculateInterest(
+                        bondsData?.principal,
+                        bondsData?.interest_2_rate,
+                        bondsData?.interest_2_start_date,
+                        bondsData?.interest_2_end_date,
+                      );
+
+                      const totalExpenses = calculateExpenses(
+                        bondsData?.expenses,
+                      );
+
+                      const totalPrincipal = Math.floor(
+                        (bondsData?.principal || 0) +
+                          total1Interest +
+                          total2Interest +
+                          totalExpenses,
+                      );
+
+                      return (
+                        <tr
+                          key={caseItem.id}
+                          className="hover:opacity-80 cursor-pointer text-center"
+                          onClick={() => handleClick(caseItem)}
                         >
-                          {caseItem.case_categories.name}
-                        </td>
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
-                        >
-                          {caseItem.title}
-                        </td>
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
-                        >
-                          {caseItem.case_clients
-                            .map((cc) => cc.client.name)
-                            .join(", ")}
-                        </td>
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
-                        >
-                          {caseItem.case_opponents
-                            .map((co) => co.opponent.name)
-                            .join(", ")}
-                        </td>
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
-                        >
-                          {caseItem.case_staff
-                            .map((cs) => cs.staff.name)
-                            .join(", ")}
-                        </td>
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
-                        >
-                          {new Date(caseItem.start_date).toLocaleDateString(
-                            "ko-KR",
-                          )}
-                        </td>
-                        <td
-                          className="border px-4 py-2"
-                          style={{ borderColor: "var(--gray-6)" }}
-                        >
-                          <Button
-                            size="1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditClick(caseItem);
-                            }}
+                          <td
+                            className="border px-4 py-2"
+                            style={{ borderColor: "var(--gray-6)" }}
                           >
-                            수정
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                            {caseItem.case_categories.name}
+                          </td>
+                          <td
+                            className="border px-4 py-2 text-end"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            {bondsData?.principal
+                              ? bondsData.principal.toLocaleString()
+                              : "미등록"}
+                          </td>
+                          <td
+                            className="border px-4 py-2 text-end"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            {totalPrincipal
+                              ? totalPrincipal.toLocaleString()
+                              : "미등록"}
+                          </td>
+                          <td
+                            className="border px-4 py-2 text-end"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            {totalExpenses
+                              ? totalExpenses.toLocaleString()
+                              : "미등록"}
+                          </td>
+                          <td
+                            className="border px-4 py-2"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            {caseItem.case_opponents
+                              .map((co) => co.opponent.name)
+                              .join(", ")}
+                          </td>
+                          <td
+                            className="border px-4 py-2"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            {caseItem.case_staff
+                              .map((cs) => cs.staff.name)
+                              .join(", ")}
+                          </td>
+                          <td
+                            className="border px-4 py-2"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            {caseItem.case_clients
+                              .map((cc) => cc.client.name)
+                              .join(", ")}
+                          </td>
+                          <td
+                            className="border px-4 py-2 flex gap-2"
+                            style={{ borderColor: "var(--gray-6)" }}
+                          >
+                            <Button
+                              className="flex-1 cursor-pointer"
+                              variant="soft"
+                              color="blue"
+                              size="1"
+                              onClick={(e) => handleDetailsClick(e, caseItem)}
+                            >
+                              사건 정보
+                            </Button>
+
+                            <Button
+                              className="flex-1 cursor-pointer"
+                              variant="soft"
+                              color="blue"
+                              size="1"
+                              onClick={(e) => handleBondClick(e, caseItem)}
+                            >
+                              채권 정보
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {caseData[status].hasMore && (
@@ -333,27 +392,23 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
         ))}
       </Tabs.Root>
 
-      {/* 수정 모달 */}
-      <Dialog.Root open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <Dialog.Content style={{ maxWidth: 500 }}>
-          <Dialog.Title>사건 수정</Dialog.Title>
-          <Dialog.Close asChild>
-            <Button
-              variant="ghost"
-              color="gray"
-              size="1"
-              style={{ position: "absolute", top: 8, right: 8 }}
-            >
-              닫기
-            </Button>
-          </Dialog.Close>
-          <CaseForm
-            caseData={selectedCase}
-            onSuccess={handleEditSuccess}
-            onClose={() => setIsEditModalOpen(false)}
-          />
-        </Dialog.Content>
-      </Dialog.Root>
+      {/* Case Details Modal */}
+      {isDetailsModalOpen && selectedCase && (
+        <CaseDetails
+          caseData={selectedCase}
+          isAdmin={isAdmin}
+          onClose={() => setIsDetailsModalOpen(false)}
+        />
+      )}
+
+      {/* Bond Details Modal */}
+      {isBondDetailsOpen && selectedCase && (
+        <BondDetails
+          caseId={selectedCase.id}
+          isAdmin={isAdmin}
+          onClose={() => setIsBondDetailsOpen(false)}
+        />
+      )}
     </Box>
   );
 };

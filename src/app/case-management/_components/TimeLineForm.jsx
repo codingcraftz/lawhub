@@ -1,4 +1,4 @@
-// src/app/_components/TimeLineForm.jsx
+// src/app/case-management/_components/TimeLineForm.jsx
 
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -15,11 +15,12 @@ import {
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { Controller } from "react-hook-form";
 import { useUser } from "@/hooks/useUser";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const TimelineForm = ({ caseId, onSuccess, editingItem, onClose }) => {
+  useRoleRedirect(["staff", "admin"], "/");
   const [staff, setStaff] = useState([]);
   const { user } = useUser();
-
   const {
     register,
     handleSubmit,

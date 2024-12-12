@@ -5,22 +5,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Tabs } from "@radix-ui/themes";
-import ClientCaseCard from "./ClientCaseCard";
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import CaseCard from "@/app/case-management/_components/CaseCard";
 
 const ClientCardView = ({ pageSize = 9 }) => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-
   const initialTab = searchParams.get("tab") || "ongoing";
   const [currentTab, setCurrentTab] = useState(initialTab);
-
   const initialPage = parseInt(searchParams.get("page")) || 1;
-
-  // Make initialState a function that takes status as an argument
   const initialState = (status) => ({
     cases: [],
     count: 0,
@@ -34,6 +30,8 @@ const ClientCardView = ({ pageSize = 9 }) => {
   });
 
   const { user } = useUser();
+  const isAdmin = user?.role === "staff" || user?.role === "admin";
+
   const [isLoading, setIsLoading] = useState(false);
 
   const updateSearchParams = (params) => {
@@ -64,11 +62,14 @@ const ClientCardView = ({ pageSize = 9 }) => {
           .from("cases")
           .select(
             `
-            *,
-            case_categories (id, name),
-            case_clients!inner(client:users(id, name)),
-            case_opponents (opponent:opponents (id, name))
-          `,
+        *,
+        case_categories (id, name),
+        case_clients!inner (client:users (id, name)),
+        case_staff (staff:users (id, name)),
+        case_opponents (opponent:opponents (id, name)),
+        bonds!bonds_case_id_fkey (principal, interest_1_rate, interest_1_start_date, interest_1_end_date, interest_2_rate, interest_2_start_date, interest_2_end_date, expenses)
+      `,
+
             { count: "exact" },
           )
           .eq("case_clients.client_id", user.id)
@@ -90,7 +91,6 @@ const ClientCardView = ({ pageSize = 9 }) => {
           },
         }));
 
-        // Save the current tab's page number in the URL
         if (status === currentTab) {
           updateSearchParams({ page: caseData[status].page });
         }
@@ -107,13 +107,11 @@ const ClientCardView = ({ pageSize = 9 }) => {
     if (user) {
       fetchCases(currentTab);
     }
-    // Only re-fetch when currentTab or the page for the current tab changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentTab, caseData[currentTab].page]);
 
   const handleTabChange = (value) => {
     setCurrentTab(value);
-    updateSearchParams({ tab: value, page: 1 }); // Reset page to 1 when tab changes
+    updateSearchParams({ tab: value, page: 1 });
     setCaseData((prevData) => ({
       ...prevData,
       [value]: { ...prevData[value], page: 1 },
@@ -149,12 +147,11 @@ const ClientCardView = ({ pageSize = 9 }) => {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                     {caseData[status].cases.map((caseItem) => (
-                      <ClientCaseCard
+                      <CaseCard
                         key={caseItem.id}
                         caseItem={caseItem}
-                        onClick={() =>
-                          router.push(`/client/cases/${caseItem.id}`)
-                        }
+                        isAdmin={isAdmin}
+                        fetchCases={fetchCases}
                       />
                     ))}
                   </div>

@@ -1,3 +1,5 @@
+// src/app/boards/_components/DeadlineForm.jsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,14 +7,14 @@ import { useForm, Controller } from "react-hook-form";
 import { Box, Button, Flex, Text } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
 import CustomDatePicker from "@/components/CustomDatePicker";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
+  useRoleRedirect(["staff", "admin"], "/");
   const {
     control,
     handleSubmit,
     register,
-    watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
@@ -26,10 +28,8 @@ const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
   });
 
   const [cases, setCases] = useState([]);
-  const selectedCaseId = watch("case_id");
 
   useEffect(() => {
-    // caseId가 없을 때만 사건목록을 불러온다.
     if (!caseId) {
       const fetchCases = async () => {
         try {
@@ -51,7 +51,6 @@ const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
 
   const onSubmit = async (data) => {
     try {
-      // caseId가 props로 있으면 그대로 사용, 없으면 form에서 선택한 case_id 사용
       const finalCaseId = caseId || data.case_id;
       if (!finalCaseId) {
         alert("사건을 선택해주세요.");

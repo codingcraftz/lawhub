@@ -1,20 +1,24 @@
 "use client";
+
+import ErrorPage from "@/components/Error";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Avatar, Button } from "@radix-ui/themes";
+import { Box, Flex, Text, Avatar, Button, Card } from "@radix-ui/themes";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const MyPage = () => {
+  const router = useRouter();
   const { user, setUser } = useUser();
-
+  console.log(user);
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     router.push("/login");
   };
 
-  if (!user) {
-    return <div>로그인이 필요합니다.</div>;
-  }
+  if (!user) return <ErrorPage />;
 
   return (
     <Box className="my-auto" px="6" py="5">
