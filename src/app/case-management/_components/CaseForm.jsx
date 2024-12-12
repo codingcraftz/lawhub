@@ -9,29 +9,30 @@ import * as yup from "yup";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import UserSelectionModalContent from "./UserSelectionModalContent";
-import { Cross2Icon } from "@radix-ui/react-icons";
 import OpponentSelectionModalContent from "./OpponentSelectionModalContent";
 import CustomDatePicker from "@/components/CustomDatePicker";
 import { COURT_CITIES, COURT_LIST } from "@/utils/courtList";
 import { CASE_TYPE_OPTIONS } from "@/utils/caseType";
+import { Cross2Icon } from "@radix-ui/react-icons";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const schema = yup.object().shape({
-  court_name: yup.string(),
-  case_year: yup.number().nullable().typeError("숫자만 입력 가능합니다."),
-  case_type: yup.string(),
-  case_subject: yup.string(),
-  case_number: yup.number().nullable().typeError("숫자만 입력 가능합니다."),
-
-  description: yup.string(),
-  category_id: yup.string().required("사건 유형을 선택해주세요."),
+  isDateUndefined: yup.boolean(),
   start_date: yup
     .date()
     .nullable()
     .when("isDateUndefined", {
-      is: true,
-      then: (schema) => schema.nullable().notRequired(),
-      otherwise: (schema) => schema.required("시작일을 입력해주세요."),
+      is: false,
+      then: (schema) => schema.nullable(),
+      otherwise: (schema) => schema.notRequired(),
     }),
+  category_id: yup.string().nullable(),
+  court_name: yup.string().nullable(),
+  case_year: yup.number().nullable().typeError("숫자만 입력 가능합니다."),
+  case_type: yup.string().nullable(),
+  case_subject: yup.string().nullable(),
+  case_number: yup.number().nullable().typeError("숫자만 입력 가능합니다."),
+  description: yup.string().nullable(),
 });
 
 const clientRoles = [
@@ -64,6 +65,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   );
   const [selectedCity, setSelectedCity] = useState("");
   const [filteredCourts, setFilteredCourts] = useState([]);
+  useRoleRedirect(["staff", "admin"], "/");
 
   const {
     register,
@@ -108,18 +110,69 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   }, [categories, selectedCategoryId]);
 
   useEffect(() => {
+    // city 설정
+    if (caseData?.court_name) {
+      const court = COURT_LIST.find((c) => c.name === caseData.court_name);
+      if (court && court.city) {
+        setSelectedCity(court.city);
+      }
+    }
+  }, [caseData]);
+
+  useEffect(() => {
     if (selectedCity) {
       const courts = COURT_LIST.filter((court) => court.city === selectedCity);
       setFilteredCourts(courts);
-      setValue("court_name", "");
+      if (!caseData?.court_name) {
+        setValue("court_name", "");
+      }
+    } else {
+      setFilteredCourts([]);
+      if (!caseData?.court_name) {
+        setValue("court_name", "");
+      }
     }
-  }, [selectedCity]);
+  }, [selectedCity, setValue, caseData]);
 
   useEffect(() => {
-    if (caseData?.category_id && categories.length > 0) {
-      setValue("category_id", caseData.category_id);
+    // filteredCourts가 준비되면 court_name 설정
+    if (caseData?.court_name && filteredCourts.length > 0) {
+      const courtExists = filteredCourts.find(
+        (court) => court.name === caseData.court_name,
+      );
+      if (courtExists) {
+        setValue("court_name", caseData.court_name);
+      } else {
+        // court_name이 리스트에 없으면 빈값
+        setValue("court_name", "");
+      }
     }
-  }, [caseData, categories, setValue]);
+  }, [caseData, filteredCourts, setValue]);
+
+  useEffect(() => {
+    // case_type 설정
+    if (caseData?.case_type && filteredCaseTypes.length > 0) {
+      const typeExists = filteredCaseTypes.find(
+        (t) => t.name === caseData.case_type,
+      );
+      if (typeExists) {
+        setValue("case_type", caseData.case_type);
+      } else {
+        setValue("case_type", "");
+      }
+    }
+  }, [caseData, filteredCaseTypes, setValue]);
+
+  useEffect(() => {
+    // isDateUndefined 설정
+    if (caseData && caseData.start_date === null) {
+      setIsDateUndefined(true);
+      setValue("isDateUndefined", true);
+    } else {
+      setIsDateUndefined(false);
+      setValue("isDateUndefined", false);
+    }
+  }, [caseData, setValue]);
 
   const fetchCategories = async () => {
     const { data, error } = await supabase.from("case_categories").select("*");
@@ -127,6 +180,9 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       console.error("카테고리 불러오기 오류:", error);
     } else {
       setCategories(data);
+      if (caseData?.category_id) {
+        setValue("category_id", caseData.category_id);
+      }
     }
   };
 
@@ -136,9 +192,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       .select("client_id, client:users(name)")
       .eq("case_id", caseData.id);
 
-    if (clientError) {
-      console.error("의뢰인 불러오기 오류:", clientError);
-    } else {
+    if (!clientError) {
       const clients = clientData.map((item) => ({
         id: item.client_id,
         name: item.client.name,
@@ -151,9 +205,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       .select("staff_id, staff:users(name)")
       .eq("case_id", caseData.id);
 
-    if (staffError) {
-      console.error("담당자 불러오기 오류:", staffError);
-    } else {
+    if (!staffError) {
       const staff = staffData.map((item) => ({
         id: item.staff_id,
         name: item.staff.name,
@@ -168,9 +220,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       )
       .eq("case_id", caseData.id);
 
-    if (opponentError) {
-      console.error("상대방 불러오기 오류:", opponentError);
-    } else {
+    if (!opponentError) {
       const opponents = opponentData.map((item) => ({
         id: item.opponent_id,
         name: item.opponent.name,
@@ -185,15 +235,16 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   const onSubmit = async (data) => {
     try {
       let casePayload = {
-        court_name: data.court_name,
-        case_year: data.case_year,
-        case_type: data.case_type,
-        case_subject: data.case_subject,
-        description: data.description,
-        start_date: data.start_date,
-        category_id: data.category_id,
+        court_name: data.court_name || null,
+        case_year: data.case_year || null,
+        case_type: data.case_type || null,
+        case_subject: data.case_subject || null,
+        description: data.description || null,
+        start_date: data.start_date || null,
+        category_id: data.category_id || null,
         status: isScheduled ? "scheduled" : "ongoing",
         client_role: clientRole,
+        case_number: data.case_number || null,
       };
 
       let insertedCase;
@@ -239,6 +290,8 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       if (clientEntries.length > 0) {
         await supabase.from("case_clients").insert(clientEntries);
       } else {
+        // 의뢰인이 없을 경우 기본 클라이언트 설정 또는 그냥 넘어갈 수도 있음.
+        // 여기서는 기본 의뢰인 insert 예시(원치않으면 제거)
         await supabase.from("case_clients").insert({
           case_id: insertedCase.id,
           client_id: "e8353222-07e6-4d05-ac2c-5e004c043ce6",
@@ -269,6 +322,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       alert("사건 정보 저장 중 오류가 발생했습니다.");
     }
   };
+
   const onDelete = async () => {
     if (!caseData?.id) return;
     if (window.confirm("정말로 이 사건을 삭제하시겠습니까?")) {
@@ -294,6 +348,11 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
+      <input
+        type="hidden"
+        {...register("isDateUndefined")}
+        value={isDateUndefined}
+      />
       <Flex direction="column" gap="4">
         <Flex className="ml-auto" align="center" gap="2">
           <Text size="3">진행 예정</Text>
@@ -303,7 +362,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           />
         </Flex>
         <Box className="flex flex-col gap-2">
-          <Text size="3">사건 유형</Text>
+          <Text size="3">사건 유형 (필수 X)</Text>
           <select
             {...register("category_id")}
             style={{
@@ -329,7 +388,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
 
         <Box className="flex flex-col gap-2">
           <Text size="3" mb="2">
-            법원 선택
+            법원 선택 (필수 X)
           </Text>
           <Flex gap="2">
             <select
@@ -358,18 +417,12 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
                 borderRadius: "var(--radius-1)",
               }}
             >
-              {selectedCity ? (
-                <>
-                  <option value="">법원 선택</option>
-                  {filteredCourts.map((court) => (
-                    <option key={court.id} value={court.name}>
-                      {court.name}
-                    </option>
-                  ))}
-                </>
-              ) : (
-                <option value="">법원 선택</option>
-              )}
+              <option value="">법원 선택</option>
+              {filteredCourts.map((court) => (
+                <option key={court.id} value={court.name}>
+                  {court.name}
+                </option>
+              ))}
             </select>
             {errors.court_name && (
               <Text color="red">{errors.court_name.message}</Text>
@@ -380,7 +433,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
         {/* 사건 정보 */}
         <Box className="flex flex-col gap-2">
           <Text size="3" mb="2">
-            사건 번호
+            사건 번호 (필수 X)
           </Text>
           <Flex gap="4" align="center">
             <label>사건 연도</label>
@@ -399,7 +452,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
               {...register("case_type")}
               style={{
                 flex: 1,
-
                 padding: "0.6rem",
                 border: "2px solid var(--gray-6)",
                 borderRadius: "var(--radius-1)",
@@ -431,7 +483,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
               {...register("case_subject")}
               style={{
                 flex: 1,
-
                 padding: "0.6rem",
                 border: "2px solid var(--gray-6)",
                 borderRadius: "var(--radius-1)",
@@ -449,7 +500,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
 
         <Box>
           <textarea
-            placeholder="사건 설명"
+            placeholder="사건 설명 (필수 X)"
             {...register("description")}
             style={{
               width: "100%",
@@ -463,7 +514,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
 
         <Box className="flex flex-col gap-2">
           <Flex align="center" gap="3">
-            <Text size="3">의뢰 개시일</Text>
+            <Text size="3">의뢰 개시일 (필수 X)</Text>
             <Box>
               <input
                 className="mr-1"
@@ -492,7 +543,7 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           )}
         </Box>
         <Box className="flex flex-col gap-2">
-          <label htmlFor="client-role">의뢰인 역할</label>
+          <label htmlFor="client-role">의뢰인 역할 (필수 X)</label>
           <select
             id="client-role"
             value={clientRole}

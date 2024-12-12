@@ -1,21 +1,28 @@
-// components/_components/CaseCard.js
+// /src/app/case-management/_components/CaseCard.js
 
 "use client";
 
 import React, { useState } from "react";
-import { Card, Flex, Text, Badge, Button, Dialog } from "@radix-ui/themes";
-import CaseForm from "@/app/case-management/_components/CaseForm";
-import { getCategoryColor, getClientRoleColor } from "@/utils/util";
+import { Card, Flex, Text, Badge, Button } from "@radix-ui/themes";
+import {
+  calculateExpenses,
+  calculateInterest,
+  getCategoryColor,
+  getClientRoleColor,
+} from "@/utils/util";
 import CaseDetails from "./CaseDetails";
-import { Cross2Icon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
+import BondDetails from "./BondDetails";
 
 const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  console.log(isAdmin);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isBondDetailsOpen, setIsBondDetailsOpen] = useState(false);
+  const { bonds } = caseItem;
+  const bondsData = bonds[0];
+
   const categoryStyle = getCategoryColor(caseItem.case_categories?.name);
   const router = useRouter();
-  console.log(isAdmin);
 
   if (
     !caseItem ||
@@ -40,8 +47,31 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
     : "없음";
 
   const handleCardClick = () => {
-    router.push(`/cases/${caseItem.id}`);
+    if (isAdmin) router.push(`/cases/${caseItem.id}`);
+    if (!isAdmin) router.push(`/client/cases/${caseItem.id}`);
   };
+
+  const total1Interest = calculateInterest(
+    bondsData?.principal,
+    bondsData?.interest_1_rate,
+    bondsData?.interest_1_start_date,
+    bondsData?.interest_1_end_date,
+  );
+  const total2Interest = calculateInterest(
+    bondsData?.principal,
+    bondsData?.interest_2_rate,
+    bondsData?.interest_2_start_date,
+    bondsData?.interest_2_end_date,
+  );
+
+  const totalExpenses = calculateExpenses(bondsData?.expenses);
+
+  const totalPrincipal = Math.floor(
+    (bondsData?.principal || 0) +
+      total1Interest +
+      total2Interest +
+      totalExpenses,
+  );
 
   return (
     <>
@@ -52,7 +82,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
         <Flex className="h-full" direction="column" gap="2">
           <Flex justify="between" align="flex-start">
             <Text size="5" weight="bold" style={{ flex: 1 }}>
-              {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_subject || ""}`}
+              {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_number || ""} ${caseItem.case_subject || ""}`}
             </Text>
             <Badge
               className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full `}
@@ -66,6 +96,18 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
           </Flex>
 
           <div style={{ flexGrow: 1 }} />
+          <Text size="2" style={{ color: "var(--gray-10)" }}>
+            {!!totalPrincipal ? (
+              <>
+                <strong>원리금:</strong> {totalPrincipal.toLocaleString()}원
+              </>
+            ) : (
+              <>
+                <strong>등록된 채권정보가 없습니다.</strong>
+              </>
+            )}
+          </Text>
+
           <Flex align="center">
             <Text size="3">
               <strong>의뢰인:</strong> {clientNames}
@@ -89,7 +131,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
             <strong>담당자:</strong> {staffNames}
           </Text>
           <Text size="2" color="gray">
-            <strong>의뢰 개시일:</strong>{" "}
+            <strong>의뢰일: </strong>{" "}
             {caseItem.start_date ? (
               new Date(caseItem.start_date).toLocaleDateString("ko-KR", {
                 year: "numeric",
@@ -99,17 +141,17 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
             ) : (
               <Text>시작 예정 사건입니다.</Text>
             )}
+            {caseItem.end_date && (
+              <Text size="2" color="gray">
+                <strong> ~</strong>{" "}
+                {new Date(caseItem.end_date).toLocaleDateString("ko-KR", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                })}
+              </Text>
+            )}
           </Text>
-          {caseItem.end_date && (
-            <Text size="2" color="gray">
-              <strong>종료일:</strong>{" "}
-              {new Date(caseItem.end_date).toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-              })}
-            </Text>
-          )}
           <Flex width="100%" gap="0.5rem">
             <Button
               className="flex-1"
@@ -123,56 +165,36 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
             >
               사건 정보
             </Button>
-            {isAdmin && caseItem.status !== "closed" && (
-              <Button
-                className="flex-1"
-                variant="soft"
-                color="blue"
-                size="1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditModalOpen(true);
-                }}
-              >
-                수정
-              </Button>
-            )}
+            <Button
+              className="flex-1"
+              variant="soft"
+              color="blue"
+              size="1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsBondDetailsOpen(true); // 채권 정보 열기
+              }}
+            >
+              채권 정보
+            </Button>
           </Flex>
         </Flex>
       </Card>
-
-      {/* Edit Modal for Admin */}
-      {isAdmin && (
-        <Dialog.Root open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <Dialog.Content style={{ maxWidth: 700 }}>
-            <Dialog.Title>사건 수정</Dialog.Title>
-            <Dialog.Close asChild>
-              <Button
-                variant="ghost"
-                color="gray"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
-              >
-                <Cross2Icon />
-              </Button>
-            </Dialog.Close>
-            <CaseForm
-              caseData={caseItem}
-              onSuccess={() => {
-                setIsEditModalOpen(false);
-                fetchCases();
-              }}
-              onClose={() => setIsEditModalOpen(false)}
-            />
-          </Dialog.Content>
-        </Dialog.Root>
-      )}
 
       {/* Case Details Modal */}
       {isDetailsModalOpen && (
         <CaseDetails
           caseData={caseItem}
+          isAdmin={isAdmin}
+          onSuccess={fetchCases}
           onClose={() => setIsDetailsModalOpen(false)}
+        />
+      )}
+      {isBondDetailsOpen && (
+        <BondDetails
+          caseId={caseItem.id}
+          isAdmin={isAdmin}
+          onClose={() => setIsBondDetailsOpen(false)}
         />
       )}
     </>

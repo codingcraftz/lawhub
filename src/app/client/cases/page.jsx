@@ -42,15 +42,20 @@ const ClientCasesPage = () => {
 
   return (
     <div className="p-4 max-w-7xl w-full mx-auto">
-      <header className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">내 사건</h1>
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={isCompactView}
-            onCheckedChange={handleCompactViewToggle}
-          />
-          <label>간략히 보기</label>
-        </div>
+      <header className="flex items-center my-4 gap-4">
+        <h1 className="text-2xl font-bold pl-4">내 사건</h1>
+        <Switch
+          checked={isCompactView}
+          onCheckedChange={handleCompactViewToggle}
+          id="compactViewSwitch"
+          className="ml-2"
+        />
+        <label
+          htmlFor="compactViewSwitch"
+          className="ml-2 text-gray-600 text-sm"
+        >
+          간략히 보기
+        </label>
       </header>
       {isCompactView ? <ClientCompactView /> : <ClientCardView />}
     </div>

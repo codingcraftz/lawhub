@@ -1,3 +1,22 @@
+const getDate = (date) => (date === "dynamic" ? new Date() : new Date(date));
+
+export const calculateExpenses = (expensesData) =>
+  expensesData
+    ? expensesData.reduce(
+        (sum, expense) => sum + parseFloat(expense.amount || 0),
+        0,
+      ) || 0
+    : 0;
+
+export const calculateInterest = (principal, rate, startDate, endDate) => {
+  if (!startDate || !endDate || isNaN(principal) || isNaN(rate)) return 0;
+  const start = getDate(startDate).getTime();
+  const end = getDate(endDate).getTime();
+  const durationInYears = (end - start) / (1000 * 60 * 60 * 24 * 365.25);
+
+  return principal * (rate / 100) * Math.max(durationInYears, 0) || 0;
+};
+
 export const getCategoryColor = (category) => {
   const colors = {
     민사: { backgroundColor: "var(--sky-3)", color: "var(--sky-12)" },

@@ -1,3 +1,5 @@
+// src/app/boards/_components/CaseTimeline.jsx
+
 import React, { useState, useEffect } from "react";
 import { Box, Flex, Text, Button, Dialog, Badge } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
@@ -320,33 +322,31 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
             </Flex>
           ))}
         </Flex>
-        {deadlines.length > 0 && (
-          <Box className="ml-auto" mb="4">
-            {caseStatus !== "closed" && (
-              <Dialog.Root
-                open={isDeadlineDialogOpen}
-                onOpenChange={setIsDeadlineDialogOpen}
-              >
-                <Dialog.Trigger asChild>
-                  <Button size="2" onClick={() => setEditingDeadline(null)}>
-                    <PlusIcon /> 기일 추가
-                  </Button>
-                </Dialog.Trigger>
-                <Dialog.Content style={{ overflow: "visible" }}>
-                  <Dialog.Title>
-                    {editingDeadline ? "기일 수정" : "새 기일 추가"}
-                  </Dialog.Title>
-                  <DeadlineForm
-                    caseId={caseId}
-                    onSuccess={handleSuccess}
-                    editingDeadline={editingDeadline}
-                    onClose={() => setIsDeadlineDialogOpen(false)}
-                  />
-                </Dialog.Content>
-              </Dialog.Root>
-            )}
-          </Box>
-        )}
+        <Box className="ml-auto" mb="4">
+          {caseStatus !== "closed" && (
+            <Dialog.Root
+              open={isDeadlineDialogOpen}
+              onOpenChange={setIsDeadlineDialogOpen}
+            >
+              <Dialog.Trigger asChild>
+                <Button size="2" onClick={() => setEditingDeadline(null)}>
+                  <PlusIcon /> 기일 추가
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Content style={{ overflow: "visible" }}>
+                <Dialog.Title>
+                  {editingDeadline ? "기일 수정" : "새 기일 추가"}
+                </Dialog.Title>
+                <DeadlineForm
+                  caseId={caseId}
+                  onSuccess={handleSuccess}
+                  editingDeadline={editingDeadline}
+                  onClose={() => setIsDeadlineDialogOpen(false)}
+                />
+              </Dialog.Content>
+            </Dialog.Root>
+          )}
+        </Box>
 
         <Flex justify="between" align="center">
           <Text size="5" weight="bold">
