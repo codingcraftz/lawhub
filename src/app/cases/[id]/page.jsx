@@ -3,41 +3,48 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex } from "@radix-ui/themes";
+import { Box, Text, Flex, Button } from "@radix-ui/themes";
 import CaseTimeline from "@/app/case-management/_components/CaseTimeline";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import useAuthRedirect from "@/hooks/useAuthRedirect";
+import CaseDetails from "@/app/case-management/_components/CaseDetails";
+import BondDetails from "@/app/case-management/_components/BondDetails";
+import { useUser } from "@/hooks/useUser";
 
 const CasePage = () => {
   const { id } = useParams();
   const [caseData, setCaseData] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isBondDetailsOpen, setIsBondDetailsOpen] = useState(false);
+  const { user } = useUser();
+  const isAdmin = user?.role === "client" || user?.role === "admin";
   const router = useRouter();
 
   useAuthRedirect(["staff", "admin"], "/");
 
-  useEffect(() => {
-    const fetchCase = async () => {
-      const { data, error } = await supabase
-        .from("cases")
-        .select(
-          `
+  const fetchCase = async () => {
+    const { data, error } = await supabase
+      .from("cases")
+      .select(
+        `
           *,
           case_categories (id, name),
           case_clients (client:users (id, name)),
           case_staff (staff:users (id, name)),
           case_opponents (opponent:opponents (id, name))
         `,
-        )
-        .eq("id", id)
-        .single();
+      )
+      .eq("id", id)
+      .single();
 
-      if (error) {
-        console.error("Error fetching case:", error);
-      } else {
-        setCaseData(data);
-      }
-    };
+    if (error) {
+      console.error("Error fetching case:", error);
+    } else {
+      setCaseData(data);
+    }
+  };
 
+  useEffect(() => {
     if (id) {
       fetchCase();
     }
@@ -50,14 +57,40 @@ const CasePage = () => {
   return (
     <Box className="p-8 px-16 max-w-7xl w-full mx-auto">
       <Flex direction="column" gap="4">
-        <Flex direction={"row"} align={"center"}>
+        <Flex direction={"row"} align={"center"} gap="2">
           <ArrowLeftIcon
             className="w-8 h-8 cursor-pointer mr-3"
             onClick={() => router.back()}
           />
-          <Text size="6" weight="bold">
-            {caseData.title}
+          <Text size="5" weight="bold">
+            {`${caseData.court_name || ""} ${caseData.case_year || ""} ${caseData.case_type || ""} ${caseData.case_number || ""} ${caseData.case_subject || ""}`}
           </Text>
+          <Flex className="max-w-60" gap="0.5rem">
+            <Button
+              className="flex-1"
+              variant="soft"
+              color="blue"
+              size="1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsDetailsModalOpen(true);
+              }}
+            >
+              사건 정보
+            </Button>
+            <Button
+              className="flex-1"
+              variant="soft"
+              color="blue"
+              size="1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsBondDetailsOpen(true);
+              }}
+            >
+              채권 정보
+            </Button>
+          </Flex>
         </Flex>
         <CaseTimeline
           caseId={caseData.id}
@@ -65,6 +98,21 @@ const CasePage = () => {
           description={caseData.description}
         />
       </Flex>
+      {isDetailsModalOpen && (
+        <CaseDetails
+          caseData={caseData}
+          isAdmin={isAdmin}
+          onSuccess={fetchCase}
+          onClose={() => setIsDetailsModalOpen(false)}
+        />
+      )}
+      {isBondDetailsOpen && (
+        <BondDetails
+          caseId={caseData.id}
+          isAdmin={isAdmin}
+          onClose={() => setIsBondDetailsOpen(false)}
+        />
+      )}
     </Box>
   );
 };
