@@ -178,7 +178,7 @@ const NotificationDropdown = () => {
           {notifications.length > 0 ? (
             notifications.map((notification) => (
               <DropdownMenu.Item
-                className="mx-0 px-0"
+                className="mx-0 px-0 hover:bg-none"
                 key={notification.id}
                 onSelect={() => handleNotificationClick(notification)}
                 style={{
@@ -187,12 +187,12 @@ const NotificationDropdown = () => {
                 }}
               >
                 <Flex
-                  className="flex-1 gap-2 px-2 py-1 rounded-lg justify-between"
+                  className="flex-1 gap-2 px-2 py-1 rounded-lg justify-between hover:opacity-60"
                   direction="row"
                   align="flex-start"
                   style={{
                     backgroundColor: notification.is_read
-                      ? "transparent"
+                      ? "var(--gray-2)"
                       : "var(--sky-4)",
                   }}
                 >

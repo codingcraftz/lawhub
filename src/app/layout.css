@@ -185,3 +185,8 @@ html.light .react-datepicker__day--disabled {
 .rbc-show-more:hover {
   color: var(--blue-12);
 }
+
+.rt-DropdownMenuItem:hover {
+  background: none !important;
+  color: var(--gray-12);
+}
