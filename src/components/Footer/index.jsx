@@ -27,7 +27,7 @@ const Footer = () => {
             개인정보처리방침
           </Link>
           <Link
-            href="/updates"
+            href="/news"
             className="mr-4 text-sm"
             style={{ color: "var(--gray-10)" }}
           >

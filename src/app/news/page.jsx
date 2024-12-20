@@ -8,7 +8,7 @@ import FeedbackForm from "./FeedbackForm";
 import Pagination from "@/components/Pagination";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
-const Updates = () => {
+const NewsPage = () => {
   const [updates, setUpdates] = useState([]);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [expandedUpdate, setExpandedUpdate] = useState(null);
@@ -177,4 +177,4 @@ const Updates = () => {
   );
 };
 
-export default Updates;
+export default NewsPage;

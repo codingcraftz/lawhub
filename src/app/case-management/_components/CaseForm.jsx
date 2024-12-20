@@ -143,14 +143,12 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       if (courtExists) {
         setValue("court_name", caseData.court_name);
       } else {
-        // court_name이 리스트에 없으면 빈값
         setValue("court_name", "");
       }
     }
   }, [caseData, filteredCourts, setValue]);
 
   useEffect(() => {
-    // case_type 설정
     if (caseData?.case_type && filteredCaseTypes.length > 0) {
       const typeExists = filteredCaseTypes.find(
         (t) => t.name === caseData.case_type,
@@ -164,7 +162,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   }, [caseData, filteredCaseTypes, setValue]);
 
   useEffect(() => {
-    // isDateUndefined 설정
     if (caseData && caseData.start_date === null) {
       setIsDateUndefined(true);
       setValue("isDateUndefined", true);
@@ -290,8 +287,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
       if (clientEntries.length > 0) {
         await supabase.from("case_clients").insert(clientEntries);
       } else {
-        // 의뢰인이 없을 경우 기본 클라이언트 설정 또는 그냥 넘어갈 수도 있음.
-        // 여기서는 기본 의뢰인 insert 예시(원치않으면 제거)
         await supabase.from("case_clients").insert({
           case_id: insertedCase.id,
           client_id: "e8353222-07e6-4d05-ac2c-5e004c043ce6",
@@ -575,7 +570,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
             <Text>{selectedClients.map((c) => c.name).join(", ")}</Text>
           )}
         </Box>
-        {/* 담당자 선택 */}
         <Box>
           <Button
             className="mr-2"
@@ -589,7 +583,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           )}
         </Box>
 
-        {/* 상대방 선택 */}
         <Box>
           <Button
             className="mr-2"

@@ -65,11 +65,10 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
 
   const handleTabChange = (value) => {
     setCurrentTab(value);
-    updateSearchParams({ tab: value, page: 1 }); // 탭 변경 시 페이지를 1로 초기화
+    updateSearchParams({ tab: value, page: 1 });
   };
 
   const handleClick = (caseItem) => {
-    // 사건 상세 페이지로 이동
     router.push(`/cases/${caseItem.id}`);
   };
 

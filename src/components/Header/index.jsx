@@ -18,16 +18,12 @@ const NAV_LIST = [
     title: "사건 관리",
     path: "/case-management",
     roles: ["admin", "staff"],
-    // subItems: [
-    //   { title: "소송관리", path: "/case-management/litigation" },
-    //   { title: "채권관리", path: "/case-management/debt" },
-    // ],
   },
   { title: "일정 관리", path: "/todos", roles: ["admin", "staff"] },
   { title: "나의 사건", path: "/client/cases", roles: ["client"] },
   {
-    title: "공지 및 피드백",
-    path: "/updates",
+    title: "공지사항",
+    path: "/news",
     roles: ["admin", "staff", "client"],
   },
 ];
