@@ -87,7 +87,6 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
         .order("start_date", { ascending: false })
         .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-      // staff인 경우 본인이 담당자로 등록된 사건만 필터링
       if (user.role === "staff") {
         const { data: caseStaffs, error } = await supabase
           .from("case_staff")
@@ -103,7 +102,6 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
         if (caseIds.length > 0) {
           query = query.in("id", caseIds);
         } else {
-          // 담당 사건 없으면 빈 리스트
           setCaseData((prev) => ({
             ...prev,
             [status]: { ...prev[status], cases: [], count: 0 },
@@ -127,7 +125,6 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
         },
       }));
 
-      // 현재 탭에 해당하면 URL page 업데이트
       if (status === currentTab) {
         updateSearchParams({ page: caseData[status].page });
       }
@@ -135,7 +132,6 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
     [user, clientId, currentTab, caseData, PAGE_SIZE],
   );
 
-  // currentTab, page 변화 또는 user, clientId 준비시 fetch
   useEffect(() => {
     if (user && clientId) {
       fetchCases(currentTab);
@@ -148,9 +144,6 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
       [currentTab]: { ...prev[currentTab], page: newPage },
     }));
   };
-
-  const { cases, count, page } = caseData[currentTab];
-  const totalPages = Math.ceil(count / PAGE_SIZE);
 
   return (
     <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">

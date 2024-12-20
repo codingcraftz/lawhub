@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Box, Text, Button, Flex } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { Box } from "@radix-ui/themes";
 
 const FileUploadDropZone = ({ timelineId, onFileUpload }) => {
   const [dragging, setDragging] = useState(false);
@@ -20,7 +19,7 @@ const FileUploadDropZone = ({ timelineId, onFileUpload }) => {
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      onFileUpload(timelineId, files[0]); // 첫 번째 파일만 업로드
+      onFileUpload(timelineId, files[0]);
     }
   };
 

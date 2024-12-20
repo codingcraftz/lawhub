@@ -15,13 +15,11 @@ import { useRouter } from "next/navigation";
 import BondDetails from "./BondDetails";
 
 const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
-  console.log(isAdmin);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isBondDetailsOpen, setIsBondDetailsOpen] = useState(false);
+  const categoryStyle = getCategoryColor(caseItem.case_categories?.name);
   const { bonds } = caseItem;
   const bondsData = bonds[0];
-
-  const categoryStyle = getCategoryColor(caseItem.case_categories?.name);
   const router = useRouter();
 
   if (
@@ -31,25 +29,6 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
   ) {
     return null;
   }
-
-  const clientNames = caseItem.case_clients
-    ? caseItem.case_clients.map((c) => c.client && c.client.name).join(", ")
-    : "없음";
-
-  const opponentNames = caseItem.case_opponents
-    ? caseItem.case_opponents
-        .map((o) => o.opponent && o.opponent.name)
-        .join(", ")
-    : "없음";
-
-  const staffNames = caseItem.case_staff
-    ? caseItem.case_staff.map((s) => s.staff && s.staff.name).join(", ")
-    : "없음";
-
-  const handleCardClick = () => {
-    if (isAdmin) router.push(`/cases/${caseItem.id}`);
-    if (!isAdmin) router.push(`/client/cases/${caseItem.id}`);
-  };
 
   const total1Interest = calculateInterest(
     bondsData?.principal,
@@ -73,6 +52,31 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
       totalExpenses,
   );
 
+  const clientNames = caseItem.case_clients
+    ? caseItem.case_clients
+        .map((caseItem) => caseItem.client && caseItem.client.name)
+        .join(", ")
+    : "없음";
+
+  const opponentNames = caseItem.case_opponents
+    ? caseItem.case_opponents
+        .map(
+          (caseOpponent) => caseOpponent.opponent && caseOpponent.opponent.name,
+        )
+        .join(", ")
+    : "없음";
+
+  const staffNames = caseItem.case_staff
+    ? caseItem.case_staff
+        .map((caseStaff) => caseStaff.staff && caseStaff.staff.name)
+        .join(", ")
+    : "없음";
+
+  const handleCardClick = () => {
+    if (isAdmin) router.push(`/cases/${caseItem.id}`);
+    if (!isAdmin) router.push(`/client/cases/${caseItem.id}`);
+  };
+
   return (
     <>
       <Card
@@ -81,7 +85,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
       >
         <Flex className="h-full" direction="column" gap="2">
           <Flex justify="between" align="flex-start">
-            <Text size="5" weight="bold" style={{ flex: 1 }}>
+            <Text className="flex-1" size="5" weight="bold">
               {` ${caseItem.court_name || ""} ${caseItem.case_year || ""} ${caseItem.case_type || ""} ${caseItem.case_number || ""} ${caseItem.case_subject || ""}`}
             </Text>
             <Badge
@@ -95,7 +99,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
             </Badge>
           </Flex>
 
-          <div style={{ flexGrow: 1 }} />
+          <div className="flex-1" />
           <Text size="2" style={{ color: "var(--gray-10)" }}>
             {!!totalPrincipal ? (
               <>
@@ -172,7 +176,7 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
               size="1"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsBondDetailsOpen(true); // 채권 정보 열기
+                setIsBondDetailsOpen(true);
               }}
             >
               채권 정보
@@ -181,7 +185,6 @@ const CaseCard = ({ caseItem, isAdmin, fetchCases }) => {
         </Flex>
       </Card>
 
-      {/* Case Details Modal */}
       {isDetailsModalOpen && (
         <CaseDetails
           caseData={caseItem}
