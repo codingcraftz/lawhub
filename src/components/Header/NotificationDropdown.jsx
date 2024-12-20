@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/hooks/useUser";
-import {
-  Flex,
-  Box,
-  Text,
-  Button,
-  DropdownMenu,
-  Tooltip,
-} from "@radix-ui/themes";
+import { Flex, Box, Text, Button, DropdownMenu } from "@radix-ui/themes";
 import { useRouter } from "next/navigation";
 
 const MAX_DISPLAY_COUNT = 6;
@@ -32,7 +25,16 @@ const NotificationDropdown = () => {
   const fetchNotifications = async () => {
     const { data, error } = await supabase
       .from("notifications")
-      .select("*, case_timelines (case_id, case:cases(title))")
+      .select(
+        `*, 
+      case:case_id (
+        court_name,
+        case_year,
+        case_type,
+        case_number,
+        case_subject
+      )`,
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -50,7 +52,28 @@ const NotificationDropdown = () => {
         ),
       ];
 
-      setNotifications(limitedNotifications);
+      // 사건 정보 텍스트 생성 및 추가
+      const notificationsWithCaseInfo = limitedNotifications.map(
+        (notification) => {
+          if (notification.case) {
+            const caseInfo = notification.case;
+            notification.case_info = [
+              caseInfo.court_name || "",
+              caseInfo.case_year || "",
+              caseInfo.case_type || "",
+              caseInfo.case_number || "",
+              caseInfo.case_subject || "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+          } else {
+            notification.case_info = null;
+          }
+          return notification;
+        },
+      );
+
+      setNotifications(notificationsWithCaseInfo);
       setUnreadCount(unreadNotifications.length);
     }
   };
@@ -96,9 +119,9 @@ const NotificationDropdown = () => {
   const handleNotificationClick = async (notification) => {
     await markAsRead(notification.id);
     if (notification.type === "배정") {
-      router.push("/case-management");
+      router.push(`/cases/${notification.case_id}`);
     } else if (notification.type === "요청") {
-      router.push("/todos");
+      router.push(`/cases/${notification.case_id}`);
     }
   };
 
@@ -113,41 +136,6 @@ const NotificationDropdown = () => {
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
       );
       setUnreadCount((prev) => prev - 1);
-    }
-  };
-
-  const renderNotificationMessage = (notification) => {
-    const caseTitle = notification.case_timelines?.case?.title || "알 수 없음";
-
-    if (notification.type === "배정") {
-      return <Text>새로운 사건에 배정되었습니다: {notification.message}</Text>;
-    } else if (
-      notification.type === "요청" ||
-      notification.type === "요청 승인"
-    ) {
-      return (
-        <Tooltip
-          content={notification.message}
-          side="top"
-          align="start"
-          sideOffset={5}
-        >
-          <Text
-            style={{
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              cursor: "pointer",
-            }}
-          >
-            {notification.type === "요청"
-              ? `새로운 요청이 있습니다: ${caseTitle}`
-              : `요청이 승인되었습니다: ${caseTitle}`}
-          </Text>
-        </Tooltip>
-      );
-    } else {
-      return <Text>{notification.message}</Text>;
     }
   };
 
@@ -182,49 +170,84 @@ const NotificationDropdown = () => {
           )}
         </Button>
       </DropdownMenu.Trigger>
-      <DropdownMenu.Content style={{ minWidth: "300px" }}>
-        <Flex direction="column" gap="1rem">
+      <DropdownMenu.Content
+        className="py-1"
+        style={{ minWidth: "300px", maxWidth: "600px" }}
+      >
+        <Flex className="" direction="column" gap="1rem">
           {notifications.length > 0 ? (
             notifications.map((notification) => (
               <DropdownMenu.Item
+                className="mx-0 px-0 hover:bg-none"
                 key={notification.id}
                 onSelect={() => handleNotificationClick(notification)}
                 style={{
-                  backgroundColor: notification.is_read
-                    ? "transparent"
-                    : "var(--gray-3)",
-                  padding: "8px",
                   cursor: "pointer",
+                  whiteSpace: "normal",
                 }}
               >
-                <Flex direction="row" align="center">
-                  {!notification.is_read && (
-                    <Box
-                      style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        backgroundColor: "var(--blue-9)",
-                        marginRight: "8px",
-                      }}
-                    />
+                <Flex
+                  className="flex-1 gap-2 px-2 py-1 rounded-lg justify-between hover:opacity-60"
+                  direction="row"
+                  align="flex-start"
+                  style={{
+                    backgroundColor: notification.is_read
+                      ? "var(--gray-2)"
+                      : "var(--sky-4)",
+                  }}
+                >
+                  {notification.type === "배정" ? (
+                    <Box>
+                      <Text>사건에 배정되었습니다</Text>
+                      <Text
+                        className="block text-sm"
+                        style={{
+                          color: "var(--gray-9)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "block",
+                          width: "200px",
+                        }}
+                      >
+                        {notification.case_info}
+                      </Text>
+                    </Box>
+                  ) : notification.type === "요청" ||
+                    notification.type === "요청 승인" ? (
+                    <Box>
+                      <Text>
+                        {notification.type === "요청"
+                          ? "요청이 있습니다"
+                          : "요청이 완료되었습니다."}
+                      </Text>
+                      <Text
+                        className="block text-sm"
+                        style={{
+                          color: "var(--gray-9)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "block",
+                          width: "200px",
+                        }}
+                      >
+                        {notification.message}
+                      </Text>
+                    </Box>
+                  ) : (
+                    <Text>{notification.message}</Text>
                   )}
-                  <Flex direction="column">
-                    {renderNotificationMessage(notification)}
-                    <Text size="1" color="gray">
-                      {new Date(notification.created_at).toLocaleString(
-                        "ko-KR",
-                        {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        },
-                      )}
-                    </Text>
-                  </Flex>
+                  <Text size="1" color="gray">
+                    {new Date(notification.created_at).toLocaleString("ko-KR", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </Text>
                 </Flex>
               </DropdownMenu.Item>
             ))

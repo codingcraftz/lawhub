@@ -52,7 +52,6 @@ const ClientCasePage = () => {
   const handleCompactViewToggle = (checked) => {
     updateSearchParams({ view: checked ? "compact" : "card" });
   };
-  console.log(clientName);
 
   return (
     <div className="p-4 max-w-7xl w-full mx-auto">
