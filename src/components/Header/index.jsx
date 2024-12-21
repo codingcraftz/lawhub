@@ -2,7 +2,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
@@ -12,6 +12,7 @@ import { Flex, Button, Text, Avatar, Box, Separator } from "@radix-ui/themes";
 import { useTheme } from "next-themes";
 import * as HoverCard from "@radix-ui/react-hover-card"; // HoverCard import
 import NotificationDropdown from "./NotificationDropdown";
+import LoginDialog from "./LoginDialog";
 
 const NAV_LIST = [
   {
@@ -29,30 +30,33 @@ const NAV_LIST = [
 ];
 
 const Header = () => {
-  const router = useRouter();
   const { user, setUser } = useUser();
   const { theme, setTheme } = useTheme();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Logout failed:", error.message);
+    } else {
+      console.log("User logged out");
+      setUser(null);
+    }
+  };
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push("/login");
-  };
-
   return (
-    <Box px="6" py="5" style={{ backgroundColor: "var(--gray-3)" }}>
-      <Flex justify="between" align="center">
-        <Flex align="center" gap="4" style={{ alignItems: "center" }}>
+    <Box className="border-b border-b-gray-9 px-5 py-5">
+      <Flex className="justify-between items-center">
+        <Flex className="items-center gap-4">
           <Link href="/">
             <Text size="5" weight="bold">
               LawHub
             </Text>
           </Link>
-          <Flex gap="1rem" align="center" style={{ alignItems: "center" }}>
+          <Flex className="gap-4 items-cneter">
             {NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map(
               (nav) => {
                 if (nav.subItems) {
@@ -61,13 +65,9 @@ const Header = () => {
                       <HoverCard.Trigger asChild>
                         <Link href={nav.path}>
                           <Button
+                            className="flex items-center cursor-pointer"
                             variant="ghost"
                             color="gray"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              cursor: "pointer",
-                            }}
                           >
                             {nav.title}
                           </Button>
@@ -115,7 +115,6 @@ const Header = () => {
                     </HoverCard.Root>
                   );
                 } else {
-                  // 하위 메뉴가 없는 경우 기본 Link
                   return (
                     <Link href={nav.path} key={nav.path}>
                       <Button
@@ -152,80 +151,30 @@ const Header = () => {
         </Flex>
 
         <Flex align="center" gap="4">
-          <Button variant="ghost" onClick={toggleTheme}>
-            {theme === "light" ? <MoonIcon /> : <SunIcon />}
+          <Button
+            className="focus:outline-none"
+            variant="ghost"
+            color="gray"
+            onClick={toggleTheme}
+          >
+            {theme === "light" ? (
+              <MoonIcon width={20} height={20} />
+            ) : (
+              <SunIcon width={20} height={20} />
+            )}
           </Button>
           {user && (user.role === "admin" || user.role === "staff") && (
             <NotificationDropdown />
           )}
-
           {user ? (
-            <HoverCard.Root>
-              <HoverCard.Trigger asChild>
-                <Link href="/my-page">
-                  <Box style={{ cursor: "pointer" }}>
-                    <Avatar
-                      src={user.avatar_url}
-                      fallback={user.email ? user.email[0].toUpperCase() : "U"}
-                      size="2"
-                      radius="full"
-                    />
-                  </Box>
-                </Link>
-              </HoverCard.Trigger>
-              <HoverCard.Content
-                side="bottom"
-                sideOffset={10}
-                style={{
-                  backgroundColor: "var(--gray-2)",
-                  borderRadius: "8px",
-                  boxShadow: "0px 2px 10px rgba(0,0,0,0.15)",
-                  minWidth: "160px",
-                  padding: "0.5rem 0",
-                  zIndex: 1000,
-                }}
-              >
-                <Link href="/my-page" style={{ textDecoration: "none" }}>
-                  <Flex
-                    px="3"
-                    py="2"
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "var(--gray-3)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "var(--gray-2)")
-                    }
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Text size="2">마이페이지</Text>
-                  </Flex>
-                </Link>
-                <Separator />
-                <Flex
-                  px="3"
-                  py="2"
-                  style={{ cursor: "pointer" }}
-                  onClick={handleLogout}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "var(--gray-3)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "var(--gray-2)")
-                  }
-                >
-                  <Text size="2">로그아웃</Text>
-                </Flex>
-              </HoverCard.Content>
-            </HoverCard.Root>
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600 transition"
+            >
+              로그아웃
+            </button>
           ) : (
-            <Flex gap="1rem">
-              <Link href="/login">
-                <Button>로그인</Button>
-              </Link>
-              <Link href="/signup">
-                <Button>회원가입</Button>
-              </Link>
-            </Flex>
+            <LoginDialog />
           )}
         </Flex>
       </Flex>

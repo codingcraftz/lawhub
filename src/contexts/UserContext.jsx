@@ -30,13 +30,8 @@ export const UserProvider = ({ children }) => {
 
       if (error) {
         console.error("Error fetching profile:", error);
-      } else if (!profile.is_active) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setModalMessage("관리자의 승인을 기다려주세요.");
-        setIsModalOpen(true);
       } else {
-        setUser({ ...authUser, ...profile });
+        setUser({ ...profile });
       }
     } else {
       setUser(null);
@@ -44,6 +39,7 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    console.log("fetchUser");
     fetchUser();
 
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
@@ -58,7 +54,6 @@ export const UserProvider = ({ children }) => {
   return (
     <UserContext.Provider value={{ user, setUser, fetchUser }}>
       {children}
-      {/* 모달 구현 */}
       <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
         <Dialog.Content
           className="max-w-[450px] p-8 rounded-md border-2 bg-white fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-lg z-50 text-center"
