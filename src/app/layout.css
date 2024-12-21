@@ -4,6 +4,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode colors */
+@import "@radix-ui/colors/gray.css";
+@import "@radix-ui/colors/slate.css";
+@import "@radix-ui/colors/violet.css";
+@import "@radix-ui/colors/mauve.css";
+@import "@radix-ui/colors/green.css";
+@import "@radix-ui/colors/red.css";
+@import "@radix-ui/colors/blue.css";
+@import "@radix-ui/colors/sky.css";
+@import "@radix-ui/colors/orange.css";
+@import "@radix-ui/colors/yellow.css";
+@import "@radix-ui/colors/tomato.css";
+
+/* Dark mode colors */
+@import "@radix-ui/colors/gray-dark.css";
+@import "@radix-ui/colors/slate-dark.css";
+@import "@radix-ui/colors/violet-dark.css";
+@import "@radix-ui/colors/mauve-dark.css";
+@import "@radix-ui/colors/green-dark.css";
+@import "@radix-ui/colors/red-dark.css";
+@import "@radix-ui/colors/blue-dark.css";
+@import "@radix-ui/colors/sky-dark.css";
+@import "@radix-ui/colors/orange-dark.css";
+@import "@radix-ui/colors/yellow-dark.css";
+@import "@radix-ui/colors/tomato-dark.css";
+
 svg {
   color: var(--gray-12);
 }
