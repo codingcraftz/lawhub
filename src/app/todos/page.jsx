@@ -45,11 +45,16 @@ const TodosPage = () => {
   const fetchRequests = async (type, page) => {
     let query = supabase.from("requests").select(
       `
-          *,
-          requester:users(id, name),
-          receiver:users(id, name),
-          case_timelines ( id, description, type, case:cases(title) )
-        `,
+      *,
+      requester:requester_id(id, name),
+      receiver:receiver_id(id, name),
+      case_timelines (
+        id, 
+        description, 
+        type, 
+        case:cases(title)
+      )
+    `,
       { count: "exact" },
     );
 

@@ -67,6 +67,7 @@ export default function RootLayout({ children }) {
         <UserProvider>
           <ThemeProvider attribute="class">
             <Theme
+              className="flex flex-col items-center"
               accentColor="blue"
               grayColor="sand"
               radius="medium"
@@ -75,7 +76,7 @@ export default function RootLayout({ children }) {
               <Header />
 
               <div
-                className="flex flex-col flex-1 w-full px-4"
+                className="flex flex-1 w-full px-4 justify-center max-w-screen-lg"
                 style={{
                   backgroundColor: "var(--gray-2)",
                 }}

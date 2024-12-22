@@ -67,11 +67,11 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
         .from("requests")
         .select(
           `
-        *,
-        requester:users(id, name),
-        receiver:users(id, name),
-        case_timelines(id, description, type, case:cases(title))
-      `,
+          *,
+          requester:users!fk_requester (id, name),
+          receiver:users!requests_receiver_id_fkey1 (id, name),
+          case_timelines(id, description, type, case:cases(title))
+        `,
         )
         .eq("case_timeline_id", item.id)
         .single();
@@ -279,14 +279,15 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
                 border: "1px solid var(--gray-6)",
               }}
             >
-              <Flex direction="row" align="center" gap="3">
+              <Flex className="items-center gap-2">
                 <Text size="3" weight="bold">
                   {deadline.type}
                 </Text>
                 <Text size="2" weight="gray">
                   {deadline.location}
                 </Text>
-
+              </Flex>
+              <Flex className="gap-3 mr-1">
                 <Text size="2" color="gray">
                   {new Date(deadline.deadline_date).toLocaleDateString(
                     "ko-KR",
@@ -299,25 +300,28 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
                     },
                   )}
                 </Text>
-              </Flex>
-              <Flex gap="2">
-                <Button
-                  size="1"
-                  onClick={() => handleEditDeadline(deadline)}
-                  variant="soft"
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  수정
-                </Button>
-                <Button
-                  size="1"
-                  variant="soft"
-                  color="red"
-                  onClick={() => handleDeleteDeadline(deadline.id)}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  삭제
-                </Button>
+
+                {isAdmin && caseStatus !== "closed" && (
+                  <Flex gap="2">
+                    <Button
+                      size="1"
+                      onClick={() => handleEditDeadline(deadline)}
+                      variant="soft"
+                      style={{ display: "flex", alignItems: "center" }}
+                    >
+                      수정
+                    </Button>
+                    <Button
+                      size="1"
+                      variant="soft"
+                      color="red"
+                      onClick={() => handleDeleteDeadline(deadline.id)}
+                      style={{ display: "flex", alignItems: "center" }}
+                    >
+                      삭제
+                    </Button>
+                  </Flex>
+                )}
               </Flex>
             </Flex>
           ))}

@@ -15,6 +15,7 @@ import { COURT_CITIES, COURT_LIST } from "@/utils/courtList";
 import { CASE_TYPE_OPTIONS } from "@/utils/caseType";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
+import CourtCaseSelectionModal from "./CourtCaseSelectionModal";
 
 const schema = yup.object().shape({
   isDateUndefined: yup.boolean(),
@@ -65,6 +66,11 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   );
   const [selectedCity, setSelectedCity] = useState("");
   const [filteredCourts, setFilteredCourts] = useState([]);
+
+  const [courtCaseInfo, setCourtCaseInfo] = useState(""); // 표시용 데이터
+  const [courtCaseData, setCourtCaseData] = useState(null); // 실제 데이터
+  const [isCourtCaseModalOpen, setIsCourtCaseModalOpen] = useState(false);
+
   useRoleRedirect(["staff", "admin"], "/");
 
   const {
@@ -110,7 +116,6 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   }, [categories, selectedCategoryId]);
 
   useEffect(() => {
-    // city 설정
     if (caseData?.court_name) {
       const court = COURT_LIST.find((c) => c.name === caseData.court_name);
       if (court && court.city) {
@@ -381,116 +386,15 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
           )}
         </Box>
 
-        <Box className="flex flex-col gap-2">
-          <Text size="3" mb="2">
-            법원 선택 (필수 X)
-          </Text>
-          <Flex gap="2">
-            <select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.8rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            >
-              <option value="">도시 선택</option>
-              {COURT_CITIES.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-            <select
-              {...register("court_name")}
-              style={{
-                width: "100%",
-                padding: "0.6rem 0.8rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            >
-              <option value="">법원 선택</option>
-              {filteredCourts.map((court) => (
-                <option key={court.id} value={court.name}>
-                  {court.name}
-                </option>
-              ))}
-            </select>
-            {errors.court_name && (
-              <Text color="red">{errors.court_name.message}</Text>
-            )}
-          </Flex>
-        </Box>
-
-        {/* 사건 정보 */}
-        <Box className="flex flex-col gap-2">
-          <Text size="3" mb="2">
-            사건 번호 (필수 X)
-          </Text>
-          <Flex gap="4" align="center">
-            <label>사건 연도</label>
-            <input
-              placeholder="(예: 2023)"
-              {...register("case_year")}
-              style={{
-                flex: 1,
-                padding: "0.6rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            <label>사건 구분</label>
-            <select
-              {...register("case_type")}
-              style={{
-                flex: 1,
-                padding: "0.6rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            >
-              <option value="">사건 타입</option>
-              {filteredCaseTypes.map((type) => (
-                <option key={type.code} value={type.name}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </Flex>
-          <Flex gap="4" align={"center"}>
-            <label>사건 번호</label>
-            <input
-              placeholder="(예: 75902)"
-              {...register("case_number")}
-              style={{
-                flex: 1,
-                padding: "0.6rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            <label>사건 세부</label>
-            <input
-              placeholder="(예: 손해배상(기))"
-              {...register("case_subject")}
-              style={{
-                flex: 1,
-                padding: "0.6rem",
-                border: "2px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-          </Flex>
-          {(errors.case_year || errors.case_type || errors.case_number) && (
-            <Text color="red">
-              {errors.case_year?.message ||
-                errors.case_type?.message ||
-                errors.case_number?.message}
-            </Text>
-          )}
+        <Box>
+          <Button
+            className="mr-2"
+            type="button"
+            onClick={() => setIsCourtCaseModalOpen(true)}
+          >
+            법원 및 사건번호 입력
+          </Button>
+          {courtCaseInfo && <Text>{courtCaseInfo}</Text>}
         </Box>
 
         <Box>
@@ -678,6 +582,23 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
             onClose={() => setIsOpponentModalOpen(false)}
           />
         </Dialog.Content>
+      </Dialog.Root>
+
+      <Dialog.Root
+        open={isCourtCaseModalOpen}
+        onOpenChange={setIsCourtCaseModalOpen}
+      >
+        <CourtCaseSelectionModal
+          onConfirm={(data) => {
+            setCourtCaseInfo(data.caseInfo); // 화면 표시용
+            setCourtCaseData(data); // 실제 데이터 저장
+            setValue("court_name", data.courtName);
+            setValue("case_year", parseInt(data.caseYear));
+            setValue("case_number", parseInt(data.caseNumber));
+            setValue("case_subject", data.caseSubject); // 사건 세부 설정
+          }}
+          onClose={() => setIsCourtCaseModalOpen(false)}
+        />
       </Dialog.Root>
     </form>
   );

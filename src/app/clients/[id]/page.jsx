@@ -54,7 +54,7 @@ const ClientCasePage = () => {
   };
 
   return (
-    <div className="p-4 max-w-7xl w-full mx-auto">
+    <div className="py-4 w-full">
       <header className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <ArrowLeftIcon

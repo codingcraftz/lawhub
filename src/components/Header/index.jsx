@@ -2,13 +2,11 @@
 
 "use client";
 
-import React, { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/utils/supabase";
 import { MoonIcon, SunIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { Flex, Button, Text, Avatar, Box, Separator } from "@radix-ui/themes";
+import { Flex, Button, Text, Box } from "@radix-ui/themes";
 import { useTheme } from "next-themes";
 import * as HoverCard from "@radix-ui/react-hover-card"; // HoverCard import
 import NotificationDropdown from "./NotificationDropdown";
@@ -48,7 +46,7 @@ const Header = () => {
   };
 
   return (
-    <Box className="border-b border-b-gray-9 px-12 py-5 flex justify-center">
+    <Box className="border-b border-b-gray-9 px-12 py-5 flex justify-center w-full">
       <Flex className="justify-between items-center max-w-screen-lg w-full">
         <Flex className="items-center gap-4">
           <Link

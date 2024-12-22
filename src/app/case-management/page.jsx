@@ -90,7 +90,7 @@ const ClientManagementPage = () => {
   };
 
   return (
-    <Box className="p-4 max-w-7xl w-full mx-auto">
+    <Box className="py-4 w-full">
       <Flex direction="column" gap="4">
         <header className="flex justify-between items-center">
           <Text size="5" weight="bold">

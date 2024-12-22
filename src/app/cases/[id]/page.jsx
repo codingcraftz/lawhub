@@ -55,14 +55,14 @@ const CasePage = () => {
   }
 
   return (
-    <Box className="p-8 px-16 max-w-7xl w-full mx-auto">
-      <Flex direction="column" gap="4">
-        <Flex direction={"row"} align={"center"} gap="2">
+    <Box className="flex justify-center py-8 max-w-screen-lg">
+      <Flex className="flex-col gap-2 items-cneter flex-1">
+        <Flex className="items-center gap-2">
           <ArrowLeftIcon
-            className="w-8 h-8 cursor-pointer mr-3"
+            className="w-8 h-8 cursor-pointer"
             onClick={() => router.back()}
           />
-          <Text size="5" weight="bold">
+          <Text className="font-bold text-2xl">
             {`${caseData.court_name || ""} ${caseData.case_year || ""} ${caseData.case_type || ""} ${caseData.case_number || ""} ${caseData.case_subject || ""}`}
           </Text>
           <Flex className="max-w-60" gap="0.5rem">
