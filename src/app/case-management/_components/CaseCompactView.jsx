@@ -180,7 +180,7 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
   };
 
   return (
-    <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
+    <Box className="py-4 w-full mx-auto relative flex flex-col">
       <Tabs.Root
         defaultValue={currentTab}
         value={currentTab}

@@ -146,7 +146,7 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
   };
 
   return (
-    <Box className="p-4 max-w-7xl w-full mx-auto relative flex flex-col">
+    <Box className="py-4 w-full mx-auto relative flex flex-col">
       <Tabs.Root value={currentTab} onValueChange={handleTabChange}>
         <Tabs.List>
           <Tabs.Trigger value="ongoing">진행중인 사건</Tabs.Trigger>

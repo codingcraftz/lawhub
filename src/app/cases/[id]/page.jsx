@@ -55,7 +55,7 @@ const CasePage = () => {
   }
 
   return (
-    <Box className="flex justify-center p-8 max-w-screen-lg">
+    <Box className="flex justify-center py-8 max-w-screen-lg">
       <Flex className="flex-col gap-2 items-cneter flex-1">
         <Flex className="items-center gap-2">
           <ArrowLeftIcon
