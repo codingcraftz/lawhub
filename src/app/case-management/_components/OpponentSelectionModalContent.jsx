@@ -6,8 +6,10 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Checkbox, Tooltip } from "@radix-ui/themes";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Cross2Icon } from "@radix-ui/react-icons";
+import OpponentForm from "./OpponentForm";
 
-// Validation Schema for opponent
 const schema = yup.object().shape({
   name: yup.string().required("이름은 필수입니다"),
   registration_number: yup
@@ -22,6 +24,8 @@ const schema = yup.object().shape({
 });
 
 const OpponentSelectionModalContent = ({
+  open,
+  onOpenChange,
   selectedOpponents = [],
   setSelectedOpponents,
   onClose,
@@ -122,156 +126,98 @@ const OpponentSelectionModalContent = ({
   };
 
   return (
-    <Box>
-      {!isAddingOpponent ? (
-        <>
-          {/* 검색 필터 */}
-          <input
-            type="text"
-            placeholder="검색"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "1rem",
-              border: "1px solid var(--gray-6)",
-              borderRadius: "var(--radius-1)",
-            }}
-          />
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
+        <Dialog.Close asChild>
+          <Button
+            variant="ghost"
+            color="gray"
+            style={{ position: "absolute", top: 8, right: 8 }}
+          >
+            <Cross2Icon width={25} height={25} />
+          </Button>
+        </Dialog.Close>
+        <Dialog.Title>상대방 추가</Dialog.Title>
 
-          <Box mt="3" style={{ maxHeight: "300px", overflowY: "auto" }}>
-            {filteredOpponents.map((opponent) => (
-              <Flex key={opponent.id} align="center" mt="2">
-                <Checkbox
-                  checked={
-                    !!localSelectedOpponents.find((o) => o.id === opponent.id)
-                  }
-                  onCheckedChange={() => handleToggleOpponent(opponent)}
-                />
-                <Tooltip
-                  content={
-                    <Box
-                      style={{
-                        padding: "0.5rem",
-                        fontSize: "12px",
-                        color: "var(--gray-12)",
-                      }}
-                    >
-                      <p>
-                        <strong>전화번호: </strong>
-                        {formatPhoneNumber(opponent.phone_number)}
-                      </p>
-                      <p>
-                        <strong>주소: </strong> {opponent.address}
-                      </p>
-                      <p>
-                        <strong>주민등록번호: </strong>
-                        {formatRegistrationNumber(opponent.registration_number)}
-                      </p>
-                    </Box>
-                  }
-                >
-                  <Text ml="2" style={{ cursor: "pointer" }}>
-                    {opponent.name}
-                  </Text>
-                </Tooltip>
-              </Flex>
-            ))}
-          </Box>
+        <Box>
+          <>
+            <input
+              type="text"
+              placeholder="검색"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "1rem",
+                border: "1px solid var(--gray-6)",
+                borderRadius: "var(--radius-1)",
+              }}
+            />
 
-          {/* 상대방 추가 버튼 */}
-          <Flex justify="between" mt="4" gap="2">
-            <Button onClick={() => setIsAddingOpponent(true)}>
-              상대방 추가
-            </Button>
-            <Flex className="gap-6">
-              <Button variant="outline" onClick={onClose}>
-                취소
+            <Box mt="3" style={{ maxHeight: "300px", overflowY: "auto" }}>
+              {filteredOpponents.map((opponent) => (
+                <Flex key={opponent.id} align="center" mt="2">
+                  <Checkbox
+                    checked={
+                      !!localSelectedOpponents.find((o) => o.id === opponent.id)
+                    }
+                    onCheckedChange={() => handleToggleOpponent(opponent)}
+                  />
+                  <Tooltip
+                    content={
+                      <Box
+                        style={{
+                          padding: "0.5rem",
+                          fontSize: "12px",
+                          color: "var(--gray-12)",
+                        }}
+                      >
+                        <p>
+                          <strong>전화번호: </strong>
+                          {formatPhoneNumber(opponent.phone_number)}
+                        </p>
+                        <p>
+                          <strong>주소: </strong> {opponent.address}
+                        </p>
+                        <p>
+                          <strong>주민등록번호: </strong>
+                          {formatRegistrationNumber(
+                            opponent.registration_number,
+                          )}
+                        </p>
+                      </Box>
+                    }
+                  >
+                    <Text ml="2" style={{ cursor: "pointer" }}>
+                      {opponent.name}
+                    </Text>
+                  </Tooltip>
+                </Flex>
+              ))}
+            </Box>
+            <Flex justify="between" mt="4" gap="2">
+              <Button onClick={() => setIsAddingOpponent(true)}>
+                상대방 추가
               </Button>
-              <Button onClick={handleSaveSelection}>선택 완료</Button>
+              <Flex className="gap-6">
+                <Button variant="outline" onClick={onClose}>
+                  취소
+                </Button>
+                <Button onClick={handleSaveSelection}>선택 완료</Button>
+              </Flex>
             </Flex>
-          </Flex>
-        </>
-      ) : (
-        <form onSubmit={handleSubmit(handleAddNewOpponent)}>
-          <Text>새로운 상대방 추가</Text>
-          <Box>
-            <input
-              name="name"
-              placeholder="이름"
-              {...register("name")}
-              style={{
-                width: "100%",
-                padding: "0.6rem",
-                marginBottom: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            <Text color="red">{errors.name?.message}</Text>
-          </Box>
-
-          <Box>
-            <input
-              name="registration_number"
-              placeholder="주민등록 번호 (13자리 숫자)"
-              {...register("registration_number")}
-              style={{
-                width: "100%",
-                padding: "0.6rem",
-                marginBottom: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            <Text color="red">{errors.registration_number?.message}</Text>
-          </Box>
-
-          <Box>
-            <input
-              name="address"
-              placeholder="주소"
-              {...register("address")}
-              style={{
-                width: "100%",
-                padding: "0.6rem",
-                marginBottom: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            <Text color="red">{errors.address?.message}</Text>
-          </Box>
-
-          <Box>
-            <input
-              name="phone_number"
-              placeholder="전화번호 (10~11자리 숫자)"
-              {...register("phone_number")}
-              style={{
-                width: "100%",
-                padding: "0.6rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-1)",
-              }}
-            />
-            <Text color="red">{errors.phone_number?.message}</Text>
-          </Box>
-
-          <Flex justify="end" mt="3" gap="2">
-            <Button
-              variant="outline"
-              onClick={() => setIsAddingOpponent(false)}
-            >
-              취소
-            </Button>
-            <Button type="submit" disabled={!isValid}>
-              상대방 추가
-            </Button>
-          </Flex>
-        </form>
-      )}
-    </Box>
+          </>
+          <OpponentForm
+            onSubmit={handleSubmit(handleAddNewOpponent)}
+            register={register}
+            errors={errors}
+            open={isAddingOpponent}
+            onOpenChange={setIsAddingOpponent}
+          />
+        </Box>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 };
 

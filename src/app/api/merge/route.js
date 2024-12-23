@@ -1,5 +1,5 @@
 // app/api/merge/route.js
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/utils/supabaseAdmin";
 
 export async function POST(request) {
   try {
@@ -8,17 +8,11 @@ export async function POST(request) {
       return new Response("Missing oldUserId or newUserId.", { status: 400 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY, // Admin 권한 키
-    );
-
     const { data: oldUserRow, error: oldUserErr } = await supabaseAdmin
       .from("users")
       .select("*")
       .eq("id", oldUserId)
       .single();
-
     if (oldUserErr) {
       console.error("oldUserErr:", oldUserErr);
       return new Response(oldUserErr.message || "Error fetching old user", {
@@ -31,14 +25,12 @@ export async function POST(request) {
       .select("*")
       .eq("id", newUserId)
       .single();
-
     if (newUserErr) {
       console.error("newUserErr:", newUserErr);
       return new Response(newUserErr.message || "Error fetching new user", {
         status: 400,
       });
     }
-
     if (!oldUserRow) {
       return new Response("oldUser does not exist in DB", { status: 404 });
     }
@@ -57,13 +49,11 @@ export async function POST(request) {
       { name: "case_staff", column: "staff_id" },
       { name: "case_clients", column: "client_id" },
     ];
-
     for (const t of tableList) {
       const { error: updateErr } = await supabaseAdmin
         .from(t.name)
         .update({ [t.column]: newUserId })
         .eq(t.column, oldUserId);
-
       if (updateErr) {
         console.error(
           `Error updating ${t.name}.${t.column} from ${oldUserId} to ${newUserId}:`,
@@ -75,43 +65,46 @@ export async function POST(request) {
       }
     }
 
-    // const phoneToSave =
-    //   oldUserRow?.phone_number || newUserRow?.phone_number || "";
-    // const { error: newUserUpdateErr } = await supabaseAdmin
-    //   .from("users")
-    //   .update({
-    //     phone_number: phoneToSave,
-    //     is_kakao_user: true, // 병합된 계정은 kakao_user로 설정
-    //     role: newUserRow.role || "client", // role이 없다면 client로
-    //   })
-    //   .eq("id", newUserId);
-    //
-    // if (newUserUpdateErr) {
-    //   console.error("newUserUpdateErr:", newUserUpdateErr);
-    //   return new Response(
-    //     newUserUpdateErr.message || "Error updating new user",
-    //     {
-    //       status: 400,
-    //     },
-    //   );
-    // }
-
-    const { error: deleteErr } = await supabaseAdmin
+    const oldEmailIdToSave = oldUserId;
+    const { error: emailUpdateErr } = await supabaseAdmin
       .from("users")
-      .update({ is_kakao_user: "TRUE" })
-      .eq("id", oldUserId);
-
-    if (deleteErr) {
-      console.error("deleteErr:", deleteErr);
-      return new Response(deleteErr.message || "Error deleting old user", {
-        status: 400,
-      });
+      .update({ email_id: oldEmailIdToSave })
+      .eq("id", newUserId);
+    if (emailUpdateErr) {
+      console.error("emailUpdateErr:", emailUpdateErr);
+      return new Response(
+        emailUpdateErr.message || "Error updating email_id for new user",
+        {
+          status: 400,
+        },
+      );
     }
 
-    // (선택) Auth 레벨에서 oldUser 삭제하기
-    //  -> Supabase Management API 사용
-    //     await supabaseAdmin.auth.admin.deleteUser(oldUserId);
-    //     (단, deleteUser()는 JS 라이브러리에선 2023년 9월 현재 Beta/알파 단계이므로 문서 확인)
+    const { error: dbDeleteErr } = await supabaseAdmin
+      .from("users")
+      .delete()
+      .eq("id", oldUserId);
+
+    if (dbDeleteErr) {
+      console.error("dbDeleteErr:", dbDeleteErr);
+      return new Response(
+        dbDeleteErr.message || "Error deleting old user in DB",
+        {
+          status: 400,
+        },
+      );
+    }
+    const { error: authDeleteErr } =
+      await supabaseAdmin.auth.admin.deleteUser(oldUserId);
+    if (authDeleteErr) {
+      console.error("authDeleteErr:", authDeleteErr);
+      return new Response(
+        authDeleteErr.message || "Error deleting old user in Auth",
+        {
+          status: 400,
+        },
+      );
+    }
 
     return new Response("Merge completed successfully!", { status: 200 });
   } catch (err) {

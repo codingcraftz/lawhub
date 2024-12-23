@@ -5,15 +5,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
-import {
-  Box,
-  Flex,
-  Text,
-  Card,
-  Dialog,
-  Button,
-  Switch,
-} from "@radix-ui/themes";
+import { Box, Flex, Text, Card, Button, Switch } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
 import CaseForm from "@/app/case-management/_components/CaseForm";
@@ -89,6 +81,7 @@ const ClientManagementPage = () => {
     fetchClientsWithCaseCount();
   };
 
+  console.log(clients);
   return (
     <Box className="py-4 w-full">
       <Flex direction="column" gap="4">
@@ -141,7 +134,6 @@ const ClientManagementPage = () => {
           ))}
         </Flex>
 
-        {/* 페이지네이션 컴포넌트 */}
         {totalPages > 1 && (
           <Pagination
             currentPage={currentPage}
@@ -151,20 +143,13 @@ const ClientManagementPage = () => {
         )}
       </Flex>
 
-      {/* 새 사건 등록 모달 */}
-      <Dialog.Root
+      <CaseForm
         open={isNewCaseModalOpen}
         onOpenChange={setIsNewCaseModalOpen}
-      >
-        <Dialog.Content style={{ maxWidth: 700 }}>
-          <Dialog.Title>새 사건 등록</Dialog.Title>
-          <CaseForm
-            caseData={selectedCase}
-            onSuccess={handleCaseSuccess}
-            onClose={() => setIsNewCaseModalOpen(false)}
-          />
-        </Dialog.Content>
-      </Dialog.Root>
+        caseData={selectedCase}
+        onSuccess={handleCaseSuccess}
+        onClose={() => setIsNewCaseModalOpen(false)}
+      />
     </Box>
   );
 };

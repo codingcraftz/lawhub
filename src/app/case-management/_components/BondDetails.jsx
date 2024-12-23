@@ -3,7 +3,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Dialog, Box, Flex, Button, Text } from "@radix-ui/themes";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import BondForm from "./BonForm";
@@ -101,22 +102,17 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
     return (
       <>
         {isEditMode ? (
-          <Dialog.Root open={true} onOpenChange={onClose}>
-            <Dialog.Title>제목</Dialog.Title>
-            <Dialog.Content>
-              <BondForm
-                caseId={caseId}
-                onSuccess={handleSave}
-                onClose={() => setIsEditMode(false)}
-              />
-            </Dialog.Content>
-          </Dialog.Root>
+          <BondForm
+            caseId={caseId}
+            onSuccess={handleSave}
+            onClose={() => setIsEditMode(false)}
+          />
         ) : (
           <Dialog.Root open={true} onOpenChange={onClose}>
-            <Dialog.Title>제목</Dialog.Title>
-
-            <Dialog.Content>
-              <Text>채권 정보가 없습니다.</Text>
+            <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow z-10" />
+            <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20">
+              <Dialog.Title className="font-bold text-xl">제목</Dialog.Title>
+              <p className="py-4">등록된 채권 정보가 없습니다.</p>
               <Flex justify="end" gap="2">
                 {isAdmin && (
                   <Button onClick={() => setIsEditMode(true)}>
@@ -166,8 +162,9 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
 
   return (
     <Dialog.Root open={true} onOpenChange={onClose}>
-      <Dialog.Title>제목</Dialog.Title>
-      <Dialog.Content style={{ minWidth: "400px", maxWidth: "600px" }}>
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
+        <Dialog.Title>제목</Dialog.Title>
         {isEditMode ? (
           <BondForm
             caseId={caseId}
@@ -238,7 +235,6 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
                   <li>이자 총액: {totalInterest2.toLocaleString()} 원</li>
                 </ul>
               </Box>
-              <Box></Box>
               <Box>
                 <strong className="font-semibold">비용</strong>
                 {bondData.expenses && bondData.expenses.length > 0 ? (

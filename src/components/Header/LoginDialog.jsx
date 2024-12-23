@@ -31,7 +31,6 @@ const LoginDialog = () => {
         if (event === "SIGNED_IN" && session?.user) {
           const userId = session.user.id;
 
-          // 1. Check if the user already exists in the `users` table
           const { data: existingUser, error: fetchError } = await supabase
             .from("users")
             .select("*")
@@ -43,7 +42,6 @@ const LoginDialog = () => {
             return;
           }
 
-          // 2. If the user already exists, skip Kakao profile fetch
           if (existingUser) {
             console.log("User already exists. Skipping Kakao profile fetch.");
             if (!existingUser.is_kakao_user) {
@@ -62,8 +60,7 @@ const LoginDialog = () => {
             return;
           }
 
-          // 3. If the user doesn't exist, fetch Kakao profile and insert data
-          const kakaoAccessToken = session.provider_token; // 실제 필드명 확인 필요
+          const kakaoAccessToken = session.provider_token;
           if (!kakaoAccessToken) {
             console.error("No Kakao access token found.");
             return;
@@ -123,7 +120,7 @@ const LoginDialog = () => {
 
   const handleEmailLogin = async (email, password) => {
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
