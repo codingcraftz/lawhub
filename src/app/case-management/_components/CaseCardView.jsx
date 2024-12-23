@@ -20,7 +20,6 @@ const CaseCardView = ({ clientId, newCaseTrigger }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // 초기 탭/페이지 설정
   const initialTab = searchParams.get("tab") || "ongoing";
   const initialPage = parseInt(searchParams.get("page")) || 1;
 

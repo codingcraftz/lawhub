@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex, Button, Table, Dialog } from "@radix-ui/themes";
+import { Box, Flex, Button, Table, Dialog } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import UserForm from "./UserForm";
 

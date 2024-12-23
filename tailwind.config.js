@@ -21,8 +21,8 @@ module.exports = {
       },
       keyframes: {
         overlayShow: {
-          from: { opacity: "0" },
-          to: { opacity: "1" },
+          from: { opacity: "0.7" },
+          to: { opacity: "0.9" },
         },
         contentShow: {
           from: {

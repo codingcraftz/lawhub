@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Text, Flex, Button, Table } from "@radix-ui/themes";
+import { Box, Flex, Button, Table } from "@radix-ui/themes";
 
 const UserApproval = () => {
   const [pendingUsers, setPendingUsers] = useState([]);
@@ -27,9 +27,9 @@ const UserApproval = () => {
     fetchPendingUsers();
   }, []);
 
-  console.log(pendingUsers);
   const handleApprove = async (userId) => {
-    const { error } = await supabase
+    console.log(userId);
+    const { data, error } = await supabase
       .from("users")
       .update({ is_active: true })
       .eq("id", userId);
@@ -38,6 +38,7 @@ const UserApproval = () => {
       console.error("Error approving user:", error);
       alert("회원 승인 중 오류가 발생했습니다.");
     } else {
+      console.log(data);
       alert("회원이 승인되었습니다.");
       fetchPendingUsers();
     }
@@ -85,10 +86,15 @@ const UserApproval = () => {
               </Table.Cell>
               <Table.Cell>
                 <Flex gap="2">
-                  <Button size="1" onClick={() => handleApprove(user.id)}>
+                  <Button
+                    type="button"
+                    size="1"
+                    onClick={() => handleApprove(user.id)}
+                  >
                     승인
                   </Button>
                   <Button
+                    type="button"
                     size="1"
                     color="red"
                     onClick={() => handleReject(user.id)}

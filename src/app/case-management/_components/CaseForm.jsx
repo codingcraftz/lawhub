@@ -4,18 +4,19 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button, Dialog, Switch } from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Switch } from "@radix-ui/themes";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as yup from "yup";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import UserSelectionModalContent from "./UserSelectionModalContent";
 import OpponentSelectionModalContent from "./OpponentSelectionModalContent";
 import CustomDatePicker from "@/components/CustomDatePicker";
-import { COURT_CITIES, COURT_LIST } from "@/utils/courtList";
 import { CASE_TYPE_OPTIONS } from "@/utils/caseType";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 import CourtCaseSelectionModal from "./CourtCaseSelectionModal";
+import { COURT_LIST } from "@/utils/courtList";
 
 const schema = yup.object().shape({
   isDateUndefined: yup.boolean(),
@@ -48,7 +49,7 @@ const clientRoles = [
   "채무자",
 ];
 
-const CaseForm = ({ caseData, onSuccess, onClose }) => {
+const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
   const [categories, setCategories] = useState([]);
   const [filteredCaseTypes, setFilteredCaseTypes] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
@@ -347,260 +348,239 @@ const CaseForm = ({ caseData, onSuccess, onClose }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <input
-        type="hidden"
-        {...register("isDateUndefined")}
-        value={isDateUndefined}
-      />
-      <Flex direction="column" gap="4">
-        <Flex className="ml-auto" align="center" gap="2">
-          <Text size="3">진행 예정</Text>
-          <Switch
-            checked={isScheduled}
-            onCheckedChange={(checked) => setIsScheduled(checked)}
-          />
-        </Flex>
-        <Box className="flex flex-col gap-2">
-          <Text size="3">사건 유형 (필수 X)</Text>
-          <select
-            {...register("category_id")}
-            style={{
-              width: "100%",
-              padding: "0.6rem 0.8rem",
-              border: "2px solid var(--gray-6)",
-              borderRadius: "var(--radius-1)",
-            }}
-          >
-            <option value="">카테고리 선택</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          {errors.category_id && (
-            <Text color="red" size="2">
-              {errors.category_id.message}
-            </Text>
-          )}
-        </Box>
-
-        <Box>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
+        <Dialog.Title className="font-bold text-xl">새 사건 등록</Dialog.Title>
+        <Dialog.Close asChild>
           <Button
-            className="mr-2"
-            type="button"
-            onClick={() => setIsCourtCaseModalOpen(true)}
+            variant="ghost"
+            color="gray"
+            style={{ position: "absolute", top: 8, right: 8 }}
           >
-            법원 및 사건번호 입력
+            <Cross2Icon width={25} height={25} />
           </Button>
-          {courtCaseInfo && <Text>{courtCaseInfo}</Text>}
-        </Box>
+        </Dialog.Close>
 
-        <Box>
-          <textarea
-            placeholder="사건 설명 (필수 X)"
-            {...register("description")}
-            style={{
-              width: "100%",
-              padding: "0.6rem 0.8rem",
-              border: "2px solid var(--gray-6)",
-              borderRadius: "var(--radius-1)",
-              minHeight: "100px",
-            }}
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <input
+            type="hidden"
+            {...register("isDateUndefined")}
+            value={isDateUndefined}
           />
-        </Box>
-
-        <Box className="flex flex-col gap-2">
-          <Flex align="center" gap="3">
-            <Text size="3">의뢰 개시일 (필수 X)</Text>
-            <Box>
-              <input
-                className="mr-1"
-                type="checkbox"
-                checked={isDateUndefined}
-                onChange={(e) => handleDateUndefinedChange(e.target.checked)}
+          <Flex direction="column" gap="4">
+            <Flex className="ml-auto" align="center" gap="2">
+              <Text size="3">진행 예정</Text>
+              <Switch
+                checked={isScheduled}
+                onCheckedChange={(checked) => setIsScheduled(checked)}
               />
-              <label htmlFor="date-undefined-checkbox">미정</label>
+            </Flex>
+            <Box className="flex flex-col gap-2">
+              <Text size="3">사건 유형 (필수 X)</Text>
+              <select
+                {...register("category_id")}
+                style={{
+                  width: "100%",
+                  padding: "0.6rem 0.8rem",
+                  border: "2px solid var(--gray-6)",
+                  borderRadius: "var(--radius-1)",
+                }}
+              >
+                <option value="">카테고리 선택</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {errors.category_id && (
+                <Text color="red" size="2">
+                  {errors.category_id.message}
+                </Text>
+              )}
             </Box>
-          </Flex>
-          {!isDateUndefined && (
-            <Controller
-              control={control}
-              name="start_date"
-              render={({ field }) => (
-                <CustomDatePicker
-                  title="의뢰 개시 날짜 선택"
-                  selectedDate={field.value}
-                  onDateChange={(date) => field.onChange(date)}
+
+            <Box>
+              <Button
+                className="mr-2"
+                type="button"
+                onClick={() => setIsCourtCaseModalOpen(true)}
+              >
+                법원 및 사건번호 입력
+              </Button>
+              {courtCaseInfo && <Text>{courtCaseInfo}</Text>}
+            </Box>
+
+            <Box>
+              <textarea
+                placeholder="사건 설명 (필수 X)"
+                {...register("description")}
+                style={{
+                  width: "100%",
+                  padding: "0.6rem 0.8rem",
+                  border: "2px solid var(--gray-6)",
+                  borderRadius: "var(--radius-1)",
+                  minHeight: "100px",
+                }}
+              />
+            </Box>
+
+            <Box className="flex flex-col gap-2">
+              <Flex align="center" gap="3">
+                <Text size="3">의뢰 개시일 (필수 X)</Text>
+                <Box>
+                  <input
+                    className="mr-1"
+                    type="checkbox"
+                    checked={isDateUndefined}
+                    onChange={(e) =>
+                      handleDateUndefinedChange(e.target.checked)
+                    }
+                  />
+                  <label htmlFor="date-undefined-checkbox">미정</label>
+                </Box>
+              </Flex>
+              {!isDateUndefined && (
+                <Controller
+                  control={control}
+                  name="start_date"
+                  render={({ field }) => (
+                    <CustomDatePicker
+                      title="의뢰 개시 날짜 선택"
+                      selectedDate={field.value}
+                      onDateChange={(date) => field.onChange(date)}
+                    />
+                  )}
                 />
               )}
-            />
-          )}
-          {errors.start_date && (
-            <Text color="red">{errors.start_date.message}</Text>
-          )}
-        </Box>
-        <Box className="flex flex-col gap-2">
-          <label htmlFor="client-role">의뢰인 역할 (필수 X)</label>
-          <select
-            id="client-role"
-            value={clientRole}
-            onChange={(e) => setClientRole(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.6rem 0.8rem",
-              border: "2px solid var(--gray-6)",
-              borderRadius: "var(--radius-1)",
-            }}
-          >
-            {clientRoles.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-        </Box>
+              {errors.start_date && (
+                <Text color="red">{errors.start_date.message}</Text>
+              )}
+            </Box>
+            <Box className="flex flex-col gap-2">
+              <label htmlFor="client-role">의뢰인 역할 (필수 X)</label>
+              <select
+                id="client-role"
+                value={clientRole}
+                onChange={(e) => setClientRole(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.6rem 0.8rem",
+                  border: "2px solid var(--gray-6)",
+                  borderRadius: "var(--radius-1)",
+                }}
+              >
+                {clientRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </Box>
 
-        <Box>
-          <Button
-            className="mr-2"
-            type="button"
-            onClick={() => setIsClientModalOpen(true)}
-          >
-            의뢰인 선택
-          </Button>
-          {selectedClients.length > 0 && (
-            <Text>{selectedClients.map((c) => c.name).join(", ")}</Text>
-          )}
-        </Box>
-        <Box>
-          <Button
-            className="mr-2"
-            type="button"
-            onClick={() => setIsStaffModalOpen(true)}
-          >
-            담당자 선택
-          </Button>
-          {selectedStaff.length > 0 && (
-            <Text>{selectedStaff.map((s) => s.name).join(", ")}</Text>
-          )}
-        </Box>
+            <Box>
+              <Button
+                className="mr-2"
+                type="button"
+                onClick={() => setIsClientModalOpen(true)}
+              >
+                의뢰인 선택
+              </Button>
+              {selectedClients.length > 0 && (
+                <Text>{selectedClients.map((c) => c.name).join(", ")}</Text>
+              )}
+            </Box>
+            <Box>
+              <Button
+                className="mr-2"
+                type="button"
+                onClick={() => setIsStaffModalOpen(true)}
+              >
+                담당자 선택
+              </Button>
+              {selectedStaff.length > 0 && (
+                <Text>{selectedStaff.map((s) => s.name).join(", ")}</Text>
+              )}
+            </Box>
 
-        <Box>
-          <Button
-            className="mr-2"
-            type="button"
-            onClick={() => setIsOpponentModalOpen(true)}
-          >
-            상대방 선택
-          </Button>
-          {selectedOpponents.length > 0 && (
-            <Text>{selectedOpponents.map((o) => o.name).join(", ")}</Text>
-          )}
-        </Box>
+            <Box>
+              <Button
+                className="mr-2"
+                type="button"
+                onClick={() => setIsOpponentModalOpen(true)}
+              >
+                상대방 선택
+              </Button>
+              {selectedOpponents.length > 0 && (
+                <Text>{selectedOpponents.map((o) => o.name).join(", ")}</Text>
+              )}
+            </Box>
 
-        <Flex gap="3" mt="4" justify="end">
-          {caseData && (
-            <Button type="button" variant="soft" color="red" onClick={onDelete}>
-              삭제
-            </Button>
-          )}
-          <Button type="button" variant="soft" color="gray" onClick={onClose}>
-            취소
-          </Button>
-          <Button type="submit">등록</Button>
-        </Flex>
-      </Flex>
+            <Flex gap="3" mt="4" justify="end">
+              {caseData && (
+                <Button
+                  type="button"
+                  variant="soft"
+                  color="red"
+                  onClick={onDelete}
+                >
+                  삭제
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="soft"
+                color="gray"
+                onClick={onClose}
+              >
+                취소
+              </Button>
+              <Button type="submit">등록</Button>
+            </Flex>
+          </Flex>
 
-      {/* 의뢰인 선택 모달 */}
-      <Dialog.Root open={isClientModalOpen} onOpenChange={setIsClientModalOpen}>
-        <Dialog.Content style={{ maxWidth: 450 }}>
-          <Dialog.Title>의뢰인 선택</Dialog.Title>
-          <Dialog.Close asChild>
-            <Button
-              variant="ghost"
-              color="gray"
-              size="1"
-              style={{ position: "absolute", top: 8, right: 8 }}
-            >
-              <Cross2Icon />
-            </Button>
-          </Dialog.Close>
+          {/* 의뢰인 선택 모달 */}
           <UserSelectionModalContent
+            open={isClientModalOpen}
+            onOpenChange={setIsClientModalOpen}
             userType="client"
             selectedUsers={selectedClients}
             setSelectedUsers={setSelectedClients}
             onClose={() => setIsClientModalOpen(false)}
           />
-        </Dialog.Content>
-      </Dialog.Root>
 
-      {/* 담당자 선택 모달 */}
-      <Dialog.Root open={isStaffModalOpen} onOpenChange={setIsStaffModalOpen}>
-        <Dialog.Content style={{ maxWidth: 450 }}>
-          <Dialog.Title>담당자 선택</Dialog.Title>
-          <Dialog.Close asChild>
-            <Button
-              variant="ghost"
-              color="gray"
-              size="1"
-              style={{ position: "absolute", top: 8, right: 8 }}
-            >
-              <Cross2Icon />
-            </Button>
-          </Dialog.Close>
           <UserSelectionModalContent
             userType="staff"
             selectedUsers={selectedStaff}
             setSelectedUsers={setSelectedStaff}
             onClose={() => setIsStaffModalOpen(false)}
           />
-        </Dialog.Content>
-      </Dialog.Root>
 
-      {/* 상대방 선택 모달 */}
-      <Dialog.Root
-        open={isOpponentModalOpen}
-        onOpenChange={setIsOpponentModalOpen}
-      >
-        <Dialog.Content style={{ maxWidth: 450 }}>
-          <Dialog.Title>상대방 추가</Dialog.Title>
-          <Dialog.Close asChild>
-            <Button
-              variant="ghost"
-              color="gray"
-              size="1"
-              style={{ position: "absolute", top: 8, right: 8 }}
-            >
-              <Cross2Icon />
-            </Button>
-          </Dialog.Close>
           <OpponentSelectionModalContent
+            open={isOpponentModalOpen}
+            onOpenChange={setIsOpponentModalOpen}
             selectedOpponents={selectedOpponents}
             setSelectedOpponents={setSelectedOpponents}
             onClose={() => setIsOpponentModalOpen(false)}
           />
-        </Dialog.Content>
-      </Dialog.Root>
 
-      <Dialog.Root
-        open={isCourtCaseModalOpen}
-        onOpenChange={setIsCourtCaseModalOpen}
-      >
-        <CourtCaseSelectionModal
-          onConfirm={(data) => {
-            setCourtCaseInfo(data.caseInfo); // 화면 표시용
-            setCourtCaseData(data); // 실제 데이터 저장
-            setValue("court_name", data.courtName);
-            setValue("case_year", parseInt(data.caseYear));
-            setValue("case_number", parseInt(data.caseNumber));
-            setValue("case_subject", data.caseSubject); // 사건 세부 설정
-          }}
-          onClose={() => setIsCourtCaseModalOpen(false)}
-        />
-      </Dialog.Root>
-    </form>
+          <CourtCaseSelectionModal
+            open={isCourtCaseModalOpen}
+            onOpenChange={setIsCourtCaseModalOpen}
+            onConfirm={(data) => {
+              setCourtCaseInfo(data.caseInfo); // 화면 표시용
+              setCourtCaseData(data); // 실제 데이터 저장
+              setValue("court_name", data.courtName);
+              setValue("case_year", parseInt(data.caseYear));
+              setValue("case_number", parseInt(data.caseNumber));
+              setValue("case_subject", data.caseSubject); // 사건 세부 설정
+            }}
+            onClose={() => setIsCourtCaseModalOpen(false)}
+          />
+        </form>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 };
 
