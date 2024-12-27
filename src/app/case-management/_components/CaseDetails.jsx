@@ -27,8 +27,8 @@ const CaseDetails = ({ caseData, onClose, onSuccess, isAdmin }) => {
   return (
     <>
       <Dialog.Root open={!!caseData} onOpenChange={onClose}>
-        <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
-        <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
+        <Dialog.Overlay className="fixed inset-0 bg-black opacity-75" />
+        <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[420px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
           <Dialog.Title className="font-bold text-xl">
             {` ${caseData.court_name || ""} ${caseData.case_year || ""} ${caseData.case_type || ""} ${caseData.case_number || ""} ${caseData.case_subject || ""}`}
           </Dialog.Title>
@@ -36,7 +36,7 @@ const CaseDetails = ({ caseData, onClose, onSuccess, isAdmin }) => {
             <Button
               variant="ghost"
               color="gray"
-              style={{ position: "absolute", top: 8, right: 8 }}
+              style={{ position: "absolute", top: 24, right: 24 }}
             >
               <Cross2Icon width={25} height={25} />
             </Button>

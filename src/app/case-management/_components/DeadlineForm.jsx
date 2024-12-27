@@ -5,11 +5,21 @@
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Box, Button, Flex, Text } from "@radix-ui/themes";
+import * as Dialog from "@radix-ui/react-dialog";
 import { supabase } from "@/utils/supabase";
 import CustomDatePicker from "@/components/CustomDatePicker";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
+import { Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
 
-const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
+const DeadlineForm = ({
+  caseId,
+  onSuccess,
+  onClose,
+  editingDeadline,
+  setEditingDeadline,
+  open,
+  onOpenChange,
+}) => {
   useRoleRedirect(["staff", "admin"], "/");
   const {
     control,
@@ -85,99 +95,129 @@ const DeadlineForm = ({ caseId, onSuccess, onClose, editingDeadline }) => {
   };
 
   return (
-    <Box>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Flex direction="column" gap="3">
-          {/* caseId가 없는 경우 사건 선택 UI 표시 */}
-          {!caseId && (
-            <Box>
-              <select
-                {...register("case_id", { required: "사건을 선택해주세요." })}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  border: "1px solid var(--gray-6)",
-                  borderRadius: "var(--radius-2)",
-                }}
-              >
-                <option value="">사건을 선택해주세요</option>
-                {cases.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
-              {errors.case_id && (
-                <Text color="red">{errors.case_id.message}</Text>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Trigger asChild>
+        <Button
+          variant="soft"
+          size="2"
+          onClick={() => setEditingDeadline(null)}
+        >
+          <PlusIcon /> 기일 추가
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-10" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 min-w-[450px] max-h-[85vh] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20">
+        <Dialog.Title>
+          {editingDeadline ? "기일 수정" : "새 기일 추가"}
+        </Dialog.Title>
+        <Dialog.Close asChild>
+          <Button
+            variant="ghost"
+            color="gray"
+            style={{ position: "absolute", top: 8, right: 8 }}
+          >
+            <Cross2Icon width={25} height={25} />
+          </Button>
+        </Dialog.Close>
+        <Box>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <Flex direction="column" gap="3">
+              {/* caseId가 없는 경우 사건 선택 UI 표시 */}
+              {!caseId && (
+                <Box>
+                  <select
+                    {...register("case_id", {
+                      required: "사건을 선택해주세요.",
+                    })}
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      border: "1px solid var(--gray-6)",
+                      borderRadius: "var(--radius-2)",
+                    }}
+                  >
+                    <option value="">사건을 선택해주세요</option>
+                    {cases.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.case_id && (
+                    <Text color="red">{errors.case_id.message}</Text>
+                  )}
+                </Box>
               )}
-            </Box>
-          )}
 
-          <Box>
-            <input
-              {...register("type", { required: "기일 유형을 입력해주세요" })}
-              placeholder="기일 유형 (예: 변론, 수사, 감정)"
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.type && <Text color="red">{errors.type.message}</Text>}
-          </Box>
-          <Box>
-            <Controller
-              name="deadline_date"
-              control={control}
-              rules={{ required: "기일 날짜를 선택해주세요" }}
-              render={({ field }) => (
-                <CustomDatePicker
-                  selectedDate={field.value}
-                  onDateChange={field.onChange}
-                  title="기일 날짜 및 시간 선택"
-                  showTimeSelect
-                  timeIntervals={10}
-                  timeFormat="HH:mm"
-                  dateFormat="yyyy-MM-dd HH:mm"
+              <Box>
+                <input
+                  {...register("type", {
+                    required: "기일 유형을 입력해주세요",
+                  })}
+                  placeholder="기일 유형 (예: 변론, 수사, 감정)"
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid var(--gray-6)",
+                    borderRadius: "var(--radius-2)",
+                  }}
                 />
-              )}
-            />
-            {errors.deadline_date && (
-              <Text color="red">{errors.deadline_date.message}</Text>
-            )}
-          </Box>
-          <Box>
-            <input
-              {...register("location", { required: "장소를 입력해주세요" })}
-              placeholder="장소"
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                border: "1px solid var(--gray-6)",
-                borderRadius: "var(--radius-2)",
-              }}
-            />
-            {errors.location && (
-              <Text color="red">{errors.location.message}</Text>
-            )}
-          </Box>
-          <Flex gap="3" mt="4" justify="end">
-            <Button
-              variant="soft"
-              color="gray"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              취소
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {editingDeadline ? "수정" : "등록"}
-            </Button>
-          </Flex>
-        </Flex>
-      </form>
-    </Box>
+                {errors.type && <Text color="red">{errors.type.message}</Text>}
+              </Box>
+              <Box>
+                <Controller
+                  name="deadline_date"
+                  control={control}
+                  rules={{ required: "기일 날짜를 선택해주세요" }}
+                  render={({ field }) => (
+                    <CustomDatePicker
+                      selectedDate={field.value}
+                      onDateChange={field.onChange}
+                      title="기일 날짜 및 시간 선택"
+                      showTimeSelect
+                      timeIntervals={10}
+                      timeFormat="HH:mm"
+                      dateFormat="yyyy-MM-dd HH:mm"
+                    />
+                  )}
+                />
+                {errors.deadline_date && (
+                  <Text color="red">{errors.deadline_date.message}</Text>
+                )}
+              </Box>
+              <Box>
+                <input
+                  {...register("location", { required: "장소를 입력해주세요" })}
+                  placeholder="장소"
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid var(--gray-6)",
+                    borderRadius: "var(--radius-2)",
+                  }}
+                />
+                {errors.location && (
+                  <Text color="red">{errors.location.message}</Text>
+                )}
+              </Box>
+              <Flex gap="3" mt="4" justify="end">
+                <Button
+                  variant="soft"
+                  color="gray"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                >
+                  취소
+                </Button>
+                <Button variant="soft" type="submit" disabled={isSubmitting}>
+                  {editingDeadline ? "수정" : "등록"}
+                </Button>
+              </Flex>
+            </Flex>
+          </form>
+        </Box>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 };
 

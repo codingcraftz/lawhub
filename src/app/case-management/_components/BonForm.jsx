@@ -9,6 +9,7 @@ import { supabase } from "@/utils/supabase";
 import CustomDatePicker from "@/components/CustomDatePicker";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 import * as Dialog from "@radix-ui/react-dialog";
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 const BondForm = ({ caseId, bondData, onSuccess, onClose }) => {
   useRoleRedirect(["staff", "admin"], "/");
@@ -110,10 +111,19 @@ const BondForm = ({ caseId, bondData, onSuccess, onClose }) => {
 
   return (
     <Dialog.Root open={true} onOpenChange={onClose}>
-      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow z-10" />
-      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20">
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-10" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20 overflow-y-auto">
         <Dialog.Title className="font-bold text-xl">채권 정보</Dialog.Title>
-        <Box className="py-2">
+        <Dialog.Close asChild>
+          <Button
+            variant="ghost"
+            color="gray"
+            style={{ position: "absolute", top: 24, right: 24 }}
+          >
+            <Cross2Icon width={25} height={25} />
+          </Button>
+        </Dialog.Close>
+        <Box className="py-2 text-md">
           <form onSubmit={handleSubmit(onSubmit)}>
             <Flex
               direction="column"
@@ -336,11 +346,16 @@ const BondForm = ({ caseId, bondData, onSuccess, onClose }) => {
                 </Flex>
               </Box>
               <Flex gap="3" justify="end">
-                <Button color="red" type="button" onClick={onClose}>
+                <Button
+                  variant="soft"
+                  color="gray"
+                  type="button"
+                  onClick={onClose}
+                >
                   닫기
                 </Button>
 
-                <Button type="submit" disabled={!isValid}>
+                <Button variant="soft" type="submit" disabled={!isValid}>
                   저장
                 </Button>
               </Flex>

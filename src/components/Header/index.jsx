@@ -166,12 +166,14 @@ const Header = () => {
             <NotificationDropdown />
           )}
           {user ? (
-            <button
+            <Button
               onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600 transition"
+              variant="ghost"
+              color="red"
+              className="px-4 py-2 rounded-lg"
             >
               로그아웃
-            </button>
+            </Button>
           ) : (
             <LoginDialog />
           )}

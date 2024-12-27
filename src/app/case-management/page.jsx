@@ -81,7 +81,6 @@ const ClientManagementPage = () => {
     fetchClientsWithCaseCount();
   };
 
-  console.log(clients);
   return (
     <Box className="py-4 w-full">
       <Flex direction="column" gap="4">
