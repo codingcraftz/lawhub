@@ -84,10 +84,7 @@ const OpponentForm = ({ open, onOpenChange, onSubmit, register, errors }) => {
           </Box>
 
           <Flex justify="end" mt="3" gap="2">
-            <Button
-              variant="outline"
-              onClick={() => setIsAddingOpponent(false)}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               취소
             </Button>
             <Button type="submit">상대방 추가</Button>

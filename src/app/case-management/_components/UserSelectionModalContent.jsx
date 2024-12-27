@@ -1,6 +1,7 @@
 // src/app/case-mangement/_components/UserSelectionModalContent
 
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button, Checkbox, Tooltip } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -85,7 +86,7 @@ const UserSelectionModalContent = ({
     return phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
   };
 
-  return (
+  return ReactDOM.createPortal(
     <Dialog.Root open={open} onOpenChange={onOpenChange} className="bg-red-2">
       <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-30" />
       <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-40">
@@ -155,7 +156,8 @@ const UserSelectionModalContent = ({
           </Flex>
         </Box>
       </Dialog.Content>
-    </Dialog.Root>
+    </Dialog.Root>,
+    document.getElementById("portal-root"),
   );
 };
 

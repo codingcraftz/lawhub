@@ -1,6 +1,7 @@
 // src/app/case-mangement/_components/OpponentSelectionModalContent
 
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -125,7 +126,7 @@ const OpponentSelectionModalContent = ({
     }
   };
 
-  return (
+  return ReactDOM.createPortal(
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-30" />
       <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-40">
@@ -217,7 +218,8 @@ const OpponentSelectionModalContent = ({
           />
         </Box>
       </Dialog.Content>
-    </Dialog.Root>
+    </Dialog.Root>,
+    document.getElementById("portal-root"),
   );
 };
 
