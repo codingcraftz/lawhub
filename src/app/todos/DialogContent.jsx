@@ -50,14 +50,12 @@ const DialogContent = ({ selectedRequest, user }) => {
       console.error("Error fetching comments:", commentsError);
     } else {
       setComments(commentsData);
-      // 모든 댓글의 반응을 한번에 로드
       fetchReactions(commentsData.map((c) => c.id));
     }
   };
 
   const fetchReactions = async (commentIds) => {
     if (commentIds.length === 0) return;
-
     const { data: reactionsData, error: reactionsError } = await supabase
       .from("comment_reactions")
       .select("id, comment_id, user_id, reaction_type, user:users(name)")

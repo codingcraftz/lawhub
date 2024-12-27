@@ -74,7 +74,6 @@ export default function RootLayout({ children }) {
               style={{ minHeight: "100vh" }}
             >
               <Header />
-
               <div
                 className="flex flex-1 w-full px-4 justify-center max-w-screen-lg"
                 style={{

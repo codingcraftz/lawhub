@@ -8,6 +8,7 @@ import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { supabase } from "@/utils/supabase";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import BondForm from "./BonForm";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const BondDetails = ({ caseId, onClose, isAdmin }) => {
   const [bondData, setBondData] = useState(null);
@@ -62,13 +63,13 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
   const getDate = (date) => (date === "dynamic" ? new Date() : new Date(date));
 
   const formatDate = (date) => {
-    if (!date) return "N/A"; // 값이 없을 경우 "N/A"로 표시
+    if (!date) return ""; // 값이 없을 경우 "N/A"로 표시
     const parsedDate = getDate(date);
     return parsedDate.toISOString().split("T")[0];
   };
 
   const formattedEndDate = (date) => {
-    if (!date) return "N/A"; // 값이 없을 경우 "N/A"로 표시
+    if (!date) return "미등록"; // 값이 없을 경우 "N/A"로 표시
 
     return date === "dynamic" ? formatDate(new Date()) : formatDate(date);
   };
@@ -90,9 +91,10 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
 
   if (isLoading) {
     return (
-      <Dialog.Root open={true} onOpenChange={onClose}>
-        <Dialog.Content>
-          <Text>불러오는 중...</Text>
+      <Dialog.Root>
+        <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-10" />
+        <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[420px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20">
+          <LoadingSpinner />
         </Dialog.Content>
       </Dialog.Root>
     );
@@ -109,8 +111,8 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
           />
         ) : (
           <Dialog.Root open={true} onOpenChange={onClose}>
-            <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow z-10" />
-            <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20">
+            <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-10" />
+            <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[420px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20">
               <Dialog.Title className="font-bold text-xl">제목</Dialog.Title>
               <p className="py-4">등록된 채권 정보가 없습니다.</p>
               <Flex justify="end" gap="2">
@@ -162,9 +164,11 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
 
   return (
     <Dialog.Root open={true} onOpenChange={onClose}>
-      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
-      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
-        <Dialog.Title>제목</Dialog.Title>
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[420px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
+        <Dialog.Title className="font-bold text-xl pb-1">
+          채권 정보
+        </Dialog.Title>
         {isEditMode ? (
           <BondForm
             caseId={caseId}
@@ -174,23 +178,25 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
           />
         ) : (
           <>
-            <Dialog.Title>채권 정보</Dialog.Title>
             <Dialog.Close asChild>
               <Button
                 variant="ghost"
                 color="gray"
-                size="1"
-                style={{ position: "absolute", top: 8, right: 8 }}
+                style={{ position: "absolute", top: 24, right: 24 }}
               >
-                <Cross2Icon />
+                <Cross2Icon width={25} height={25} />
               </Button>
             </Dialog.Close>
             <Flex direction="column" gap="2">
-              <strong className="text-lg">
+              <p className="text-sm text-gray-10">
                 원리금: <Text>{totalAmount.toLocaleString()}원</Text>
-              </strong>
+              </p>
 
-              <Flex style={{ color: "var(--gray-10)" }} gap="5">
+              <Flex
+                className="text-sm"
+                style={{ color: "var(--gray-10)" }}
+                gap="5"
+              >
                 <sapn>
                   수임원금:{" "}
                   {Math.floor(
@@ -257,17 +263,23 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
               </Box>
               {isAdmin ? (
                 <Flex justify="between" mt="3">
-                  <Button color="red" onClick={deleteBond}>
+                  <Button variant="soft" color="red" onClick={deleteBond}>
                     삭제
                   </Button>
                   <Flex gap="2">
-                    <Button onClick={() => setIsEditMode(true)}>수정</Button>
-                    <Button onClick={onClose}>확인</Button>
+                    <Button variant="soft" onClick={() => setIsEditMode(true)}>
+                      수정
+                    </Button>
+                    <Button variant="soft" onClick={onClose}>
+                      확인
+                    </Button>
                   </Flex>
                 </Flex>
               ) : (
                 <Flex justify="end" mt="3">
-                  <Button onClick={onClose}>확인</Button>
+                  <Button variant="soft" onClick={onClose}>
+                    확인
+                  </Button>
                 </Flex>
               )}
             </Flex>

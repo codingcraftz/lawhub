@@ -61,6 +61,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
   const [isDateUndefined, setIsDateUndefined] = useState(
     caseData?.start_date === null,
   );
+
   const [clientRole, setClientRole] = useState("미정");
   const [isScheduled, setIsScheduled] = useState(
     caseData?.status === "scheduled",
@@ -100,6 +101,10 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
     if (caseData) {
       fetchCaseRelations();
       setClientRole(caseData.client_role || clientRoles[0]);
+      const info = `${caseData.court_name || ""} ${caseData.case_year || ""} ${
+        caseData.case_number || ""
+      } ${caseData.case_subject || ""}`.trim();
+      setCourtCaseInfo(info);
     }
   }, [caseData]);
 
@@ -349,14 +354,14 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
-      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
-        <Dialog.Title className="font-bold text-xl">새 사건 등록</Dialog.Title>
-        <Dialog.Close asChild>
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow overflow-y-auto">
+        <Dialog.Title className="font-bold text-xl">사건 등록</Dialog.Title>
+        <Dialog.Close>
           <Button
             variant="ghost"
             color="gray"
-            style={{ position: "absolute", top: 8, right: 8 }}
+            style={{ position: "absolute", top: 24, right: 24 }}
           >
             <Cross2Icon width={25} height={25} />
           </Button>
@@ -369,7 +374,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
             value={isDateUndefined}
           />
           <Flex direction="column" gap="4">
-            <Flex className="ml-auto" align="center" gap="2">
+            <Flex className="mr-auto" align="center" gap="2">
               <Text size="3">진행 예정</Text>
               <Switch
                 checked={isScheduled}
@@ -377,7 +382,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
               />
             </Flex>
             <Box className="flex flex-col gap-2">
-              <Text size="3">사건 유형 (필수 X)</Text>
+              <Text size="3">사건 유형</Text>
               <select
                 {...register("category_id")}
                 style={{
@@ -401,9 +406,10 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
               )}
             </Box>
 
-            <Box>
+            <Box className="flex items-center">
               <Button
                 className="mr-2"
+                variant="soft"
                 type="button"
                 onClick={() => setIsCourtCaseModalOpen(true)}
               >
@@ -414,7 +420,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
 
             <Box>
               <textarea
-                placeholder="사건 설명 (필수 X)"
+                placeholder="사건 설명"
                 {...register("description")}
                 style={{
                   width: "100%",
@@ -428,7 +434,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
 
             <Box className="flex flex-col gap-2">
               <Flex align="center" gap="3">
-                <Text size="3">의뢰 개시일 (필수 X)</Text>
+                <Text size="3">의뢰 개시일</Text>
                 <Box>
                   <input
                     className="mr-1"
@@ -459,7 +465,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
               )}
             </Box>
             <Box className="flex flex-col gap-2">
-              <label htmlFor="client-role">의뢰인 역할 (필수 X)</label>
+              <label htmlFor="client-role">의뢰인 역할</label>
               <select
                 id="client-role"
                 value={clientRole}
@@ -482,6 +488,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
             <Box>
               <Button
                 className="mr-2"
+                variant="soft"
                 type="button"
                 onClick={() => setIsClientModalOpen(true)}
               >
@@ -494,6 +501,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
             <Box>
               <Button
                 className="mr-2"
+                variant="soft"
                 type="button"
                 onClick={() => setIsStaffModalOpen(true)}
               >
@@ -507,6 +515,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
             <Box>
               <Button
                 className="mr-2"
+                variant="soft"
                 type="button"
                 onClick={() => setIsOpponentModalOpen(true)}
               >
@@ -536,7 +545,9 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
               >
                 취소
               </Button>
-              <Button type="submit">등록</Button>
+              <Button variant="soft" type="submit">
+                등록
+              </Button>
             </Flex>
           </Flex>
 
@@ -551,6 +562,8 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
           />
 
           <UserSelectionModalContent
+            open={isStaffModalOpen}
+            onOpenChange={setIsStaffModalOpen}
             userType="staff"
             selectedUsers={selectedStaff}
             setSelectedUsers={setSelectedStaff}
@@ -577,6 +590,12 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
               setValue("case_subject", data.caseSubject); // 사건 세부 설정
             }}
             onClose={() => setIsCourtCaseModalOpen(false)}
+            existingData={{
+              courtName: watch("court_name"),
+              caseYear: watch("case_year"),
+              caseNumber: watch("case_number"),
+              caseSubject: watch("case_subject"),
+            }}
           />
         </form>
       </Dialog.Content>

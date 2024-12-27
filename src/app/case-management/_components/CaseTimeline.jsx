@@ -67,10 +67,10 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
         .from("requests")
         .select(
           `
-          *,
-          requester:users!fk_requester (id, name),
-          receiver:users!requests_receiver_id_fkey1 (id, name),
-          case_timelines(id, description, type, case:cases(title))
+    *,
+    requester:users!requests_requester_id_fkey(id, name),
+    receiver:users!requests_receiver_id_fkey(id, name),
+    case_timelines(id, description, type, case:cases(title))
         `,
         )
         .eq("case_timeline_id", item.id)
@@ -271,9 +271,7 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
           {deadlines.map((deadline) => (
             <Flex
               key={deadline.id}
-              justify="between"
-              align="center"
-              className="p-2 border rounded-md"
+              className="p-2 border rounded-md justify-between items-center max-w-xl"
               style={{
                 backgroundColor: "var(--gray-2)",
                 border: "1px solid var(--gray-6)",
@@ -328,27 +326,15 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
         </Flex>
         <Box className="ml-auto" mb="4">
           {caseStatus !== "closed" && (
-            <Dialog.Root
+            <DeadlineForm
               open={isDeadlineDialogOpen}
               onOpenChange={setIsDeadlineDialogOpen}
-            >
-              <Dialog.Trigger asChild>
-                <Button size="2" onClick={() => setEditingDeadline(null)}>
-                  <PlusIcon /> 기일 추가
-                </Button>
-              </Dialog.Trigger>
-              <Dialog.Content style={{ overflow: "visible" }}>
-                <Dialog.Title>
-                  {editingDeadline ? "기일 수정" : "새 기일 추가"}
-                </Dialog.Title>
-                <DeadlineForm
-                  caseId={caseId}
-                  onSuccess={handleSuccess}
-                  editingDeadline={editingDeadline}
-                  onClose={() => setIsDeadlineDialogOpen(false)}
-                />
-              </Dialog.Content>
-            </Dialog.Root>
+              caseId={caseId}
+              onSuccess={handleSuccess}
+              editingDeadline={editingDeadline}
+              setEditingDeadline={setEditingDeadline}
+              onClose={() => setIsDeadlineDialogOpen(false)}
+            />
           )}
         </Box>
 
@@ -572,14 +558,23 @@ const CaseTimeline = ({ caseId, caseStatus, description, onClose }) => {
         </Flex>
         <Flex justify="between" mt="4">
           {isAdmin && caseStatus !== "closed" && (
-            <Button size="2" color="red" onClick={handleCaseCompletion}>
+            <Button
+              variant="soft"
+              size="2"
+              color="red"
+              onClick={handleCaseCompletion}
+            >
               사건 종결
             </Button>
           )}
           {caseStatus !== "closed" && (
             <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <Dialog.Trigger>
-                <Button size="2" onClick={() => setEditingItem(null)}>
+                <Button
+                  variant="soft"
+                  size="2"
+                  onClick={() => setEditingItem(null)}
+                >
                   <PlusIcon /> 타임라인 추가
                 </Button>
               </Dialog.Trigger>
