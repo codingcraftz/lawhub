@@ -357,7 +357,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
       <Dialog.Overlay className="fixed inset-0 bg-black opacity-75" />
       <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow overflow-y-auto">
         <Dialog.Title className="font-bold text-xl">사건 등록</Dialog.Title>
-        <Dialog.Close asChild>
+        <Dialog.Close>
           <Button
             variant="ghost"
             color="gray"
@@ -374,7 +374,7 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
             value={isDateUndefined}
           />
           <Flex direction="column" gap="4">
-            <Flex className="ml-auto" align="center" gap="2">
+            <Flex className="mr-auto" align="center" gap="2">
               <Text size="3">진행 예정</Text>
               <Switch
                 checked={isScheduled}
@@ -545,7 +545,9 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
               >
                 취소
               </Button>
-              <Button type="submit">등록</Button>
+              <Button variant="soft" type="submit">
+                등록
+              </Button>
             </Flex>
           </Flex>
 

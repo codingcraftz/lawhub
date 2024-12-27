@@ -73,7 +73,6 @@ export default function RootLayout({ children }) {
               radius="medium"
               style={{ minHeight: "100vh" }}
             >
-              <div id="portal-root"></div> {/* 포털 루트 */}
               <Header />
               <div
                 className="flex flex-1 w-full px-4 justify-center max-w-screen-lg"
