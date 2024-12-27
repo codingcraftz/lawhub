@@ -21,6 +21,8 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
   };
 
   const router = useRouter();
+  const [compactTrigger, setCompactTrigger] = useState(0);
+
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") || "ongoing";
   const initialPage = 1;
@@ -108,7 +110,6 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
             caseData[status].page * fetchLimit - 1,
           );
 
-        // role이 staff인 경우 자신이 담당자로 등록된 사건만 필터링
         if (user.role === "staff") {
           const { data: caseStaffs, error } = await supabase
             .from("case_staff")
@@ -166,7 +167,7 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
     if (user) {
       fetchCases(currentTab);
     }
-  }, [user, currentTab, newCaseTrigger]);
+  }, [user, currentTab, newCaseTrigger, compactTrigger]);
 
   const handleBondClick = (e, caseItem) => {
     e.stopPropagation();
@@ -177,6 +178,12 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
     e.stopPropagation();
     setSelectedCase(caseItem);
     setIsDetailsModalOpen(true);
+  };
+
+  const handleCaseSuccess = () => {
+    setCompactTrigger((prev) => prev + 1);
+    setSelectedCase(null);
+    router.refresh();
   };
 
   return (
@@ -396,6 +403,7 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
         <CaseDetails
           caseData={selectedCase}
           isAdmin={isAdmin}
+          onSuccess={handleCaseSuccess}
           onClose={() => setIsDetailsModalOpen(false)}
         />
       )}
@@ -405,6 +413,7 @@ const CaseCompactView = ({ clientId, newCaseTrigger }) => {
         <BondDetails
           caseId={selectedCase.id}
           isAdmin={isAdmin}
+          onSuccess={handleCaseSuccess}
           onClose={() => setIsBondDetailsOpen(false)}
         />
       )}

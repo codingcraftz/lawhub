@@ -267,7 +267,7 @@ const DialogContent = ({ selectedRequest, user }) => {
                 <Flex className="relative" gap="2">
                   <DropdownMenu.Root>
                     <DropdownMenu.Trigger asChild>
-                      <div className="p-1 rounded-full bg-gray-200 hover:opacity-85 border border-gray-300 cursor-pointer">
+                      <div className="p-1 rounded-full bg-gray-2 hover:opacity-85 border border-gray-300 cursor-pointer">
                         <FaceIcon width={18} height={18} />
                       </div>
                     </DropdownMenu.Trigger>
@@ -284,7 +284,7 @@ const DialogContent = ({ selectedRequest, user }) => {
                                 key={type}
                                 onClick={() => handleReaction(comment.id, type)}
                               >
-                                <Button
+                                <button
                                   className={`flex items-center cursor-pointer px-1 rounded-lg hover:bg-gray-300 ${
                                     isUserReaction
                                       ? "border border-blue-400 bg-blue-100"
@@ -292,7 +292,7 @@ const DialogContent = ({ selectedRequest, user }) => {
                                   }`}
                                 >
                                   {emoji}
-                                </Button>
+                                </button>
                               </DropdownMenu.Item>
                             );
                           })}

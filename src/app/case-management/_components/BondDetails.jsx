@@ -10,7 +10,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import BondForm from "./BonForm";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const BondDetails = ({ caseId, onClose, isAdmin }) => {
+const BondDetails = ({ caseId, onClose, isAdmin, onSuccess }) => {
   const [bondData, setBondData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -86,6 +86,7 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
 
   const handleSave = () => {
     fetchBondData();
+    onSuccess();
     setIsEditMode(false);
   };
 
@@ -198,7 +199,7 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
                 gap="5"
               >
                 <sapn>
-                  수임원금:{" "}
+                  원금:{" "}
                   {Math.floor(
                     parseFloat(bondData.principal || 0),
                   ).toLocaleString()}
@@ -206,12 +207,11 @@ const BondDetails = ({ caseId, onClose, isAdmin }) => {
                 </sapn>
                 {totalInterest1 + totalInterest2 > 0 && (
                   <sapn>
-                    이자 총액:{" "}
-                    {(totalInterest1 + totalInterest2).toLocaleString()}원
+                    이자: {(totalInterest1 + totalInterest2).toLocaleString()}원
                   </sapn>
                 )}
                 {totalExpenses > 0 && (
-                  <sapn>비용 총액: {totalExpenses.toLocaleString()}원</sapn>
+                  <sapn>비용: {totalExpenses.toLocaleString()}원</sapn>
                 )}
               </Flex>
 

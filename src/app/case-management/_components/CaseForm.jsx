@@ -321,7 +321,6 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
           });
         }
       }
-
       onSuccess();
     } catch (error) {
       console.error("사건 저장 중 오류:", error);
@@ -354,8 +353,8 @@ const CaseForm = ({ caseData, onSuccess, onClose, open, onOpenChange }) => {
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75" />
-      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow overflow-y-auto">
+      <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-40" />
+      <Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[500px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow overflow-y-auto z-50">
         <Dialog.Title className="font-bold text-xl">사건 등록</Dialog.Title>
         <Dialog.Close>
           <Button
