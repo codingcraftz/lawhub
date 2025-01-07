@@ -213,6 +213,7 @@ html.light .react-datepicker__day--disabled {
 }
 
 .rt-DropdownMenuItem:hover {
-  background: none !important;
+  background: var(--gray-3) !important;
   color: var(--gray-12);
 }
+

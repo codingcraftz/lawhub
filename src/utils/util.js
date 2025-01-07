@@ -1,3 +1,8 @@
+export const formatPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber) return "없음";
+  return phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+};
+
 const getDate = (date) => (date === "dynamic" ? new Date() : new Date(date));
 
 export const calculateExpenses = (expensesData) =>
@@ -15,6 +20,34 @@ export const calculateInterest = (principal, rate, startDate, endDate) => {
   const durationInYears = (end - start) / (1000 * 60 * 60 * 24 * 365.25);
 
   return principal * (rate / 100) * Math.max(durationInYears, 0) || 0;
+};
+
+export const getTypeColor = (type) => {
+  switch (type) {
+    case "요청":
+      return "bg-yellow-200 text-yellow-900";
+    case "요청완료":
+      return "bg-blue-200 text-blue-900";
+    case "완료":
+      return "bg-gray-200 text-gray-900";
+    case "상담":
+      return "bg-purple-200 text-purple-900";
+    case "접수":
+      return "bg-green-200 text-green-900";
+    default:
+      return "bg-gray-200 text-gray-900";
+  }
+};
+
+export const formatDate = (date) => {
+  if (!date) return "";
+  const parsedDate = getDate(date);
+  return parsedDate.toISOString().split("T")[0];
+};
+
+export const formattedEndDate = (date) => {
+  if (!date) return "미등록";
+  return date === "dynamic" ? formatDate(new Date()) : formatDate(date);
 };
 
 export const getCategoryColor = (category) => {
