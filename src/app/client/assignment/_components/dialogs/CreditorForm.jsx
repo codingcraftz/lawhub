@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 
-export default function DebtorForm({ onOpenChange, onSubmit }) {
+export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const [formData, setFormData] = useState({
 		name: "",
 		birth_date: "",
@@ -11,6 +11,12 @@ export default function DebtorForm({ onOpenChange, onSubmit }) {
 		address: "",
 	});
 	const [errors, setErrors] = useState({});
+
+	useEffect(() => {
+		if (initialData) {
+			setFormData(initialData); // Load initial data for editing
+		}
+	}, [initialData]);
 
 	const validate = () => {
 		const newErrors = {};
@@ -43,7 +49,7 @@ export default function DebtorForm({ onOpenChange, onSubmit }) {
 	return (
 		<form onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
 			<Text size="4" weight="bold" mb="2">
-				채무자 추가
+				채권자 {initialData ? "수정" : "등록"}
 			</Text>
 
 			{/* 이름 */}
@@ -134,7 +140,7 @@ export default function DebtorForm({ onOpenChange, onSubmit }) {
 				<Button variant="outline" onClick={() => onOpenChange(false)}>
 					취소
 				</Button>
-				<Button type="submit">추가</Button>
+				<Button type="submit">{initialData ? "수정" : "등록"}</Button>
 			</Flex>
 		</form>
 	);

@@ -22,81 +22,101 @@ const ClientManagementPage = () => {
 	const [totalPages, setTotalPages] = useState(1);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
-	const [showOngoingOnly, setShowOngoingOnly] = useState(false);
+	const [showOngoingOnly, setShowOngoingOnly] = useState(true);
 
 	const router = useRouter();
 	const { user } = useUser();
 
-	const fetchClientsWithCaseCount = async () => {
-		if (user?.role && user?.id) {
-			// 모든 의뢰인 가져오기
-			const { data: allClients, error: allClientsError } = await supabase
+	const fetchClientsAndGroups = async () => {
+		try {
+			// 개인 의뢰인 가져오기
+			const { data: allClients, error: clientsError } = await supabase
 				.from("users")
-				.select("id, name")
+				.select("id, name, role")
 				.eq("role", "client");
 
-			if (allClientsError) {
-				console.error("Error fetching all clients:", allClientsError);
-				return [];
-			}
+			if (clientsError) throw clientsError;
 
-			// 진행 중 사건 수 가져오기
-			const { data: assignments, error: assignmentsError } = await supabase
+			// 그룹 가져오기
+			const { data: allGroups, error: groupsError } = await supabase
+				.from("groups")
+				.select("id, name");
+
+			if (groupsError) throw groupsError;
+
+			// 개인 진행 중 사건 가져오기
+			const { data: clientAssignments, error: clientAssignmentsError } = await supabase
 				.from("assignment_clients")
-				.select(
-					`
-        client_id,
-        assignments(status)
-      `,
-				)
+				.select("client_id, assignments(status)")
 				.eq("assignments.status", "ongoing");
 
-			if (assignmentsError) {
-				console.error("Error fetching assignments:", assignmentsError);
-				return [];
-			}
+			if (clientAssignmentsError) throw clientAssignmentsError;
 
-			// 진행 중 사건 수 계산
-			const clientCaseCounts = assignments.reduce((acc, item) => {
-				if (!acc[item.client_id]) {
-					acc[item.client_id] = 0;
-				}
-				acc[item.client_id]++;
+			// 그룹 진행 중 사건 가져오기
+			const { data: groupAssignments, error: groupAssignmentsError } = await supabase
+				.from("assignment_groups")
+				.select("group_id, assignments(status)")
+				.eq("assignments.status", "ongoing");
+
+			if (groupAssignmentsError) throw groupAssignmentsError;
+
+			// 개인 진행 중 사건 수 계산
+			const clientCaseCounts = clientAssignments.reduce((acc, item) => {
+				acc[item.client_id] = (acc[item.client_id] || 0) + 1;
 				return acc;
 			}, {});
 
-			// 모든 의뢰인 데이터에 진행 중 사건 수 추가
-			const allClientsWithCounts = allClients.map((client) => ({
+			// 그룹 진행 중 사건 수 계산
+			const groupCaseCounts = groupAssignments.reduce((acc, item) => {
+				acc[item.group_id] = (acc[item.group_id] || 0) + 1;
+				return acc;
+			}, {});
+
+			// 개인 데이터에 진행 중 사건 수 추가
+			const clientsWithCounts = allClients.map((client) => ({
 				id: client.id,
 				name: client.name,
+				type: "client", // 데이터 구분용
 				ongoing_case_count: clientCaseCounts[client.id] || 0,
 			}));
 
-			setClients(allClientsWithCounts);
+			// 그룹 데이터에 진행 중 사건 수 추가
+			const groupsWithCounts = allGroups.map((group) => ({
+				id: group.id,
+				name: group.name,
+				type: "group", // 데이터 구분용
+				ongoing_case_count: groupCaseCounts[group.id] || 0,
+			}));
+
+			// 개인과 그룹 데이터를 병합
+			const combinedData = [...clientsWithCounts, ...groupsWithCounts];
+			setClients(combinedData);
+		} catch (error) {
+			console.error("Error fetching clients and groups:", error);
 		}
 	};
 
+
 	useEffect(() => {
-		fetchClientsWithCaseCount();
+		fetchClientsAndGroups();
 	}, [user]);
 
-	// 현재 페이지에 해당하는 데이터 계산
 	useEffect(() => {
-		const ongoingFilteredClients = showOngoingOnly
-			? clients.filter((client) => client.ongoing_case_count > 0)
+		const ongoingFiltered = showOngoingOnly
+			? clients.filter((item) => item.ongoing_case_count > 0)
 			: clients;
 
-		const searchFilteredClients = ongoingFilteredClients.filter((client) =>
-			client.name.toLowerCase().includes(searchQuery.toLowerCase()),
+		const searchFiltered = ongoingFiltered.filter((item) =>
+			item.name.toLowerCase().includes(searchQuery.toLowerCase())
 		);
 
 		const startIndex = (currentPage - 1) * PAGE_SIZE;
 		const endIndex = startIndex + PAGE_SIZE;
-		setFilteredClients(searchFilteredClients.slice(startIndex, endIndex));
 
-		// 총 페이지 수 계산
-		setTotalPages(Math.ceil(searchFilteredClients.length / PAGE_SIZE));
+		setFilteredClients(searchFiltered.slice(startIndex, endIndex));
+		setTotalPages(Math.ceil(searchFiltered.length / PAGE_SIZE));
 	}, [clients, currentPage, showOngoingOnly, searchQuery]);
+
 
 	const handlePageChange = (page) => {
 		setCurrentPage(page);
@@ -104,7 +124,7 @@ const ClientManagementPage = () => {
 
 	const handleCaseSuccess = () => {
 		setIsNewCaseModalOpen(false);
-		fetchClientsWithCaseCount();
+		fetchClientsAndGroups();
 	};
 
 	return (
@@ -150,9 +170,13 @@ const ClientManagementPage = () => {
 					{filteredClients.map((client) => (
 						<Card
 							key={client.id}
-							className="cursor-pointer p-4 shadow-sm"
+							className="cursor-pointer p-4 shadow-sm flex items-center gap-1"
 							onClick={() => router.push(`/client/${client.id}`)}
 						>
+							<Text size="2" color={client.type === "client" ? "blue" : "green"}>
+								{client.type === "client" ? "[개인]" : "[단체]"}
+							</Text>
+
 							<Text className="mr-3" size="4" weight="bold">
 								{client.name}
 							</Text>
@@ -182,3 +206,4 @@ const ClientManagementPage = () => {
 };
 
 export default ClientManagementPage;
+

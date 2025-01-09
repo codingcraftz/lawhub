@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 
-export default function DebtorForm({ onOpenChange, onSubmit }) {
+export default function CreditorForm({ onOpenChange, onSubmit }) {
 	const [formData, setFormData] = useState({
 		name: "",
 		birth_date: "",
@@ -37,13 +37,13 @@ export default function DebtorForm({ onOpenChange, onSubmit }) {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
-		onSubmit(formData);
+		onSubmit(formData); // Step2_CreditorRegistration 쪽으로 전달
 	};
 
 	return (
 		<form onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
 			<Text size="4" weight="bold" mb="2">
-				채무자 추가
+				채권자 추가
 			</Text>
 
 			{/* 이름 */}
@@ -71,7 +71,7 @@ export default function DebtorForm({ onOpenChange, onSubmit }) {
 			<Box mb="2">
 				<input
 					name="birth_date"
-					placeholder="생년월일 (YYYY-MM-DD)"
+					placeholder="생년월일 (YYYY-MM-DD 등)"
 					value={formData.birth_date}
 					onChange={handleChange}
 					style={{
