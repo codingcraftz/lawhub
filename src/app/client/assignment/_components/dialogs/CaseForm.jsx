@@ -103,7 +103,7 @@ const CaseForm = ({
 				case_subject: formValues.case_subject || null,
 				description: formValues.description || null,
 				client_role: formValues.client_role || null,
-				status: "미등록",
+				status: "ongoing",
 				assignment_id: assignmentId || null,
 			};
 

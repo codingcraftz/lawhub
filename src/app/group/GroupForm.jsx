@@ -30,9 +30,9 @@ export default function GroupForm({ onCancel, onSuccess }) {
 	};
 
 	return (
-		<Box mt="3" mb="3">
+		<Box mt="3" mb="3" className="flex flex-col gap-4">
 			<form onSubmit={handleSubmit}>
-				<Flex gap="2" mb="2">
+				<Flex gap="2" mb="2" className="flex items-center">
 					<input
 						type="text"
 						placeholder="그룹 이름"
