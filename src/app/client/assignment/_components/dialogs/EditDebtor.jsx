@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Box, Button, Text } from "@radix-ui/themes";
-import Step2_DebtorSelection from "@/components/AssignmentForm/Step2_DebtorSelection";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import * as Dialog from "@radix-ui/react-dialog";
 
@@ -8,14 +7,12 @@ const EditDebtorDialog = ({
 	open,
 	onOpenChange,
 	debtors,
-	assignmentId,
 	onSave,
 }) => {
 	const [selectedDebtors, setSelectedDebtors] = useState(debtors);
 
 	const handleSaveChanges = async () => {
 		try {
-			// 저장 로직: 부모 컴포넌트로 수정된 채무자 데이터를 반환
 			onSave(selectedDebtors);
 			onOpenChange(false);
 		} catch (err) {
@@ -43,15 +40,6 @@ const EditDebtorDialog = ({
 
 				<Box open={open} onOpenChange={onOpenChange} className="flex flex-col">
 					<Box className="mt-2">
-						<Step2_DebtorSelection
-							selectedDebtors={selectedDebtors}
-							setSelectedDebtors={setSelectedDebtors}
-							removeDebtor={(id) =>
-								setSelectedDebtors((prev) =>
-									prev.filter((debtor) => debtor.id !== id),
-								)
-							}
-						/>
 					</Box>
 					<Box mt="4" className="flex gap-2 ml-auto">
 						<Button

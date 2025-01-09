@@ -132,6 +132,21 @@ const Header = () => {
 								}
 							},
 						)}
+						{user && user.role !== "client" && (
+							<Link href="/group">
+								<Button
+									variant="ghost"
+									color="red"
+									style={{
+										display: "flex",
+										alignItems: "center",
+									}}
+								>
+									그룹 관리
+								</Button>
+							</Link>
+						)}
+
 						{user && user.role === "admin" && (
 							<Link href="/admin">
 								<Button

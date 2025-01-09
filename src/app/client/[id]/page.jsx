@@ -24,9 +24,8 @@ const ClientCasePage = () => {
         id,
         description,
         created_at,
-        assignment_debtors!inner (
-          debtors!inner (id, name)
-        ),
+        assignment_debtors!inner (name),
+        assignment_creditors!inner (name),
         assignment_clients!inner (client_id)
       `,
 			)
@@ -60,8 +59,7 @@ const ClientCasePage = () => {
 		fetchUser();
 	}, [clientId]);
 
-	console.log("clientId", clientId);
-	console.log(assignments);
+	console.log(assignments)
 
 	return (
 		<div className="py-4 w-full">
@@ -84,9 +82,13 @@ const ClientCasePage = () => {
 							<DebtorCard
 								description={assignment.description}
 								createdAt={assignment.created_at}
-								debtors={assignment.assignment_debtors.map(
-									(debtor) => debtor.debtors.name,
+								debtors={assignment.assignment_debtors?.map(
+									(debtor) => debtor?.name,
 								)}
+								creditors={assignment.assignment_creditors?.map(
+									(creditor) => creditor?.name,
+								)}
+
 							/>
 						</Link>
 					))}

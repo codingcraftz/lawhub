@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase";
 import { Button } from "@radix-ui/themes";
 import Timeline from "@/components/Timeline";
 import CaseForm from "../_components/dialogs/CaseForm";
+import StatusForm from "../_components/dialogs/StatusForm";
 
 const CaseList = ({ assignmentId, user }) => {
 	const [cases, setCases] = useState([]);
@@ -13,9 +14,10 @@ const CaseList = ({ assignmentId, user }) => {
 
 	// 상세보기(타임라인) State: { [caseId]: boolean }
 	const [timelineOpenMap, setTimelineOpenMap] = useState({});
+	const [statusFormOpenMap, setStatusFormOpenMap] = useState({});
+
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
-	const kor_status = { ongoing: "진행중", scheduled: "대기", closed: "종결" };
 
 	const fetchCases = async () => {
 		const { data, error } = await supabase
@@ -58,6 +60,14 @@ const CaseList = ({ assignmentId, user }) => {
 		setTimelineOpenMap((prev) => ({ ...prev, [caseId]: false }));
 	};
 
+	// 상태 등록하기 폼 열기/닫기
+	const openStatusForm = (caseId) => {
+		setStatusFormOpenMap((prev) => ({ ...prev, [caseId]: true }));
+	};
+	const closeStatusForm = (caseId) => {
+		setStatusFormOpenMap((prev) => ({ ...prev, [caseId]: false }));
+	};
+
 	return (
 		<section className="mb-6 p-4 rounded shadow shadow-gray-5">
 			<div className="flex justify-between">
@@ -79,12 +89,20 @@ const CaseList = ({ assignmentId, user }) => {
 									{item.court_name} {item.case_year} {item.case_type}{" "}
 									{item.case_number} {item.case_subject}
 								</p>
-								<p className="text-sm text-gray-11">
-									상태: {kor_status[item?.status] || "알 수 없음"}
-								</p>
+								<div className="flex gap-2 items-center">
+									<p className="text-sm text-gray-11">
+										상태: {item?.status || "알 수 없음"}
+									</p>
+									{isAdmin && (
+										<Button size="1" variant="soft" onClick={() => openStatusForm(item.id)}>
+											수정
+										</Button>
+									)}
+								</div>
 							</div>
 							<div className="flex gap-2">
 								{isAdmin && (
+
 									<Button variant="soft" onClick={() => openEditForm(item)}>
 										수정
 									</Button>
@@ -98,7 +116,7 @@ const CaseList = ({ assignmentId, user }) => {
 								</Button>
 
 								{/* Timeline Dialog */}
-								<Timeline
+								{timelineOpenMap[item.id] && <Timeline
 									caseId={item.id}
 									caseStatus={item.status}
 									description={item.description}
@@ -107,6 +125,17 @@ const CaseList = ({ assignmentId, user }) => {
 										if (!opened) closeTimeline(item.id);
 									}}
 								/>
+								}
+
+								{statusFormOpenMap[item.id] && (
+									<StatusForm
+										open={statusFormOpenMap[item.id]}
+										caseId={item.id}
+										currentStatus={item.status}
+										onSuccess={fetchCases}
+										onClose={() => closeStatusForm(item.id)}
+									/>
+								)}
 							</div>
 						</li>
 					))}
