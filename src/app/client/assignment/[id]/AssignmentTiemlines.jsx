@@ -11,7 +11,6 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [currentTimeline, setCurrentTimeline] = useState(null);
-
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
 	// 1. Fetch timelines

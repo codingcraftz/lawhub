@@ -20,7 +20,6 @@ const DeadlineForm = ({
 	open,
 	onOpenChange,
 }) => {
-	useRoleRedirect(["staff", "admin"], "/");
 	const {
 		control,
 		handleSubmit,

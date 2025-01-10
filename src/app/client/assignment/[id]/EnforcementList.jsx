@@ -88,9 +88,9 @@ const EnforcementList = ({ assignmentId, user }) => {
 									<Button variant="soft" onClick={() => openEdit(item)}>수정</Button>
 								)}
 								<Button variant="soft" onClick={() => openDetail(item.id)}>상세</Button>
-
 								{/* 상세보기 Dialog (EnforcementComments) */}
 								<EnforcementComments
+									item={item}
 									enforcementId={item.id}
 									open={detailOpenMap[item.id] || false} // 해당 아이템 id에 대응
 									onOpenChange={(opened) => {

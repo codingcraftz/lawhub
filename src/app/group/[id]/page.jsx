@@ -1,69 +1,63 @@
-// src/app/client/[id]/page.jsx
-
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
-import DebtorCard from "../_components/DebtorCard";
 import Link from "next/link";
-import CardList from "../_components/CardList";
+import CardList from "@/app/client/_components/CardList";
+import DebtorCard from "@/app/client/_components/DebtorCard";
 
-const ClientCasePage = () => {
+const GroupCasePage = () => {
 	const router = useRouter();
-	const { id: clientId } = useParams();
-	const [clientName, setClientName] = useState("");
+	const { id: groupId } = useParams();
+	const [groupName, setGroupName] = useState("");
 	const [assignments, setAssignments] = useState([]);
-
 
 	const fetchAssignments = async () => {
 		try {
 			const { data, error } = await supabase
 				.from("assignments")
 				.select(`
-        id,
-        description,
-        created_at,
-        assignment_debtors!inner (name),
-        assignment_creditors!inner (name),
-        assignment_clients!inner (client_id)
-      `)
-				.eq("assignment_clients.client_id", clientId);
+          id,
+          description,
+          created_at,
+          assignment_debtors!inner (name),
+          assignment_creditors!inner (name),
+          assignment_groups!inner (group_id)
+        `)
+				.eq("assignment_groups.group_id", groupId);
 
 			if (error) {
 				console.error("Error fetching assignments:", error);
 				return;
 			}
 
-			console.log("Fetched assignments:", data);
 			setAssignments(data || []);
 		} catch (err) {
 			console.error("Unexpected error:", err);
 		}
 	};
 
-	const fetchUser = useCallback(async () => {
-		if (!clientId) return;
-		const { data: clientData, error } = await supabase
-			.from("users")
+	const fetchGroup = useCallback(async () => {
+		if (!groupId) return;
+		const { data: groupData, error } = await supabase
+			.from("groups")
 			.select("name")
-			.eq("id", clientId)
+			.eq("id", groupId)
 			.single();
 
-		if (error || !clientData) {
-			console.log("의뢰인 정보를 불러오는데 실패했습니다.");
+		if (error || !groupData) {
+			console.log("그룹 정보를 불러오는데 실패했습니다.");
 		} else {
-			setClientName(clientData.name);
+			setGroupName(groupData.name);
 		}
-	}, [clientId]);
+	}, [groupId]);
 
 	useEffect(() => {
 		fetchAssignments();
-		fetchUser();
-	}, [clientId]);
-
-	console.log(assignments)
+		fetchGroup();
+	}, [groupId]);
 
 	return (
 		<div className="py-4 w-full">
@@ -73,7 +67,7 @@ const ClientCasePage = () => {
 						className="w-8 h-8 cursor-pointer mr-3"
 						onClick={() => router.push("/clients")}
 					/>
-					<h1 className="text-2xl font-bold">{clientName}님의 사건 관리</h1>
+					<h1 className="text-2xl font-bold">{groupName}의 사건 관리</h1>
 				</div>
 			</header>
 			<main>
@@ -81,18 +75,17 @@ const ClientCasePage = () => {
 					{assignments.map((assignment) => (
 						<Link
 							key={assignment.id}
-							href={`/client/assignment/${assignment.id}`}
+							href={`/group/assignment/${assignment.id}`}
 						>
 							<DebtorCard
 								description={assignment.description}
 								createdAt={assignment.created_at}
 								debtors={assignment.assignment_debtors?.map(
-									(debtor) => debtor?.name,
+									(debtor) => debtor?.name
 								)}
 								creditors={assignment.assignment_creditors?.map(
-									(creditor) => creditor?.name,
+									(creditor) => creditor?.name
 								)}
-
 							/>
 						</Link>
 					))}
@@ -102,4 +95,5 @@ const ClientCasePage = () => {
 	);
 };
 
-export default ClientCasePage;
+export default GroupCasePage;
+

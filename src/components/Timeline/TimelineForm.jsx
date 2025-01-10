@@ -20,7 +20,6 @@ import { useUser } from "@/hooks/useUser";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const TimelineForm = ({ caseId, onSuccess, editingItem, open, onOpenChange }) => {
-	useRoleRedirect(["staff", "admin"], "/");
 	const [staff, setStaff] = useState([]);
 	const { user } = useUser();
 	const {

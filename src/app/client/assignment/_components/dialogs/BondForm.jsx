@@ -7,12 +7,10 @@ import { Box, Flex, Button, Text, Switch } from "@radix-ui/themes";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { supabase } from "@/utils/supabase";
 import CustomDatePicker from "@/components/CustomDatePicker";
-import useRoleRedirect from "@/hooks/userRoleRedirect";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
 const BondForm = ({ bondData, onSuccess, open, onOpenChange, assignmentId }) => {
-	useRoleRedirect(["staff", "admin"], "/");
 	const {
 		control,
 		register,
