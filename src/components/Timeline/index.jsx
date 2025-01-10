@@ -27,7 +27,6 @@ const Timeline = ({ caseId, caseStatus, description, open, onOpenChange }) => {
 	const fetchData = async () => {
 		const deadlinesData = await fetchDeadlines(caseId);
 		setDeadlines(deadlinesData);
-
 		const timelineData = await fetchTimelineItems(caseId);
 		setTimelineItems(timelineData);
 	};
@@ -49,14 +48,14 @@ const Timeline = ({ caseId, caseStatus, description, open, onOpenChange }) => {
 				<Box>
 					<Flex className="justify-between">
 						<Text>{description}</Text>
-						<Button onClick={() => setOpenDeadlineForm(true)}>기일 추가</Button>
+						{isAdmin && <Button onClick={() => setOpenDeadlineForm(true)}>기일 추가</Button>}
 					</Flex>
 					<DeadlineList deadlines={deadlines} onSuccess={() => setCaseTrigger(prev => prev + 1)} />
 					<Flex justify="between" align="center" mt="4">
 						<Text size="5" weight="bold">
 							사건 타임라인
 						</Text>
-						<Button onClick={() => setOpenTimelineForm(true)}>추가</Button>
+						{isAdmin && <Button onClick={() => setOpenTimelineForm(true)}>추가</Button>}
 					</Flex>
 					<Flex direction="column" gap="3" mt="4">
 						{timelineItems.map((item) => (

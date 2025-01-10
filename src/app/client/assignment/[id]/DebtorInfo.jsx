@@ -100,7 +100,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			.from("debtor_credit_info")
 			.select("owned")
 			.eq("debtor_id", debtor.id)
-			.single();
+			.maybeSingle();
 
 		setSelectedDebtorCredit(cinfo?.owned || {});
 		setOpenCreditInfo(true);

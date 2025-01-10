@@ -4,7 +4,7 @@ import { supabase } from "@/utils/supabase";
 import { TextArea, Box, Button, Flex, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
-const EnforcementComments = ({ enforcementId, open, onOpenChange, user }) => {
+const EnforcementComments = ({ item, enforcementId, open, onOpenChange, user }) => {
 	const [comments, setComments] = useState([]);
 	const [newComment, setNewComment] = useState("");
 	const [editingCommentId, setEditingCommentId] = useState(null);
@@ -80,13 +80,14 @@ const EnforcementComments = ({ enforcementId, open, onOpenChange, user }) => {
 				fetchComments(enforcementId);
 			}
 		}
+
 	};
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-30" />
-			<Dialog.Content className="fixed bg-white left-1/2 top-1/2 max-h-[85vh] min-w-[650px] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow z-40">
-				<Dialog.Title className="font-bold text-xl">소송 상세보기</Dialog.Title>
+			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-10" />
+			<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20 overflow-y-auto">
+				<Dialog.Title className="font-bold text-xl">{item.type}</Dialog.Title>
 				<Dialog.Close asChild>
 					<Button
 						variant="ghost"
@@ -98,66 +99,66 @@ const EnforcementComments = ({ enforcementId, open, onOpenChange, user }) => {
 				</Dialog.Close>
 
 				<Box>
-					<Text weight="bold" size="4" className="mb-4">
-						진행 경로
-					</Text>
-					<Box className="space-y-4">
-						{comments.map((comment) => (
-							<Box
-								key={comment.id}
-								className="p-3 bg-gray-2 rounded shadow-sm space-y-2"
-							>
-								<Flex justify="between" align="center">
-									<Text size="2" weight="medium">
-										{comment.user?.name}
-									</Text>
-									<Text size="1" color="gray">
-										{new Date(comment.created_at).toLocaleString("ko-KR")}
-									</Text>
-								</Flex>
-								{editingCommentId === comment.id ? (
-									<Box>
-										<TextArea
-											value={editedContent}
-											onChange={(e) => setEditedContent(e.target.value)}
-										/>
-										<Flex gap="2" justify="end" className="mt-2">
-											<Button
-												variant="soft"
-												onClick={() => setEditingCommentId(null)}
-											>
-												취소
-											</Button>
-											<Button onClick={handleEditComment}>저장</Button>
-										</Flex>
-									</Box>
-								) : (
-									<Text>{comment.comment}</Text>
-								)}
-								{comment.user_id === user?.id && (
-									<Flex gap="2" className="mt-2">
-										<Button
-											variant="ghost"
-											size="1"
-											onClick={() => {
-												setEditingCommentId(comment.id);
-												setEditedContent(comment.comment);
-											}}
-										>
-											수정
-										</Button>
-										<Button
-											variant="ghost"
-											size="1"
-											onClick={() => handleDeleteComment(comment.id)}
-										>
-											삭제
-										</Button>
+					{comments.length ?
+						<Box className="space-y-4">
+							{comments.map((comment) => (
+								<Box
+									key={comment.id}
+									className="p-3 bg-gray-2 rounded shadow-sm space-y-2"
+								>
+									<Flex justify="between" align="center">
+										<Text size="2" weight="medium">
+											{comment.user?.name}
+										</Text>
+										<Text size="1" color="gray">
+											{new Date(comment.created_at).toLocaleString("ko-KR")}
+										</Text>
 									</Flex>
-								)}
-							</Box>
-						))}
-					</Box>
+									{editingCommentId === comment.id ? (
+										<Box>
+											<TextArea
+												value={editedContent}
+												onChange={(e) => setEditedContent(e.target.value)}
+											/>
+											<Flex gap="2" justify="end" className="mt-2">
+												<Button
+													variant="soft"
+													onClick={() => setEditingCommentId(null)}
+												>
+													취소
+												</Button>
+												<Button onClick={handleEditComment}>저장</Button>
+											</Flex>
+										</Box>
+									) : (
+										<Text>{comment.comment}</Text>
+									)}
+									{comment.user_id === user?.id && (
+										<Flex gap="2" className="mt-2">
+											<Button
+												variant="ghost"
+												size="1"
+												onClick={() => {
+													setEditingCommentId(comment.id);
+													setEditedContent(comment.comment);
+												}}
+											>
+												수정
+											</Button>
+											<Button
+												variant="ghost"
+												size="1"
+												onClick={() => handleDeleteComment(comment.id)}
+											>
+												삭제
+											</Button>
+										</Flex>
+									)}
+								</Box>
+							))}
+						</Box>
+						: <Box className="space-y-2"><Text>등록된 내역이 없습니다.</Text></Box>
+					}
 
 					{isAdmin && (
 						<Box className="mt-4">

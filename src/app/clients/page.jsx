@@ -14,7 +14,7 @@ import useRoleRedirect from "@/hooks/userRoleRedirect";
 const PAGE_SIZE = 12;
 
 const ClientManagementPage = () => {
-	useRoleRedirect(["staff", "admin"], "/login");
+	//useRoleRedirect(["staff", "admin"], "/login");
 
 	const [clients, setClients] = useState([]);
 	const [filteredClients, setFilteredClients] = useState([]);
@@ -171,7 +171,13 @@ const ClientManagementPage = () => {
 						<Card
 							key={client.id}
 							className="cursor-pointer p-4 shadow-sm flex items-center gap-1"
-							onClick={() => router.push(`/client/${client.id}`)}
+							onClick={() =>
+								router.push(
+									client.type === "client"
+										? `/client/${client.id}` // 개인 클라이언트 경로
+										: `/group/${client.id}` // 단체 클라이언트 경로
+								)
+							}
 						>
 							<Text size="2" color={client.type === "client" ? "blue" : "green"}>
 								{client.type === "client" ? "[개인]" : "[단체]"}
