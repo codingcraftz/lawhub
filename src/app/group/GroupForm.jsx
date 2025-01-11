@@ -50,7 +50,7 @@ export default function GroupForm({ onCancel, onSuccess }) {
 					/>
 					<Button type="submit">추가</Button>
 					<Button variant="outline" onClick={onCancel}>
-						취소
+						닫기
 					</Button>
 				</Flex>
 				{error && (

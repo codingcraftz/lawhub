@@ -58,7 +58,7 @@ const EnforcementList = ({ assignmentId, user }) => {
 			<div className="flex justify-between mb-3">
 				<h2 className="font-semibold text-lg">강제집행 목록</h2>
 				{isAdmin && (
-					<Button variant="soft" onClick={openCreate}>
+					<Button onClick={openCreate}>
 						등록
 					</Button>
 				)}

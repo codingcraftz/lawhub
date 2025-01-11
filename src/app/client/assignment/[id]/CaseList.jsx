@@ -62,27 +62,27 @@ const CaseList = ({ assignmentId, user }) => {
 	};
 
 	return (
-		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+		<section className="flex flex-col mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<div className="flex justify-between mb-3">
 				<h2 className="font-semibold text-lg">소송 목록</h2>
-				{isAdmin && <Button variant="soft" onClick={openCreateForm}>등록</Button>}
+				{isAdmin && <Button onClick={openCreateForm}>등록</Button>}
 			</div>
 
 			{cases.length === 0 ? (
 				<p>등록된 소송이 없습니다.</p>
 			) : (
-				<ul className="space-y-3">
+				<ul className="flex space-y-3 w-full">
 					{cases.map((item) => (
 						<li
 							key={item.id}
-							className="flex justify-between p-3 bg-gray-3 border border-gray-6 rounded items-center"
+							className="flex justify-between p-3 bg-gray-3 border border-gray-6 rounded items-center w-full"
 						>
-							<div>
+							<div className="flex flex-col flex-1" style={{ maxWidth: "calc(100% - 120px)" }}>
 								<p className="font-medium">
 									{item.court_name} {item.case_year} {item.case_type}{" "}
 									{item.case_number} {item.case_subject}
 								</p>
-								<div className="flex gap-2 items-center">
+								<div className="flex gap-2 items-center flex-1">
 									<p className="text-sm text-gray-11">
 										상태: {item?.status || "알 수 없음"}
 									</p>

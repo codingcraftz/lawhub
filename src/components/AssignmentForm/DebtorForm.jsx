@@ -153,9 +153,8 @@ export default function DebtorForm({ onOpenChange, onSubmit }) {
 			</Box>
 
 			<Flex justify="end" gap="2" mt="3">
-				{/* 취소 버튼은 type="button"으로! */}
 				<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-					취소
+					닫기
 				</Button>
 				{/* 추가 버튼: type="submit" → Enter로 제출 가능 */}
 				<Button type="submit">추가</Button>

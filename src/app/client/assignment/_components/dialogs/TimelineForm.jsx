@@ -79,7 +79,7 @@ export default function TimelineForm({ initialData, onOpenChange, onSubmit }) {
 						</Text>
 						<textarea
 							name="description"
-							placeholder="예) 2주 이내에 서면 제출 완료"
+							placeholder="예) 채권 회수를 위한 책임추궁대상의 확장"
 							value={formData.description}
 							onChange={handleChange}
 							className="

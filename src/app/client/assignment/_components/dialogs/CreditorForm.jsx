@@ -203,7 +203,7 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 
 					<Flex justify="end" gap="2">
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
-							취소
+							닫기
 						</Button>
 						<Button variant="solid" type="submit">
 							{initialData ? "수정" : "등록"}

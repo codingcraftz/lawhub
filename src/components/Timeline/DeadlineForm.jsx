@@ -182,7 +182,7 @@ const DeadlineForm = ({
 											onClick={() => onOpenChange(false)}
 											disabled={isSubmitting}
 										>
-											취소
+											닫기
 										</Button>
 										<Button variant="soft" type="submit" disabled={isSubmitting}>
 											{editingDeadline ? "수정" : "등록"}

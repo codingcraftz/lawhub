@@ -72,7 +72,7 @@ const StatusForm = ({ open, caseId, currentStatus, onSuccess, onClose }) => {
 
 				<div className="flex justify-end gap-2">
 					<Button variant="soft" color="gray" onClick={onClose}>
-						취소
+						닫기
 					</Button>
 					<Button variant="solid" onClick={handleSubmit}>
 						저장

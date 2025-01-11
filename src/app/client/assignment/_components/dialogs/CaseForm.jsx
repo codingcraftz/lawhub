@@ -316,7 +316,7 @@ const CaseForm = ({
 									</Button>
 								)}
 								<Button variant="soft" color="gray" onClick={onClose}>
-									취소
+									닫기
 								</Button>
 								<Button variant="solid" type="submit">
 									저장

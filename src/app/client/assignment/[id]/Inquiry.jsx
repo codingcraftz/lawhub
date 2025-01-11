@@ -125,7 +125,7 @@ const Inquiry = ({ assignmentId, user }) => {
 								variant="soft"
 								onClick={() => setEditingInquiryId(null)}
 							>
-								취소
+								닫기
 							</Button>
 							<Button onClick={handleEditInquiry}>저장</Button>
 						</Flex>
@@ -161,8 +161,8 @@ const Inquiry = ({ assignmentId, user }) => {
 				<Text as="h2" className="font-semibold text-lg">
 					문의 사항
 				</Text>
-				<Button variant="soft" onClick={() => setIsFormVisible(!isFormVisible)}>
-					{isFormVisible ? "닫기" : "등록하기"}
+				<Button color={isFormVisible && "gray"} onClick={() => setIsFormVisible(!isFormVisible)}>
+					{isFormVisible ? "닫기" : "등록"}
 				</Button>
 			</Flex>
 
@@ -193,7 +193,7 @@ const Inquiry = ({ assignmentId, user }) => {
 				<>
 					{renderInquiries()}
 					{inquiries.length > 1 && (
-						<Button variant="ghost" onClick={toggleExpand}>
+						<Button className="ml-auto w-full" variant="ghost" onClick={toggleExpand}>
 							{isExpanded ? "접기" : "더 보기"}
 						</Button>
 					)}

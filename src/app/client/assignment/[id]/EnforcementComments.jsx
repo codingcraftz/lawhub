@@ -125,7 +125,7 @@ const EnforcementComments = ({ item, enforcementId, open, onOpenChange, user }) 
 													variant="soft"
 													onClick={() => setEditingCommentId(null)}
 												>
-													취소
+													닫기
 												</Button>
 												<Button onClick={handleEditComment}>저장</Button>
 											</Flex>

@@ -58,7 +58,7 @@ const EditDebtorDialog = ({ open, onOpenChange, debtors, onSave }) => {
 
 				<Flex justify="end" mt="4" gap="2">
 					<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
-						취소
+						닫기
 					</Button>
 					<Button variant="solid" color="blue" onClick={handleSaveChanges}>
 						저장

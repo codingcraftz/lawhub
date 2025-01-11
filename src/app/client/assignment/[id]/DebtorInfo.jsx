@@ -133,7 +133,6 @@ const DebtorInfo = ({ assignmentId, user }) => {
 				</Text>
 				{isAdmin && (
 					<Button
-						variant="soft"
 						onClick={() => {
 							setSelectedDebtor(null);
 							setIsFormOpen(true);
