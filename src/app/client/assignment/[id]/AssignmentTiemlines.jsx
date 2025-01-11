@@ -81,7 +81,6 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 				</Text>
 				{isAdmin && (
 					<Button
-						variant="soft"
 						onClick={() => {
 							setCurrentTimeline(null);
 							setIsFormOpen(true);
@@ -97,7 +96,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 			) : (
 				<>
 					<Flex justify="between" align="center" className="mb-3">
-						<Box className="flex gap-4 items-center">
+						<Box className="flex gap-4 items-center justify-between w-full px-2">
 							<Text className="font-semibold">
 								현재 진행 상황:{" "}
 								{timelines[timelines.length - 1]?.description || "정보 없음"}
@@ -112,10 +111,8 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 								}) || "정보 없음"}
 							</Text>
 						</Box>
-						<Button variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
-							{isExpanded ? "닫기" : "상세 보기"}
-						</Button>
 					</Flex>
+
 
 					<motion.div
 						initial={{ height: 0, opacity: 0 }}
@@ -135,18 +132,20 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 									className="mb-4 p-3 bg-gray-2 rounded border border-gray-6"
 								>
 									<Flex justify="between" align="center">
-										<Box>
+										<Box className="flex justify-between w-full">
 											<Text>
-												<span className="font-semibold">목표: </span>
 												{timeline.description}
 											</Text>
 											<Text size="2" color="gray">
-												<span className="font-semibold">등록 날짜: </span>
-												{new Date(timeline.created_at).toLocaleString()}
+												{new Date(timeline.created_at).toLocaleString("ko-KR", {
+													year: "numeric",
+													month: "2-digit",
+													day: "2-digit",
+												})}
 											</Text>
 										</Box>
 										{isAdmin && (
-											<Flex gap="2">
+											<Flex gap="2" className="px-4">
 												<Button
 													variant="soft"
 													size="2"
@@ -171,6 +170,12 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 								</Box>
 							))}
 					</motion.div>
+					{timelines.length > 1 &&
+						<Button className="ml-auto w-full" variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
+							{isExpanded ? "닫기" : "더보기"}
+						</Button>
+					}
+
 				</>
 			)}
 

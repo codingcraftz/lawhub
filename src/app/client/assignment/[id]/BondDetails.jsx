@@ -43,7 +43,7 @@ const BondDetails = ({ assignmentId, user }) => {
 						채권 정보
 					</Text>
 					{isAdmin && (
-						<Button variant="soft" onClick={() => setIsFormOpen(true)}>
+						<Button onClick={() => setIsFormOpen(true)}>
 							등록
 						</Button>
 					)}
@@ -95,8 +95,8 @@ const BondDetails = ({ assignmentId, user }) => {
 					채권 정보
 				</Text>
 				{isAdmin && (
-					<Button variant="soft" onClick={() => setIsFormOpen(true)}>
-						수정
+					<Button onClick={() => setIsFormOpen(true)}>
+						등록/수정
 					</Button>
 				)}
 			</Flex>

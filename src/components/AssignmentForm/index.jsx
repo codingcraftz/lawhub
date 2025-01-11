@@ -299,7 +299,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 								<Flex justify="end" mt="4" gap="2">
 									<Button variant="soft" color="gray" onClick={handleCancel}>
-										취소
+										닫기
 									</Button>
 									<Button
 										variant="soft"

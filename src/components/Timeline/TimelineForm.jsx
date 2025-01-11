@@ -263,7 +263,7 @@ const TimelineForm = ({ caseId, onSuccess, editingItem, open, onOpenChange }) =>
 										<Button type="button" color="red" variant="soft" onClick={handleDelete}>삭제</Button>
 									}
 									<Button variant="soft" color="gray" type="button" onClick={() => onOpenChange(false)}>
-										취소
+										닫기
 									</Button>
 									<Button type="submit">{editingItem ? "수정" : "등록"}</Button>
 								</Flex>

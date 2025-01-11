@@ -179,7 +179,7 @@ const EnforcementForm = ({
 								</Button>
 							)}
 							<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
-								취소
+								닫기
 							</Button>
 							<Button variant="solid" type="submit">
 								저장

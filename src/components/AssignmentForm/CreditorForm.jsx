@@ -163,11 +163,9 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 			</Box>
 
 			<Flex justify="end" gap="2" mt="3">
-				{/* 취소는 type="button"으로 두어 Enter시 닫히지 않게 함 */}
 				<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-					취소
+					닫기
 				</Button>
-				{/* 추가는 type="submit" → Enter로 제출 가능 */}
 				<Button type="submit" variant="solid">
 					{initialData ? "수정" : "추가"}
 				</Button>

@@ -72,7 +72,6 @@ const CreditorInfo = ({ assignmentId, user }) => {
 				<h2 className="font-semibold text-lg">채권자 정보</h2>
 				{isAdmin && (
 					<Button
-						variant="soft"
 						onClick={() => {
 							setCurrentCreditor(null);
 							setIsFormOpen(true);
