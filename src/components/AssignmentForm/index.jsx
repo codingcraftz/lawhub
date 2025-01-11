@@ -86,16 +86,15 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 		setStep(step - 1);
 	};
 
-	// --------------------- 최종 등록 ---------------------
+
 	const onSubmit = async (data) => {
 		try {
-			// 1) assignments 테이블에 기본 의뢰 내용 저장
+			// Step 1: 의뢰 생성
 			const { data: assignmentData, error: assignmentError } = await supabase
 				.from("assignments")
 				.insert([
 					{
 						description: data.description,
-						// status, created_at 등 필요한 컬럼 추가 가능
 					},
 				])
 				.select("*")
@@ -109,105 +108,99 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 			const assignmentId = assignmentData.id;
 
-			// 2) 의뢰인 연결 (assignment_clients)
-			if (!noClientSelected && selectedClients.length > 0) {
-				const clientInsertData = selectedClients.map((client) => ({
-					assignment_id: assignmentId,
-					client_id: client.id,
-				}));
-				const { error: clientError } = await supabase
-					.from("assignment_clients")
-					.insert(clientInsertData);
-				if (clientError) {
-					console.error("Assignment Clients 추가 오류:", clientError);
-					alert("Clients 추가 중 오류가 발생했습니다.");
-					return;
-				}
-			} else if (!noClientSelected && selectedClients.length === 0 && selectedGroups.length === 0) {
-				const { error: clientError } = await supabase
-					.from("assignment_clients")
-					.insert({
+			// Step 2: 의뢰인 데이터 추가
+			if (!noClientSelected) {
+				if (selectedClients.length > 0) {
+					// 개인 의뢰인 추가
+					const clientInsertData = selectedClients.map((client) => ({
 						assignment_id: assignmentId,
-						client_id: "e8353222-07e6-4d05-ac2c-5e004c043ce6"
-					});
-				if (clientError) {
-					console.error("Assignment Clients 추가 오류:", clientError);
-					alert("Clients 추가 중 오류가 발생했습니다.");
+						client_id: client.id,
+					}));
+
+					const { error: clientError } = await supabase
+						.from("assignment_clients")
+						.insert(clientInsertData);
+
+					if (clientError) {
+						console.error("Assignment Clients 추가 오류:", clientError);
+						alert("Clients 추가 중 오류가 발생했습니다.");
+						return;
+					}
+				}
+
+				if (selectedGroups.length > 0) {
+					// 그룹 의뢰인 추가
+					const groupInsertData = selectedGroups.map((group) => ({
+						assignment_id: assignmentId,
+						group_id: group.id,
+					}));
+
+					const { error: groupError } = await supabase
+						.from("assignment_groups")
+						.insert(groupInsertData);
+
+					if (groupError) {
+						console.error("Assignment Groups 추가 오류:", groupError);
+						alert("Groups 추가 중 오류가 발생했습니다.");
+						return;
+					}
+				}
+			}
+
+			// Step 3: 채권자 데이터 추가
+			if (selectedCreditors.length > 0) {
+				const creditorsInsertData = selectedCreditors.map((creditor) => ({
+					assignment_id: assignmentId,
+					name: creditor.name,
+					birth_date: creditor.birth_date,
+					phone_number: creditor.phone_number,
+					address: creditor.address,
+				}));
+
+				const { error: creditorError } = await supabase
+					.from("assignment_creditors")
+					.insert(creditorsInsertData);
+
+				if (creditorError) {
+					console.error("Assignment Creditors 추가 오류:", creditorError);
+					alert("Creditors 추가 중 오류가 발생했습니다.");
 					return;
 				}
 			}
-			if (selectedGroups.length > 0) {
-				const groupInsertData = selectedGroups.map((g) => ({
-					assignment_id: assignmentId,
-					group_id: g.id,
-				}));
-				const { error: groupError } = await supabase
-					.from("assignment_groups")
-					.insert(groupInsertData);
 
-				if (groupError) {
+			// Step 4: 채무자 데이터 추가
+			if (selectedDebtors.length > 0) {
+				const debtorsInsertData = selectedDebtors.map((debtor) => ({
+					assignment_id: assignmentId,
+					name: debtor.name,
+					birth_date: debtor.birth_date,
+					phone_number: debtor.phone_number,
+					address: debtor.address,
+				}));
+
+				const { error: debtorError } = await supabase
+					.from("assignment_debtors")
+					.insert(debtorsInsertData);
+
+				if (debtorError) {
 					console.error("Assignment Debtors 추가 오류:", debtorError);
 					alert("Debtors 추가 중 오류가 발생했습니다.");
 					return;
 				}
-
-
-				// 3) 채권자 연결 (assignment_creditors)
-				if (selectedCreditors.length > 0) {
-					const creditorsInsertData = selectedCreditors.map((c) => ({
-						assignment_id: assignmentId,
-						name: c.name,
-						birth_date: c.birth_date,
-						phone_number: c.phone_number,
-						address: c.address,
-					}));
-
-					const { error: creditorError } = await supabase
-						.from("assignment_creditors")
-						.insert(creditorsInsertData);
-
-					if (creditorError) {
-						console.error("Assignment Creditors 추가 오류:", creditorError);
-						alert("Creditors 추가 중 오류가 발생했습니다.");
-						return;
-					}
-				}
-
-				// 4) 채무자 연결 (assignment_debtors)
-				if (selectedDebtors.length > 0) {
-					const debtorsInsertData = selectedDebtors.map((d) => ({
-						assignment_id: assignmentId,
-						name: d.name,
-						birth_date: d.birth_date,
-						phone_number: d.phone_number,
-						address: d.address,
-					}));
-
-					const { error: debtorError } = await supabase
-						.from("assignment_debtors")
-						.insert(debtorsInsertData);
-
-					if (debtorError) {
-						console.error("Assignment Debtors 추가 오류:", debtorError);
-						alert("Debtors 추가 중 오류가 발생했습니다.");
-						return;
-					}
-
-
-				}
-
 			}
 
-			// 완료
+			// 성공 메시지 및 페이지 이동
 			alert("Assignment가 성공적으로 등록되었습니다!");
 			onSuccess && onSuccess();
 			onOpenChange(false);
-			router.push(`client/assignment/${assignmentId}`);
+			router.push(`/client/assignment/${assignmentId}`);
 		} catch (err) {
-			console.error("Assignment 추가 중 오류:", err);
+			console.error("Assignment 추가 중 예기치 못한 오류:", err);
 			alert("Assignment 추가 중 오류가 발생했습니다.");
 		}
 	};
+
+
 
 	// --------------------- 전체 취소(리셋) ---------------------
 	const handleCancel = () => {

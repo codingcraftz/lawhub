@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
+import { Cross2Icon } from "@radix-ui/react-icons";
+import InputMask from "react-input-mask"; // ★ react-input-mask 설치 후 import
 
 export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const [formData, setFormData] = useState({
@@ -14,30 +17,36 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 
 	useEffect(() => {
 		if (initialData) {
-			setFormData(initialData); // Load initial data for editing
+			setFormData(initialData);
 		}
 	}, [initialData]);
 
 	const validate = () => {
 		const newErrors = {};
+
 		if (!formData.name.trim()) {
 			newErrors.name = "이름은 필수입니다.";
 		}
-		if (!formData.birth_date.trim()) {
-			newErrors.birth_date = "생년월일은 필수입니다.";
+		// 날짜: YYYY-MM-DD 형식
+		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+		if (!dateRegex.test(formData.birth_date)) {
+			newErrors.birth_date = "생년월일을 YYYY-MM-DD 형식으로 입력해주세요.";
 		}
-		if (!/^\d{10,11}$/.test(formData.phone_number)) {
-			newErrors.phone_number = "전화번호는 10~11자리 숫자여야 합니다.";
+		// 전화번호: 010-XXXX-XXXX
+		const phoneRegex = /^\d{3}-\d{3,4}-\d{4}$/;
+		if (!phoneRegex.test(formData.phone_number)) {
+			newErrors.phone_number = "전화번호를 010-XXXX-XXXX 형식으로 입력해주세요.";
 		}
 		if (!formData.address.trim()) {
 			newErrors.address = "주소는 필수입니다.";
 		}
+
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
 
 	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
+		setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 	};
 
 	const handleSubmit = (e) => {
@@ -47,102 +56,162 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	};
 
 	return (
-		<form onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
-			<Text size="4" weight="bold" mb="2">
-				채권자 {initialData ? "수정" : "등록"}
-			</Text>
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
+			<Dialog.Content
+				className="
+          fixed
+          left-1/2 top-1/2
+          max-h-[85vh] min-w-[450px] max-w-[650px]
+          -translate-x-1/2 -translate-y-1/2
+          rounded-md p-6
+          bg-gray-2 border border-gray-6
+          shadow-md shadow-gray-7
+          text-gray-12
+          focus:outline-none
+          z-50
+          overflow-y-auto
+        "
+			>
+				<Flex justify="between" align="center" className="mb-3">
+					<Dialog.Title className="font-bold text-xl">
+						채권자 {initialData ? "수정" : "등록"}
+					</Dialog.Title>
+					<Dialog.Close asChild>
+						<Button variant="ghost" color="gray">
+							<Cross2Icon width={25} height={25} />
+						</Button>
+					</Dialog.Close>
+				</Flex>
 
-			{/* 이름 */}
-			<Box mb="2">
-				<input
-					name="name"
-					placeholder="이름"
-					value={formData.name}
-					onChange={handleChange}
-					style={{
-						width: "100%",
-						padding: "0.6rem",
-						border: "1px solid var(--gray-6)",
-						borderRadius: "var(--radius-1)",
-					}}
-				/>
-				{errors.name && (
-					<Text color="red" size="2">
-						{errors.name}
-					</Text>
-				)}
-			</Box>
+				<form onSubmit={handleSubmit}>
+					{/* 이름 */}
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							이름
+						</Text>
+						<input
+							name="name"
+							placeholder="홍길동"
+							value={formData.name}
+							onChange={handleChange}
+							className="
+                w-full p-2
+                border border-gray-6
+                rounded text-gray-12
+                focus:outline-none focus:border-gray-8
+              "
+						/>
+						{errors.name && (
+							<Text color="red" size="2">
+								{errors.name}
+							</Text>
+						)}
+					</Box>
 
-			{/* 생년월일 */}
-			<Box mb="2">
-				<input
-					name="birth_date"
-					placeholder="생년월일 (YYYY-MM-DD)"
-					value={formData.birth_date}
-					onChange={handleChange}
-					style={{
-						width: "100%",
-						padding: "0.6rem",
-						border: "1px solid var(--gray-6)",
-						borderRadius: "var(--radius-1)",
-					}}
-				/>
-				{errors.birth_date && (
-					<Text color="red" size="2">
-						{errors.birth_date}
-					</Text>
-				)}
-			</Box>
+					{/* 생년월일 (YYYY-MM-DD) - 마스킹 */}
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							생년월일
+						</Text>
+						<InputMask
+							mask="9999-99-99"
+							maskChar={null}
+							placeholder="예) 1990-05-11"
+							value={formData.birth_date}
+							onChange={(e) =>
+								setFormData({ ...formData, birth_date: e.target.value })
+							}
+						>
+							{(inputProps) => (
+								<input
+									{...inputProps}
+									name="birth_date"
+									className="
+                    w-full p-2
+                    border border-gray-6
+                    rounded text-gray-12
+                    focus:outline-none focus:border-gray-8
+                  "
+								/>
+							)}
+						</InputMask>
+						{errors.birth_date && (
+							<Text color="red" size="2">
+								{errors.birth_date}
+							</Text>
+						)}
+					</Box>
 
-			{/* 전화번호 */}
-			<Box mb="2">
-				<input
-					name="phone_number"
-					placeholder="전화번호 (10~11자리 숫자)"
-					value={formData.phone_number}
-					onChange={handleChange}
-					style={{
-						width: "100%",
-						padding: "0.6rem",
-						border: "1px solid var(--gray-6)",
-						borderRadius: "var(--radius-1)",
-					}}
-				/>
-				{errors.phone_number && (
-					<Text color="red" size="2">
-						{errors.phone_number}
-					</Text>
-				)}
-			</Box>
+					{/* 전화번호 (마스킹: 010-9999-9999) */}
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							전화번호
+						</Text>
+						<InputMask
+							mask="999-9999-9999"
+							maskChar={null}
+							placeholder="예) 010-2345-9600"
+							value={formData.phone_number}
+							onChange={(e) =>
+								setFormData({ ...formData, phone_number: e.target.value })
+							}
+						>
+							{(inputProps) => (
+								<input
+									{...inputProps}
+									name="phone_number"
+									className="
+                    w-full p-2
+                    border border-gray-6
+                    rounded text-gray-12
+                    focus:outline-none focus:border-gray-8
+                  "
+								/>
+							)}
+						</InputMask>
+						{errors.phone_number && (
+							<Text color="red" size="2">
+								{errors.phone_number}
+							</Text>
+						)}
+					</Box>
 
-			{/* 주소 */}
-			<Box mb="2">
-				<input
-					name="address"
-					placeholder="주소"
-					value={formData.address}
-					onChange={handleChange}
-					style={{
-						width: "100%",
-						padding: "0.6rem",
-						border: "1px solid var(--gray-6)",
-						borderRadius: "var(--radius-1)",
-					}}
-				/>
-				{errors.address && (
-					<Text color="red" size="2">
-						{errors.address}
-					</Text>
-				)}
-			</Box>
+					{/* 주소 */}
+					<Box mb="4">
+						<Text size="2" color="gray" className="mb-1">
+							주소
+						</Text>
+						<input
+							name="address"
+							placeholder="예) 서울특별시 강남구 ... "
+							value={formData.address}
+							onChange={handleChange}
+							className="
+                w-full p-2
+                border border-gray-6
+                rounded text-gray-12
+                focus:outline-none focus:border-gray-8
+              "
+						/>
+						{errors.address && (
+							<Text color="red" size="2">
+								{errors.address}
+							</Text>
+						)}
+					</Box>
 
-			<Flex justify="end" gap="2" mt="3">
-				<Button variant="outline" onClick={() => onOpenChange(false)}>
-					취소
-				</Button>
-				<Button type="submit">{initialData ? "수정" : "등록"}</Button>
-			</Flex>
-		</form>
+					<Flex justify="end" gap="2">
+						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
+							취소
+						</Button>
+						<Button variant="solid" type="submit">
+							{initialData ? "수정" : "등록"}
+						</Button>
+					</Flex>
+				</form>
+			</Dialog.Content>
+		</Dialog.Root>
 	);
 }
 

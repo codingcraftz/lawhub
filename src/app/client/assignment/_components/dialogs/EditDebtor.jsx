@@ -1,15 +1,15 @@
+"use client";
+
 import React, { useState } from "react";
-import { Box, Button, Text } from "@radix-ui/themes";
+import { Box, Button, Flex, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import * as Dialog from "@radix-ui/react-dialog";
 
-const EditDebtorDialog = ({
-	open,
-	onOpenChange,
-	debtors,
-	onSave,
-}) => {
+const EditDebtorDialog = ({ open, onOpenChange, debtors, onSave }) => {
 	const [selectedDebtors, setSelectedDebtors] = useState(debtors);
+
+	// 예: 채무자 정보를 편집할 때(체크박스, 텍스트 수정 등) 로직 추가 가능
+	// (현재는 단순히 state로만 보존)
 
 	const handleSaveChanges = async () => {
 		try {
@@ -23,40 +23,51 @@ const EditDebtorDialog = ({
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-30" />
-			<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none z-40 overflow-y-auto">
-				<Dialog.Title className="font-bold text-xl">
-					채무자 정보 수정
-				</Dialog.Title>
-				<Dialog.Close asChild>
-					<Button
-						variant="ghost"
-						color="gray"
-						style={{ position: "absolute", top: 24, right: 24 }}
-					>
-						<Cross2Icon width={25} height={25} />
-					</Button>
-				</Dialog.Close>
+			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
+			<Dialog.Content
+				className="
+          fixed 
+          left-1/2 top-1/2 
+          max-h-[85vh] w-full max-w-[600px] 
+          -translate-x-1/2 -translate-y-1/2 
+          rounded-md p-6 
+          bg-gray-2 border border-gray-6 
+          shadow-md shadow-gray-7
+          focus:outline-none 
+          z-50 
+          overflow-y-auto
+        "
+			>
+				<Flex justify="between" align="center" className="mb-4">
+					<Dialog.Title className="font-bold text-xl text-gray-12">
+						채무자 정보 수정
+					</Dialog.Title>
+					<Dialog.Close asChild>
+						<Button variant="ghost" color="gray">
+							<Cross2Icon width={25} height={25} />
+						</Button>
+					</Dialog.Close>
+				</Flex>
 
-				<Box open={open} onOpenChange={onOpenChange} className="flex flex-col">
-					<Box className="mt-2">
-					</Box>
-					<Box mt="4" className="flex gap-2 ml-auto">
-						<Button
-							variant="soft"
-							color="gray"
-							onClick={() => onOpenChange(false)}
-						>
-							취소
-						</Button>
-						<Button variant="soft" color="blue" onClick={handleSaveChanges}>
-							저장
-						</Button>
-					</Box>
+				{/* 예: 채무자들 편집할 내용 들어갈 부분 */}
+				<Box className="mt-2 text-gray-12">
+					<Text size="2" color="gray">
+						(채무자 목록 및 편집 로직을 구현하세요)
+					</Text>
 				</Box>
+
+				<Flex justify="end" mt="4" gap="2">
+					<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
+						취소
+					</Button>
+					<Button variant="solid" color="blue" onClick={handleSaveChanges}>
+						저장
+					</Button>
+				</Flex>
 			</Dialog.Content>
 		</Dialog.Root>
 	);
 };
 
 export default EditDebtorDialog;
+

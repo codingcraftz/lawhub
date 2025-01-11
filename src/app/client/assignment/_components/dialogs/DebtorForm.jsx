@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import InputMask from "react-input-mask"; // ★ react-input-mask
 
 export default function DebtorForm({ onOpenChange, onSubmit, initialData = null }) {
 	const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 
 	const [errors, setErrors] = useState({});
 
-	// 수정 모드일 경우 초기 데이터 로드
+	// 수정 모드 초기 데이터 로드
 	useEffect(() => {
 		if (initialData) {
 			setFormData({
@@ -29,65 +30,84 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 
 	const validate = () => {
 		const newErrors = {};
+
 		if (!formData.name.trim()) {
 			newErrors.name = "이름은 필수입니다.";
 		}
-		if (!formData.birth_date.trim()) {
-			newErrors.birth_date = "생년월일은 필수입니다.";
+		// 날짜: YYYY-MM-DD
+		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+		if (!dateRegex.test(formData.birth_date)) {
+			newErrors.birth_date = "생년월일을 YYYY-MM-DD 형식으로 입력해주세요.";
 		}
-		if (!/^\d{10,11}$/.test(formData.phone_number)) {
-			newErrors.phone_number = "전화번호는 10~11자리 숫자여야 합니다.";
+		// 전화번호
+		const phoneRegex = /^\d{3}-\d{3,4}-\d{4}$/;
+		if (!phoneRegex.test(formData.phone_number)) {
+			newErrors.phone_number = "전화번호를 010-XXXX-XXXX 형식으로 입력해주세요.";
 		}
 		if (!formData.address.trim()) {
 			newErrors.address = "주소는 필수입니다.";
 		}
+
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
+	const handleChangeRaw = (name, value) => {
+		setFormData((prev) => ({ ...prev, [name]: value }));
 	};
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
-		onSubmit(formData); // 부모 컴포넌트에 데이터 전달
+		onSubmit(formData);
 	};
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-10" />
-			<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20 overflow-y-auto">
-				<Dialog.Title className="font-bold text-xl">채권 정보</Dialog.Title>
-				<Dialog.Close asChild>
-					<Button
-						variant="ghost"
-						color="gray"
-						style={{ position: "absolute", top: 24, right: 24 }}
-					>
-						<Cross2Icon width={25} height={25} />
-					</Button>
-				</Dialog.Close>
-
-				<form onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
-					<Text size="4" weight="bold" mb="2">
+			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
+			<Dialog.Content
+				className="
+          fixed
+          left-1/2 top-1/2
+          max-h-[85vh] min-w-[450px] max-w-[650px]
+          -translate-x-1/2 -translate-y-1/2
+          rounded-md p-6
+          bg-gray-2 border border-gray-6
+          shadow-md shadow-gray-7
+          focus:outline-none
+          z-50
+          overflow-y-auto
+          text-gray-12
+        "
+			>
+				<Flex justify="between" align="center" className="mb-3">
+					<Dialog.Title className="font-bold text-xl">
 						{initialData ? "채무자 수정" : "채무자 추가"}
-					</Text>
+					</Dialog.Title>
+					<Dialog.Close asChild>
+						<Button variant="ghost" color="gray">
+							<Cross2Icon width={25} height={25} />
+						</Button>
+					</Dialog.Close>
+				</Flex>
 
+				<form onSubmit={handleSubmit}>
 					{/* 이름 */}
-					<Box mb="2">
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							이름
+						</Text>
 						<input
 							name="name"
-							placeholder="이름"
+							placeholder="홍길동"
 							value={formData.name}
-							onChange={handleChange}
-							style={{
-								width: "100%",
-								padding: "0.6rem",
-								border: "1px solid var(--gray-6)",
-								borderRadius: "var(--radius-1)",
-							}}
+							onChange={(e) => handleChangeRaw("name", e.target.value)}
+							className="
+                w-full p-2
+                border border-gray-6
+                rounded text-gray-12
+                focus:outline-none focus:border-gray-8
+              "
 						/>
 						{errors.name && (
 							<Text color="red" size="2">
@@ -96,20 +116,31 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 						)}
 					</Box>
 
-					{/* 생년월일 */}
-					<Box mb="2">
-						<input
-							name="birth_date"
-							placeholder="생년월일 (YYYY-MM-DD)"
+					{/* 생년월일 (마스킹: YYYY-MM-DD) */}
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							생년월일
+						</Text>
+						<InputMask
+							mask="9999-99-99"
+							maskChar={null}
+							placeholder="예) 1995-03-22"
 							value={formData.birth_date}
-							onChange={handleChange}
-							style={{
-								width: "100%",
-								padding: "0.6rem",
-								border: "1px solid var(--gray-6)",
-								borderRadius: "var(--radius-1)",
-							}}
-						/>
+							onChange={(e) => handleChangeRaw("birth_date", e.target.value)}
+						>
+							{(inputProps) => (
+								<input
+									{...inputProps}
+									name="birth_date"
+									className="
+                    w-full p-2
+                    border border-gray-6
+                    rounded text-gray-12
+                    focus:outline-none focus:border-gray-8
+                  "
+								/>
+							)}
+						</InputMask>
 						{errors.birth_date && (
 							<Text color="red" size="2">
 								{errors.birth_date}
@@ -117,20 +148,31 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 						)}
 					</Box>
 
-					{/* 전화번호 */}
-					<Box mb="2">
-						<input
-							name="phone_number"
-							placeholder="전화번호 (10~11자리 숫자)"
+					{/* 전화번호 (마스킹: 010-9999-9999) */}
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							전화번호
+						</Text>
+						<InputMask
+							mask="999-9999-9999"
+							maskChar={null}
+							placeholder="예) 010-2345-9600"
 							value={formData.phone_number}
-							onChange={handleChange}
-							style={{
-								width: "100%",
-								padding: "0.6rem",
-								border: "1px solid var(--gray-6)",
-								borderRadius: "var(--radius-1)",
-							}}
-						/>
+							onChange={(e) => handleChangeRaw("phone_number", e.target.value)}
+						>
+							{(inputProps) => (
+								<input
+									{...inputProps}
+									name="phone_number"
+									className="
+                    w-full p-2
+                    border border-gray-6
+                    rounded text-gray-12
+                    focus:outline-none focus:border-gray-8
+                  "
+								/>
+							)}
+						</InputMask>
 						{errors.phone_number && (
 							<Text color="red" size="2">
 								{errors.phone_number}
@@ -139,18 +181,21 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 					</Box>
 
 					{/* 주소 */}
-					<Box mb="2">
+					<Box mb="4">
+						<Text size="2" color="gray" className="mb-1">
+							주소
+						</Text>
 						<input
 							name="address"
-							placeholder="주소"
+							placeholder="예) 부산광역시 해운대구 ... "
 							value={formData.address}
-							onChange={handleChange}
-							style={{
-								width: "100%",
-								padding: "0.6rem",
-								border: "1px solid var(--gray-6)",
-								borderRadius: "var(--radius-1)",
-							}}
+							onChange={(e) => handleChangeRaw("address", e.target.value)}
+							className="
+                w-full p-2
+                border border-gray-6
+                rounded text-gray-12
+                focus:outline-none focus:border-gray-8
+              "
 						/>
 						{errors.address && (
 							<Text color="red" size="2">
@@ -160,11 +205,11 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 					</Box>
 
 					{/* 버튼 */}
-					<Flex justify="end" gap="2" mt="3">
-						<Button variant="outline" onClick={() => onOpenChange(false)}>
+					<Flex justify="end" gap="2">
+						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							취소
 						</Button>
-						<Button type="submit">
+						<Button variant="solid" type="submit">
 							{initialData ? "수정" : "추가"}
 						</Button>
 					</Flex>

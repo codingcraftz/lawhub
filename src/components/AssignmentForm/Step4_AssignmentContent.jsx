@@ -12,17 +12,23 @@ export default function Step4_AssignmentContent({
 }) {
 	return (
 		<form onSubmit={handleSubmit(onSubmit)}>
+			<Text className="font-semibold text-xl mb-3">
+				4단계: 의뢰 내용을 입력하세요
+			</Text>
+
 			<Box mb="3">
 				<textarea
 					{...register("description")}
-					placeholder="의뢰 내용을 입력해주세요."
-					style={{
-						width: "100%",
-						minHeight: "120px",
-						padding: "0.6rem 0.8rem",
-						border: "2px solid var(--gray-6)",
-						borderRadius: "var(--radius-1)",
-					}}
+					placeholder="예) 사건의 배경, 의뢰 진행 요청사항 등 자세히 입력해주세요."
+					rows={5}
+					className="
+            w-full
+            p-3
+            border border-gray-6
+            rounded text-gray-12
+            focus:outline-none focus:border-gray-8
+          "
+					style={{ minHeight: "150px", lineHeight: "1.4" }}
 				/>
 				{errors?.description && (
 					<Text color="red" size="2">
@@ -30,11 +36,13 @@ export default function Step4_AssignmentContent({
 					</Text>
 				)}
 			</Box>
+
 			<Flex justify="end" gap="2">
-				<Button variant="soft" color="gray" onClick={goToPrevStep}>
+				<Button type="button" variant="soft" color="gray" onClick={goToPrevStep}>
 					이전
 				</Button>
-				<Button variant="soft" type="submit">
+				{/* 여기서도 type="submit" → Enter로 등록 가능 */}
+				<Button type="submit" variant="solid">
 					등록
 				</Button>
 			</Flex>

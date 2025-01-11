@@ -5,12 +5,12 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Text, Button } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useForm } from "react-hook-form";
+import { Cross2Icon } from "@radix-ui/react-icons";
+import DynamicSelect from "../DynamicSelect";
 
 import { COURT_LIST, COURT_CITIES } from "@/utils/courtList";
 import { CASE_TYPE_OPTIONS } from "@/utils/caseType";
 import { CASE_CATEGORIES } from "@/utils/caseCategory";
-import DynamicSelect from "../DynamicSelect";
-import { Cross2Icon } from "@radix-ui/react-icons";
 
 const clientRoles = [
 	"미정",
@@ -134,12 +134,10 @@ const CaseForm = ({
 	};
 
 	const handleDelete = async () => {
-
 		if (!caseData?.id) {
 			alert("삭제할 항목이 없습니다.");
 			return;
 		}
-
 		const confirmation = confirm("정말로 이 항목을 삭제하시겠습니까?");
 		if (!confirmation) return;
 
@@ -154,32 +152,42 @@ const CaseForm = ({
 			}
 
 			alert("항목이 성공적으로 삭제되었습니다.");
-			if (onSuccess) onSuccess(); // 부모 컴포넌트에서 상태를 갱신
-			onOpenChange(false); // 다이얼로그 닫기
+			if (onSuccess) onSuccess();
+			onOpenChange(false);
 		} catch (error) {
 			console.error("Error deleting timeline item:", error);
 			alert("항목 삭제 중 오류가 발생했습니다.");
 		}
 	};
 
-
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-30" />
-			<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none z-40 overflow-y-auto">
-				<Dialog.Title className="font-bold text-xl">
-					{caseData ? "소송 수정" : "소송 등록"}
-				</Dialog.Title>
-
-				<Dialog.Close asChild>
-					<Button
-						variant="ghost"
-						color="gray"
-						style={{ position: "absolute", top: 24, right: 24 }}
-					>
-						<Cross2Icon />
-					</Button>
-				</Dialog.Close>
+			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
+			<Dialog.Content
+				className="
+          fixed 
+          left-1/2 top-1/2 
+          max-h-[85vh] w-full max-w-[600px]
+          -translate-x-1/2 -translate-y-1/2
+          rounded-md p-6
+          bg-gray-2 border border-gray-6
+          shadow-md shadow-gray-7
+          text-gray-12
+          focus:outline-none
+          z-50
+          overflow-y-auto
+        "
+			>
+				<Flex justify="between" align="center" className="mb-4">
+					<Dialog.Title className="font-bold text-xl">
+						{caseData ? "소송 수정" : "소송 등록"}
+					</Dialog.Title>
+					<Dialog.Close asChild>
+						<Button variant="ghost" color="gray">
+							<Cross2Icon />
+						</Button>
+					</Dialog.Close>
+				</Flex>
 
 				<Box className="py-2 text-md">
 					<form onSubmit={handleSubmit(onSubmit)}>
@@ -188,16 +196,16 @@ const CaseForm = ({
 								label="카테고리"
 								placeholder="카테고리를 선택하세요"
 								options={CASE_CATEGORIES.map((cat) => ({ label: cat, value: cat }))}
-								value={categoryWatch}
+								value={watch("category")}
 								onChange={(value) => setValue("category", value)}
 							/>
 
-							<div className="flex gap-2">
+							<Flex gap="2">
 								<DynamicSelect
 									label="도시"
 									placeholder="도시를 선택하세요"
 									options={COURT_CITIES.map((city) => ({ label: city, value: city }))}
-									value={cityWatch}
+									value={watch("city")}
 									onChange={(value) => setValue("city", value)}
 								/>
 
@@ -211,19 +219,25 @@ const CaseForm = ({
 									value={watch("court_name")}
 									onChange={(value) => setValue("court_name", value)}
 								/>
-							</div>
+							</Flex>
 
-							<div className="flex gap-2">
+							<Flex gap="2">
 								<Box className="flex-1">
-									<Text>사건 연도</Text>
+									<Text size="2" color="gray" className="mb-1">
+										사건 연도
+									</Text>
 									<input
 										type="number"
 										{...register("case_year")}
 										placeholder="예) 2025"
-										className="w-full mt-1 p-2 border rounded border-gray-6"
+										className="
+                      w-full p-2 mt-1 
+                      border border-gray-6 
+                      rounded text-gray-12
+                      focus:outline-none focus:border-gray-8
+                    "
 									/>
 								</Box>
-
 								<DynamicSelect
 									label="사건 유형"
 									placeholder="사건 유형을 선택하세요"
@@ -234,32 +248,43 @@ const CaseForm = ({
 									value={watch("case_type")}
 									onChange={(value) => setValue("case_type", value)}
 								/>
+							</Flex>
 
-							</div>
-
-							<div className="flex gap-2">
-
+							<Flex gap="2">
 								<Box className="flex-1">
-									<Text>사건 번호</Text>
+									<Text size="2" color="gray" className="mb-1">
+										사건 번호
+									</Text>
 									<input
 										type="number"
 										{...register("case_number")}
-										className="w-full mt-1 p-2 border rounded border-gray-6"
 										placeholder="예) 1234"
+										className="
+                      w-full p-2 mt-1
+                      border border-gray-6
+                      rounded text-gray-12
+                      focus:outline-none focus:border-gray-8
+                    "
 									/>
 								</Box>
-
 								<Box className="flex-1">
-									<Text>사건 세부</Text>
+									<Text size="2" color="gray" className="mb-1">
+										사건 세부
+									</Text>
 									<input
 										type="text"
 										{...register("case_subject")}
 										placeholder="예) 손해배상(기)"
-										className="w-full mt-1 p-2 border rounded border-gray-6"
+										className="
+                      w-full p-2 mt-1
+                      border border-gray-6
+                      rounded text-gray-12
+                      focus:outline-none focus:border-gray-8
+                    "
 									/>
 								</Box>
+							</Flex>
 
-							</div>
 							<DynamicSelect
 								label="의뢰인 역할"
 								placeholder="역할을 선택하세요"
@@ -269,18 +294,27 @@ const CaseForm = ({
 							/>
 
 							<Box>
-								<Text>소송 설명</Text>
+								<Text size="2" color="gray" className="mb-1">
+									소송 설명
+								</Text>
 								<textarea
 									{...register("description")}
-									className="w-full mt-1 p-2 border rounded border-gray-6"
+									className="
+                    w-full p-2 mt-1
+                    border border-gray-6
+                    rounded text-gray-12
+                    focus:outline-none focus:border-gray-8
+                  "
+									rows={4}
 								/>
 							</Box>
 
 							<Flex justify="end" gap="2">
-								{caseData &&
-									<Button type="button" color="red" variant="soft" onClick={handleDelete}>삭제</Button>
-								}
-
+								{caseData && (
+									<Button type="button" color="red" variant="soft" onClick={handleDelete}>
+										삭제
+									</Button>
+								)}
 								<Button variant="soft" color="gray" onClick={onClose}>
 									취소
 								</Button>

@@ -68,12 +68,12 @@ const ClientCasePage = () => {
 	return (
 		<div className="py-4 w-full">
 			<header className="flex justify-between items-center mb-4">
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-2">
 					<ArrowLeftIcon
-						className="w-8 h-8 cursor-pointer mr-3"
-						onClick={() => router.push("/clients")}
+						className="w-8 h-8 cursor-pointer"
+						onClick={() => router.back()}
 					/>
-					<h1 className="text-2xl font-bold">{clientName}님의 사건 관리</h1>
+					<h1 className="text-2xl font-bold">{clientName}님의 의뢰 목록</h1>
 				</div>
 			</header>
 			<main>

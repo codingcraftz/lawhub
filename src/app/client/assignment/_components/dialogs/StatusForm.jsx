@@ -1,12 +1,10 @@
 "use client";
 
-
 import React, { useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { Button, Text } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
-
 
 const StatusForm = ({ open, caseId, currentStatus, onSuccess, onClose }) => {
 	const [status, setStatus] = useState(currentStatus || "");
@@ -26,31 +24,59 @@ const StatusForm = ({ open, caseId, currentStatus, onSuccess, onClose }) => {
 	};
 
 	return (
-		<Dialog.Root open={open}>
-			<Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-10" />
-			<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20 overflow-y-auto">
-				<Dialog.Title className="font-bold text-xl">채권 정보</Dialog.Title>
+		<Dialog.Root open={open} onOpenChange={onClose}>
+			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
+			<Dialog.Content
+				className="
+          fixed
+          left-1/2 top-1/2 
+          max-h-[85vh] w-full max-w-[500px]
+          -translate-x-1/2 -translate-y-1/2 
+          rounded-md p-6
+          bg-gray-2 border border-gray-6
+          shadow-md shadow-gray-7
+          text-gray-12
+          focus:outline-none 
+          z-50 
+          overflow-y-auto
+        "
+			>
+				<Dialog.Title className="font-bold text-xl mb-3">
+					상태 수정
+				</Dialog.Title>
 				<Dialog.Close asChild>
 					<Button
 						variant="ghost"
 						color="gray"
-						style={{ position: "absolute", top: 24, right: 24 }}
+						style={{ position: "absolute", top: 16, right: 16 }}
 						onClick={onClose}
 					>
 						<Cross2Icon width={25} height={25} />
 					</Button>
 				</Dialog.Close>
+
+				<Text size="2" color="gray" className="mb-1">
+					진행 상태를 입력하세요.
+				</Text>
 				<input
 					type="text"
 					value={status}
 					onChange={(e) => setStatus(e.target.value)}
-					className="border rounded p-2 w-full border-gray-6 mt-2"
+					className="
+            w-full p-2 mb-4
+            border border-gray-6
+            rounded text-gray-12
+            focus:outline-none focus:border-gray-8
+          "
 				/>
-				<div className="flex justify-end gap-2 mt-4 items-center">
-					<Button color="gray" onClick={onClose}>
+
+				<div className="flex justify-end gap-2">
+					<Button variant="soft" color="gray" onClick={onClose}>
 						취소
 					</Button>
-					<Button onClick={handleSubmit}>저장</Button>
+					<Button variant="solid" onClick={handleSubmit}>
+						저장
+					</Button>
 				</div>
 			</Dialog.Content>
 		</Dialog.Root>
