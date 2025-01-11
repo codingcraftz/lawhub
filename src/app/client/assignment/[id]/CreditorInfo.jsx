@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { Button } from "@radix-ui/themes";
-import CreditorForm from "../_components/dialogs/CreditorForm"; // 채권자 등록/수정 폼
+import CreditorForm from "../_components/dialogs/CreditorForm";
 
 const CreditorInfo = ({ assignmentId, user }) => {
 	const [creditors, setCreditors] = useState([]);
@@ -12,7 +12,6 @@ const CreditorInfo = ({ assignmentId, user }) => {
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 1. Fetch creditors
 	const fetchCreditors = async () => {
 		const { data, error } = await supabase
 			.from("assignment_creditors")
@@ -30,17 +29,14 @@ const CreditorInfo = ({ assignmentId, user }) => {
 		fetchCreditors();
 	}, [assignmentId]);
 
-	// 2. Handle form submission for adding/editing a creditor
 	const handleSaveCreditor = async (creditorData) => {
 		let response;
 		if (currentCreditor) {
-			// Update existing creditor
 			response = await supabase
 				.from("assignment_creditors")
 				.update(creditorData)
 				.eq("id", currentCreditor.id);
 		} else {
-			// Add new creditor
 			response = await supabase
 				.from("assignment_creditors")
 				.insert({ ...creditorData, assignment_id: assignmentId });
@@ -52,11 +48,10 @@ const CreditorInfo = ({ assignmentId, user }) => {
 		} else {
 			setIsFormOpen(false);
 			setCurrentCreditor(null);
-			fetchCreditors(); // Refresh list
+			fetchCreditors();
 		}
 	};
 
-	// 3. Handle delete button click
 	const handleDeleteCreditor = async (creditorId) => {
 		const { error } = await supabase
 			.from("assignment_creditors")
@@ -67,18 +62,19 @@ const CreditorInfo = ({ assignmentId, user }) => {
 			console.error("Failed to delete creditor:", error);
 			alert("채권자 삭제 중 오류가 발생했습니다.");
 		} else {
-			fetchCreditors(); // Refresh list
+			fetchCreditors();
 		}
 	};
 
 	return (
-		<section className="mb-6 p-4 rounded shadow shadow-gray-5">
-			<div className="flex justify-between">
-				<h2 className="font-semibold text-lg mb-3">채권자 정보</h2>
+		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+			<div className="flex justify-between mb-3">
+				<h2 className="font-semibold text-lg">채권자 정보</h2>
 				{isAdmin && (
 					<Button
+						variant="soft"
 						onClick={() => {
-							setCurrentCreditor(null); // Reset form for new creditor
+							setCurrentCreditor(null);
 							setIsFormOpen(true);
 						}}
 					>
@@ -90,43 +86,33 @@ const CreditorInfo = ({ assignmentId, user }) => {
 				<p>등록된 채권자가 없습니다.</p>
 			) : (
 				creditors.map((creditor) => (
-					<div key={creditor.id} className="mb-4">
+					<div
+						key={creditor.id}
+						className="mb-4 p-3 bg-gray-3 border border-gray-6 rounded"
+					>
 						<div className="flex justify-between items-center">
 							<div>
 								<p>
 									<span className="font-semibold">이름: </span>
 									{creditor.name}
 								</p>
-								{/*
-								<p>
-									<span className="font-semibold">생년월일: </span>
-									{creditor.birth_date || "정보 없음"}
-								</p>
-								<p>
-									<span className="font-semibold">전화번호: </span>
-									{creditor.phone_number || "정보 없음"}
-								</p>
-								<p>
-									<span className="font-semibold">주소: </span>
-									{creditor.address || "정보 없음"}
-								</p>
-						*/}
 							</div>
 							{isAdmin && (
 								<div className="flex gap-2">
 									<Button
 										variant="soft"
-										size="small"
+										size="2"
 										onClick={() => {
-											setCurrentCreditor(creditor); // Set form data for editing
+											setCurrentCreditor(creditor);
 											setIsFormOpen(true);
 										}}
 									>
 										수정
 									</Button>
 									<Button
-										variant="outline"
-										size="small"
+										variant="soft"
+										size="2"
+										color="red"
 										onClick={() => handleDeleteCreditor(creditor.id)}
 									>
 										삭제
@@ -138,7 +124,6 @@ const CreditorInfo = ({ assignmentId, user }) => {
 				))
 			)}
 
-			{/* CreditorForm Dialog */}
 			{isFormOpen && (
 				<CreditorForm
 					initialData={currentCreditor}

@@ -17,7 +17,6 @@ const DebtorInfo = ({ assignmentId, user }) => {
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 1. Fetch debtors and their credit info
 	const fetchDebtors = async () => {
 		const { data: debtorsData, error: debtorsError } = await supabase
 			.from("assignment_debtors")
@@ -29,14 +28,14 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			return;
 		}
 
-		// Fetch associated credit info for each debtor
+		// 각 debtor에 대해 credit info도 로드
 		const updatedDebtors = await Promise.all(
 			debtorsData.map(async (debtor) => {
 				const { data: creditInfo, error: creditError } = await supabase
 					.from("debtor_credit_info")
 					.select("owned")
 					.eq("debtor_id", debtor.id)
-					.single();
+					.maybeSingle();
 
 				return {
 					...debtor,
@@ -52,7 +51,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		fetchDebtors();
 	}, [assignmentId]);
 
-	// 2. Handle form submission for adding/editing a debtor
+	// 등록/수정
 	const handleSaveDebtor = async (debtorData) => {
 		let response;
 		if (selectedDebtor) {
@@ -77,7 +76,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		fetchDebtors();
 	};
 
-	// 3. Handle delete button click
+	// 삭제
 	const handleDeleteDebtor = async (debtorId) => {
 		const { error } = await supabase
 			.from("assignment_debtors")
@@ -92,10 +91,9 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		}
 	};
 
-	// 4. Handle edit credit info
+	// 신용정보 수정
 	const handleEditCreditInfo = async (debtor) => {
 		setSelectedDebtor(debtor);
-
 		const { data: cinfo, error } = await supabase
 			.from("debtor_credit_info")
 			.select("owned")
@@ -120,7 +118,6 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		}
 	};
 
-	// Toggle expand
 	const toggleExpand = (debtorId) => {
 		setIsExpanded((prev) => ({
 			...prev,
@@ -129,105 +126,103 @@ const DebtorInfo = ({ assignmentId, user }) => {
 	};
 
 	return (
-		<section className="mb-6 p-4 rounded shadow shadow-gray-5">
-			<div className="flex justify-between">
-				<h2 className="font-semibold text-lg mb-3">채무자 정보</h2>
+		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+			<Flex justify="between" align="center" className="mb-3">
+				<Text as="h2" className="font-semibold text-lg">
+					채무자 정보
+				</Text>
 				{isAdmin && (
 					<Button
+						variant="soft"
 						onClick={() => {
-							setSelectedDebtor(null); // Reset for new form
+							setSelectedDebtor(null);
 							setIsFormOpen(true);
 						}}
 					>
-						등록/수정
+						등록
 					</Button>
 				)}
-			</div>
+			</Flex>
+
 			{debtors.length === 0 ? (
-				<p>등록된 채무자가 없습니다.</p>
+				<Text>등록된 채무자가 없습니다.</Text>
 			) : (
 				debtors.map((debtor) => (
-					<div key={debtor.id} className="mb-4">
-						<div className="flex justify-between items-center">
-							<div>
-								<p>
+					<Box
+						key={debtor.id}
+						className="mb-4 p-3 bg-gray-3 border border-gray-6 rounded"
+					>
+						<Flex justify="between" align="center">
+							<Box>
+								<Text>
 									<span className="font-semibold">이름: </span>
 									{debtor.name}
-								</p>
-								{/*
-								<p>
-									<span className="font-semibold">생년월일: </span>
-									{debtor.birth_date || "정보 없음"}
-								</p>
-								<p>
-									<span className="font-semibold">전화번호: </span>
-									{debtor.phone_number || "정보 없음"}
-								</p>
-								<p>
-									<span className="font-semibold">주소: </span>
-									{debtor.address || "정보 없음"}
-								</p>
-						*/}
-							</div>
+								</Text>
+							</Box>
 							{isAdmin && (
-								<div className="flex gap-2">
+								<Flex gap="2">
 									<Button
 										variant="soft"
-										size="small"
+										size="2"
 										onClick={() => {
-											setSelectedDebtor(debtor); // For edit form
+											setSelectedDebtor(debtor);
 											setIsFormOpen(true);
 										}}
 									>
 										수정
 									</Button>
 									<Button
-										variant="outline"
-										size="small"
+										variant="soft"
+										color="red"
+										size="2"
 										onClick={() => handleDeleteDebtor(debtor.id)}
 									>
 										삭제
 									</Button>
 									<Button
 										variant="soft"
-										size="small"
+										size="2"
 										onClick={() => handleEditCreditInfo(debtor)}
 									>
 										신용정보 수정
 									</Button>
-								</div>
+								</Flex>
 							)}
 							<Button variant="ghost" onClick={() => toggleExpand(debtor.id)}>
 								{isExpanded[debtor.id] ? "닫기" : "신용 정보"}
 							</Button>
-						</div>
+						</Flex>
+
 						{isExpanded[debtor.id] && (
 							<motion.div
 								initial={{ height: 0, opacity: 0 }}
 								animate={{ height: "auto", opacity: 1 }}
 								transition={{ duration: 0.3 }}
-								className="overflow-hidden"
+								className="overflow-hidden mt-3"
 							>
-								<Flex className="bg-gray-3 p-4 rounded mt-2">
+								<Box className="bg-gray-2 p-3 border border-gray-6 rounded">
 									{debtor.creditInfo ? (
-										<ul>
+										<ul className="list-disc ml-4">
 											{Object.entries(debtor.creditInfo).map(([key, value]) => (
 												<li key={key}>
-													<Text>{key}: {value}</Text>
+													<Text size="2" color="gray">
+														{key}: {value}
+													</Text>
 												</li>
 											))}
 										</ul>
 									) : (
-										<Text>등록된 신용 정보가 없습니다.</Text>
+										<Text size="2" color="gray">
+											등록된 신용 정보가 없습니다.
+										</Text>
 									)}
-								</Flex>
+								</Box>
 							</motion.div>
 						)}
-					</div>
+					</Box>
 				))
 			)}
 
-			{/* DebtorForm Dialog */}
 			{isFormOpen && (
 				<DebtorForm
 					initialData={selectedDebtor}
@@ -236,7 +231,6 @@ const DebtorInfo = ({ assignmentId, user }) => {
 				/>
 			)}
 
-			{/* Credit Info Dialog */}
 			{openCreditInfo && (
 				<EditCreditInfo
 					open={openCreditInfo}

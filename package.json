@@ -32,6 +32,7 @@
     "react-datepicker": "^7.5.0",
     "react-dom": "^18",
     "react-hook-form": "^7.53.0",
+    "react-input-mask": "^2.0.4",
     "react-native-modal": "^13.0.1",
     "reactflow": "^11.11.4",
     "three": "^0.169.0",

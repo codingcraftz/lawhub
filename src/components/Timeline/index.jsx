@@ -45,7 +45,7 @@ const Timeline = ({ caseId, caseStatus, description, open, onOpenChange }) => {
 						<Cross2Icon width={25} height={25} />
 					</Button>
 				</Dialog.Close>
-				<Box>
+				<Box className="py-4">
 					<Flex className="justify-between">
 						<Text>{description}</Text>
 						{isAdmin && <Button onClick={() => setOpenDeadlineForm(true)}>기일 추가</Button>}

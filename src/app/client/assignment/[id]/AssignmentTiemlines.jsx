@@ -32,17 +32,17 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		fetchTimelines();
 	}, [assignmentId]);
 
-	// 2. Handle form submission for adding/editing a timeline
+	// 2. Handle form submission
 	const handleSaveTimeline = async (timelineData) => {
 		let response;
 		if (currentTimeline) {
-			// Update existing timeline
+			// Update
 			response = await supabase
 				.from("assignment_timelines")
 				.update(timelineData)
 				.eq("id", currentTimeline.id);
 		} else {
-			// Add new timeline
+			// Insert
 			response = await supabase
 				.from("assignment_timelines")
 				.insert({ ...timelineData, assignment_id: assignmentId });
@@ -54,11 +54,11 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		} else {
 			setIsFormOpen(false);
 			setCurrentTimeline(null);
-			fetchTimelines(); // Refresh list
+			fetchTimelines();
 		}
 	};
 
-	// 3. Handle delete button click
+	// 3. Handle delete
 	const handleDeleteTimeline = async (timelineId) => {
 		const { error } = await supabase
 			.from("assignment_timelines")
@@ -69,16 +69,19 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 			console.error("Failed to delete timeline:", error);
 			alert("목표 삭제 중 오류가 발생했습니다.");
 		} else {
-			fetchTimelines(); // Refresh list
+			fetchTimelines();
 		}
 	};
 
 	return (
-		<section className="mb-6 p-4 rounded shadow shadow-gray-5">
-			<div className="flex justify-between">
-				<h2 className="font-semibold text-lg mb-3">사건 진행 상황</h2>
+		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+			<Flex justify="between" align="center" className="mb-3">
+				<Text as="h2" className="font-semibold text-lg">
+					사건 진행 상황
+				</Text>
 				{isAdmin && (
 					<Button
+						variant="soft"
 						onClick={() => {
 							setCurrentTimeline(null);
 							setIsFormOpen(true);
@@ -87,30 +90,32 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 						등록
 					</Button>
 				)}
-			</div>
+			</Flex>
+
 			{timelines.length === 0 ? (
-				<p>등록된 목표가 없습니다.</p>
+				<Text>등록된 목표가 없습니다.</Text>
 			) : (
 				<>
-					<div className="mb-3 flex justify-between">
-						<Text className="flex gap-4">
-							<span className="font-semibold">{`현재 진행 상황: ${timelines[timelines.length - 1]?.description || "정보 없음"}`}
-							</span>
+					<Flex justify="between" align="center" className="mb-3">
+						<Box className="flex gap-4 items-center">
+							<Text className="font-semibold">
+								현재 진행 상황:{" "}
+								{timelines[timelines.length - 1]?.description || "정보 없음"}
+							</Text>
 							<Text size="2" color="gray">
 								{new Date(
 									timelines[timelines.length - 1]?.created_at
-								).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }) || "정보 없음"}
+								).toLocaleString("ko-KR", {
+									year: "numeric",
+									month: "2-digit",
+									day: "2-digit",
+								}) || "정보 없음"}
 							</Text>
-
-						</Text>
-						<Button
-							variant="ghost"
-							onClick={() => setIsExpanded(!isExpanded)}
-						>
+						</Box>
+						<Button variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
 							{isExpanded ? "닫기" : "상세 보기"}
 						</Button>
-
-					</div>
+					</Flex>
 
 					<motion.div
 						initial={{ height: 0, opacity: 0 }}
@@ -122,26 +127,29 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 						className="overflow-hidden"
 					>
 						{timelines
-							.slice(0, -1) // 제외된 마지막 항목은 "현재 진행 상황"에 표시되었으므로
-							.reverse() // 최근 항목부터 표시
+							.slice(0, -1)
+							.reverse()
 							.map((timeline) => (
-								<div key={timeline.id} className="mb-4">
-									<div className="flex justify-between items-center">
-										<div>
-											<p>
+								<Box
+									key={timeline.id}
+									className="mb-4 p-3 bg-gray-2 rounded border border-gray-6"
+								>
+									<Flex justify="between" align="center">
+										<Box>
+											<Text>
 												<span className="font-semibold">목표: </span>
 												{timeline.description}
-											</p>
-											<p>
+											</Text>
+											<Text size="2" color="gray">
 												<span className="font-semibold">등록 날짜: </span>
 												{new Date(timeline.created_at).toLocaleString()}
-											</p>
-										</div>
+											</Text>
+										</Box>
 										{isAdmin && (
-											<div className="flex gap-2">
+											<Flex gap="2">
 												<Button
 													variant="soft"
-													size="small"
+													size="2"
 													onClick={() => {
 														setCurrentTimeline(timeline);
 														setIsFormOpen(true);
@@ -150,22 +158,22 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 													수정
 												</Button>
 												<Button
-													variant="outline"
-													size="small"
+													variant="soft"
+													color="red"
+													size="2"
 													onClick={() => handleDeleteTimeline(timeline.id)}
 												>
 													삭제
 												</Button>
-											</div>
+											</Flex>
 										)}
-									</div>
-								</div>
+									</Flex>
+								</Box>
 							))}
 					</motion.div>
 				</>
 			)}
 
-			{/* Timeline Form Dialog */}
 			{isFormOpen && (
 				<TimelineForm
 					initialData={currentTimeline}

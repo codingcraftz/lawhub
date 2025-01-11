@@ -92,7 +92,7 @@ export default function Step1_ClientAndGroupSelection({
 					<Text size="3" weight="bold" mb="2">
 						개인 의뢰인 검색
 					</Text>
-					<Flex gap="2" mb="2">
+					<Flex gap="2" mb="2" className="items-center">
 						<input
 							type="text"
 							placeholder="개인 이름 검색"
@@ -173,7 +173,7 @@ export default function Step1_ClientAndGroupSelection({
 					<Text size="3" weight="bold" mb="2">
 						그룹 검색
 					</Text>
-					<Flex gap="2" mb="2">
+					<Flex gap="2" mb="2" className="items-center">
 						<input
 							type="text"
 							placeholder="그룹 이름 검색"

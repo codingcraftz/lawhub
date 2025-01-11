@@ -13,7 +13,7 @@ const BondDetails = ({ assignmentId, user }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 1) fetch
+	// fetch
 	const fetchBond = async () => {
 		const { data, error } = await supabase
 			.from("bonds")
@@ -30,7 +30,6 @@ const BondDetails = ({ assignmentId, user }) => {
 		fetchBond();
 	}, [assignmentId]);
 
-	// 2) Form 성공 시 재-fetch
 	const handleFormSuccess = () => {
 		setIsFormOpen(false);
 		fetchBond();
@@ -38,14 +37,19 @@ const BondDetails = ({ assignmentId, user }) => {
 
 	if (!bond) {
 		return (
-			<section className="mb-6 p-4 rounded shadow shadow-gray-5">
-				<Flex className="justify-between">
-					<h2 className="font-semibold text-lg mb-3">채권 정보</h2>
+			<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+				<Flex className="justify-between mb-3">
+					<Text as="h2" className="font-semibold text-lg">
+						채권 정보
+					</Text>
 					{isAdmin && (
-						<Button type="button" onClick={() => setIsFormOpen(true)}>등록</Button>
+						<Button variant="soft" onClick={() => setIsFormOpen(true)}>
+							등록
+						</Button>
 					)}
 				</Flex>
-				<p>등록된 채권 정보가 없습니다.</p>
+				<Text>등록된 채권 정보가 없습니다.</Text>
+
 				<BondForm
 					assignmentId={assignmentId}
 					open={isFormOpen}
@@ -57,7 +61,7 @@ const BondDetails = ({ assignmentId, user }) => {
 		);
 	}
 
-	// 3) 계산
+	// 이자 계산
 	const principal = parseFloat(bond.principal || 0);
 	const calcInterest = (rate, sdate, edate) => {
 		if (!rate || !sdate || !edate) return 0;
@@ -85,13 +89,18 @@ const BondDetails = ({ assignmentId, user }) => {
 	const totalAmount = principal + totalInterest1 + totalInterest2 + totalExpenses;
 
 	return (
-		<section className="mb-6 p-4 rounded shadow shadow-gray-5">
-			<Flex className="justify-between">
-				<h2 className="font-semibold text-lg mb-3">채권 정보</h2>
+		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+			<Flex justify="between" align="center" className="mb-3">
+				<Text as="h2" className="font-semibold text-lg">
+					채권 정보
+				</Text>
 				{isAdmin && (
-					<Button type="button" onClick={() => setIsFormOpen(true)}>수정</Button>
+					<Button variant="soft" onClick={() => setIsFormOpen(true)}>
+						수정
+					</Button>
 				)}
 			</Flex>
+
 			<Flex justify="between" align="center">
 				<Text className="text-lg font-bold text-blue-11">
 					{Math.floor(totalAmount).toLocaleString()}원
@@ -100,6 +109,7 @@ const BondDetails = ({ assignmentId, user }) => {
 					{isExpanded ? "닫기" : "상세 보기"}
 				</Button>
 			</Flex>
+
 			<motion.div
 				initial={{ height: 0, opacity: 0 }}
 				animate={{
@@ -109,58 +119,62 @@ const BondDetails = ({ assignmentId, user }) => {
 				transition={{ duration: 0.3 }}
 				className="overflow-hidden"
 			>
-				<Flex className="flex flex-col bg-gray-3 rounded-lg p-4 mt-2">
-					<Box>
-						<ul>
-							<strong className="flex items-center gap-1">
-								수임 원금: <Text className="font-normal">{principal}</Text>
-							</strong>
-
-							<strong className="flex items-center gap-1">
-								1차 이자{" "}
-								<Text className="font-normal text-sm">
-									({formatDate(bond.interest_1_start_date)} ~{" "}
-									{formattedEndDate(bond.interest_1_end_date)})
-								</Text>
-							</strong>
-							<li>이자율: {bond.interest_1_rate}%</li>
-							<li>이자 총액: {Math.floor(totalInterest1).toLocaleString()}원</li>
-						</ul>
+				<Flex direction="column" className="bg-gray-3 rounded p-4 mt-2">
+					<Box mb="3">
+						<Text className="font-semibold">
+							수임 원금:{" "}
+							<Text as="span" className="font-normal">
+								{principal.toLocaleString()}원
+							</Text>
+						</Text>
 					</Box>
 
-					<Box className="py-2">
-						<strong className="flex items-center gap-1">
+					<Box mb="3">
+						<Text className="font-semibold mb-1">
+							1차 이자{" "}
+							<Text as="span" className="font-normal text-sm">
+								({formatDate(bond.interest_1_start_date)} ~{" "}
+								{formattedEndDate(bond.interest_1_end_date)})
+							</Text>
+						</Text>
+						<Text size="2">이자율: {bond.interest_1_rate}%</Text>
+						<Text size="2">
+							이자 총액: {Math.floor(totalInterest1).toLocaleString()}원
+						</Text>
+					</Box>
+
+					<Box mb="3">
+						<Text className="font-semibold mb-1">
 							2차 이자{" "}
-							<Text className="font-normal text-sm">
+							<Text as="span" className="font-normal text-sm">
 								({formatDate(bond.interest_2_start_date)} ~{" "}
 								{formattedEndDate(bond.interest_2_end_date)})
 							</Text>
-						</strong>
-						<ul>
-							<li>이자율: {bond.interest_2_rate}%</li>
-							<li>이자 총액: {Math.floor(totalInterest2).toLocaleString()}원</li>
-						</ul>
+						</Text>
+						<Text size="2">이자율: {bond.interest_2_rate}%</Text>
+						<Text size="2">
+							이자 총액: {Math.floor(totalInterest2).toLocaleString()}원
+						</Text>
 					</Box>
 
-					<Box className="py-2">
-						<strong>비용:</strong>
-						<ul>
-							{bond.expenses?.length > 0
-								? bond.expenses.map((expense, idx) => (
-									<li key={idx}>
+					<Box>
+						<Text className="font-semibold mb-1">비용</Text>
+						{bond.expenses?.length > 0 ? (
+							<ul className="list-disc ml-5 space-y-1">
+								{bond.expenses.map((expense, idx) => (
+									<li key={idx} className="text-sm">
 										{expense.item}: {parseInt(expense.amount).toLocaleString()}원
 									</li>
-								))
-								: "비용 없음"}
-						</ul>
+								))}
+							</ul>
+						) : (
+							<Text size="2">비용 없음</Text>
+						)}
 					</Box>
 				</Flex>
 			</motion.div>
 
-
-			{console.log(isFormOpen)}
-			{
-				isFormOpen &&
+			{isFormOpen && (
 				<BondForm
 					assignmentId={assignmentId}
 					open={isFormOpen}
@@ -168,7 +182,7 @@ const BondDetails = ({ assignmentId, user }) => {
 					bondData={bond}
 					onSuccess={handleFormSuccess}
 				/>
-			}
+			)}
 		</section>
 	);
 };

@@ -6,12 +6,13 @@ import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import DebtorCard from "../client/_components/DebtorCard";
 import CardList from "../client/_components/CardList";
+import { useRouter } from "next/navigation";
 
 const Assignment = ({ clientId }) => {
-
 	const [clientName, setClientName] = useState("");
 	const [individualAssignments, setIndividualAssignments] = useState([]);
 	const [groupAssignments, setGroupAssignments] = useState([]);
+	const router = useRouter();
 
 	const fetchAssignments = async () => {
 		try {
@@ -114,10 +115,10 @@ const Assignment = ({ clientId }) => {
 
 	return (
 		<div className="py-4 w-full">
-			<header className="flex justify-between items-center mb-4">
-				<div className="flex items-center gap-4">
+			<header className="flex justify-between items-center mb-6">
+				<div className="flex items-center gap-2">
 					<ArrowLeftIcon
-						className="w-8 h-8 cursor-pointer mr-3"
+						className="w-8 h-8 cursor-pointer"
 						onClick={() => router.back()}
 					/>
 					<h1 className="text-2xl font-bold">{clientName}님의 사건 관리</h1>

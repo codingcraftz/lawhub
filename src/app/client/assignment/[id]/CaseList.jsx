@@ -12,10 +12,10 @@ const CaseList = ({ assignmentId, user }) => {
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [currentCase, setCurrentCase] = useState(null);
 
-	// 상세보기(타임라인) State: { [caseId]: boolean }
+	// 타임라인(상세보기) state
 	const [timelineOpenMap, setTimelineOpenMap] = useState({});
+	// 상태 수정 폼 state
 	const [statusFormOpenMap, setStatusFormOpenMap] = useState({});
-
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
@@ -33,13 +33,11 @@ const CaseList = ({ assignmentId, user }) => {
 		fetchCases();
 	}, [assignmentId]);
 
-	// 등록/수정 Form 성공 시 → 재-fetch
 	const handleFormSuccess = () => {
 		setIsFormOpen(false);
 		fetchCases();
 	};
 
-	// 폼 열기
 	const openCreateForm = () => {
 		setCurrentCase(null);
 		setIsFormOpen(true);
@@ -48,11 +46,7 @@ const CaseList = ({ assignmentId, user }) => {
 		setCurrentCase(c);
 		setIsFormOpen(true);
 	};
-	const handleClose = () => {
-		setIsFormOpen(false);
-	};
 
-	// 상세보기 열고 닫는 로직
 	const openTimeline = (caseId) => {
 		setTimelineOpenMap((prev) => ({ ...prev, [caseId]: true }));
 	};
@@ -60,7 +54,6 @@ const CaseList = ({ assignmentId, user }) => {
 		setTimelineOpenMap((prev) => ({ ...prev, [caseId]: false }));
 	};
 
-	// 상태 등록하기 폼 열기/닫기
 	const openStatusForm = (caseId) => {
 		setStatusFormOpenMap((prev) => ({ ...prev, [caseId]: true }));
 	};
@@ -69,10 +62,10 @@ const CaseList = ({ assignmentId, user }) => {
 	};
 
 	return (
-		<section className="mb-6 p-4 rounded shadow shadow-gray-5">
-			<div className="flex justify-between">
-				<h2 className="font-semibold text-lg mb-3">소송 목록</h2>
-				{isAdmin && <Button onClick={openCreateForm}>등록</Button>}
+		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+			<div className="flex justify-between mb-3">
+				<h2 className="font-semibold text-lg">소송 목록</h2>
+				{isAdmin && <Button variant="soft" onClick={openCreateForm}>등록</Button>}
 			</div>
 
 			{cases.length === 0 ? (
@@ -82,7 +75,7 @@ const CaseList = ({ assignmentId, user }) => {
 					{cases.map((item) => (
 						<li
 							key={item.id}
-							className="flex justify-between p-3 bg-gray-3 rounded shadow-sm items-center"
+							className="flex justify-between p-3 bg-gray-3 border border-gray-6 rounded items-center"
 						>
 							<div>
 								<p className="font-medium">
@@ -94,7 +87,11 @@ const CaseList = ({ assignmentId, user }) => {
 										상태: {item?.status || "알 수 없음"}
 									</p>
 									{isAdmin && (
-										<Button size="1" variant="soft" onClick={() => openStatusForm(item.id)}>
+										<Button
+											size="1"
+											variant="soft"
+											onClick={() => openStatusForm(item.id)}
+										>
 											수정
 										</Button>
 									)}
@@ -102,31 +99,29 @@ const CaseList = ({ assignmentId, user }) => {
 							</div>
 							<div className="flex gap-2">
 								{isAdmin && (
-
 									<Button variant="soft" onClick={() => openEditForm(item)}>
 										수정
 									</Button>
 								)}
 								{/* 상세보기 버튼 */}
-								<Button
-									variant="soft"
-									onClick={() => openTimeline(item.id)}
-								>
+								<Button variant="soft" onClick={() => openTimeline(item.id)}>
 									상세
 								</Button>
 
-								{/* Timeline Dialog */}
-								{timelineOpenMap[item.id] && <Timeline
-									caseId={item.id}
-									caseStatus={item.status}
-									description={item.description}
-									open={timelineOpenMap[item.id] || false}
-									onOpenChange={(opened) => {
-										if (!opened) closeTimeline(item.id);
-									}}
-								/>
-								}
+								{/* Timeline (상세보기) */}
+								{timelineOpenMap[item.id] && (
+									<Timeline
+										caseId={item.id}
+										caseStatus={item.status}
+										description={item.description}
+										open={timelineOpenMap[item.id] || false}
+										onOpenChange={(opened) => {
+											if (!opened) closeTimeline(item.id);
+										}}
+									/>
+								)}
 
+								{/* StatusForm 다이얼로그 */}
 								{statusFormOpenMap[item.id] && (
 									<StatusForm
 										open={statusFormOpenMap[item.id]}
@@ -149,7 +144,7 @@ const CaseList = ({ assignmentId, user }) => {
 					assignmentId={assignmentId}
 					caseData={currentCase}
 					onSuccess={handleFormSuccess}
-					onClose={handleClose}
+					onClose={() => setIsFormOpen(false)}
 				/>
 			)}
 		</section>
