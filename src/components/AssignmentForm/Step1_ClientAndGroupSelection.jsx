@@ -34,7 +34,6 @@ export default function Step1_ClientAndGroupSelection({
 			.from("users")
 			.select("id, name, phone_number, birth_date")
 			.eq("role", "client") // 필요에 따라 조정
-			.eq("is_active", true)
 			.ilike("name", `%${userSearchTerm}%`);
 
 		if (error) {

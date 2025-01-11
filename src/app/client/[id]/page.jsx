@@ -71,7 +71,7 @@ const ClientCasePage = () => {
 				<div className="flex items-center gap-4">
 					<ArrowLeftIcon
 						className="w-8 h-8 cursor-pointer mr-3"
-						onClick={() => router.push("/clients")}
+						onClick={() => router.back()}
 					/>
 					<h1 className="text-2xl font-bold">{clientName}님의 사건 관리</h1>
 				</div>

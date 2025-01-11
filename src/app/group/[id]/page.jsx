@@ -65,7 +65,7 @@ const GroupCasePage = () => {
 				<div className="flex items-center gap-4">
 					<ArrowLeftIcon
 						className="w-8 h-8 cursor-pointer mr-3"
-						onClick={() => router.push("/clients")}
+						onClick={() => router.back()}
 					/>
 					<h1 className="text-2xl font-bold">{groupName}의 사건 관리</h1>
 				</div>
@@ -75,9 +75,10 @@ const GroupCasePage = () => {
 					{assignments.map((assignment) => (
 						<Link
 							key={assignment.id}
-							href={`/group/assignment/${assignment.id}`}
+							href={`/client/assignment/${assignment.id}`}
 						>
 							<DebtorCard
+								type={groupName}
 								description={assignment.description}
 								createdAt={assignment.created_at}
 								debtors={assignment.assignment_debtors?.map(

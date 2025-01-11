@@ -23,7 +23,7 @@ const Header = () => {
 			roles: ["admin", "staff"],
 		},
 		{ title: "일정 관리", path: "/todos", roles: [] },
-		{ title: "나의 의뢰", path: `/client/${user?.id}`, roles: ["client"] },
+		{ title: "나의 의뢰", path: '/my-assignments', roles: ["client"] },
 		{
 			title: "공지사항",
 			path: "/news",
