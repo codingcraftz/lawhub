@@ -134,7 +134,7 @@ const Inquiry = ({ assignmentId, user }) => {
 					<Text>{inquiry.inquiry}</Text>
 				)}
 
-				{inquiry.user_id === user?.id && (
+				{(editingInquiryId !== inquiry.id && inquiry.user_id === user?.id) && (
 					<Flex gap="2" className="justify-end">
 						<Button
 							variant="ghost"
