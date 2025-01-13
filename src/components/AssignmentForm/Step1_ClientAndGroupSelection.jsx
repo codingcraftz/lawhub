@@ -15,6 +15,8 @@ export default function Step1_ClientAndGroupSelection({
 	selectedGroups,
 	setSelectedGroups,
 	removeGroup,
+	userType,
+	setUserType,
 }) {
 	// 유저 검색 상태
 	const [userSearchTerm, setUserSearchTerm] = useState("");
@@ -244,6 +246,25 @@ export default function Step1_ClientAndGroupSelection({
 					)}
 				</>
 			)}
+			<Box mt="4">
+				<Text size="3" weight="bold" mb="2">
+					의뢰인 지위
+				</Text>
+				<Flex gap="2" mb="2" className="items-center">
+					<input
+						type="text"
+						placeholder="예) 채권자, 채무자 등"
+						value={userType}
+						onChange={(e) => setUserType(e.target.value)}
+						style={{
+							flex: 1,
+							padding: "0.6rem",
+							border: "1px solid var(--gray-6)",
+							borderRadius: "var(--radius-1)",
+						}}
+					/>
+				</Flex>
+			</Box>
 		</Box>
 	);
 }

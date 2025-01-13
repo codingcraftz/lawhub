@@ -25,9 +25,9 @@ const ClientCasePage = () => {
         id,
         description,
         created_at,
-        assignment_debtors!inner (name),
-        assignment_creditors!inner (name),
-        assignment_clients!inner (client_id)
+        assignment_debtors!left (name),
+        assignment_creditors!left (name),
+        assignment_clients!inner (client_id, type)
       `)
 				.eq("assignment_clients.client_id", clientId);
 
@@ -63,8 +63,6 @@ const ClientCasePage = () => {
 		fetchUser();
 	}, [clientId]);
 
-	console.log(assignments)
-
 	return (
 		<div className="py-4 w-full">
 			<header className="flex justify-between items-center mb-4">
@@ -85,6 +83,8 @@ const ClientCasePage = () => {
 						>
 							<DebtorCard
 								description={assignment.description}
+								name={clientName}
+								clientType={assignment.assignment_clients[0].type}
 								createdAt={assignment.created_at}
 								debtors={assignment.assignment_debtors?.map(
 									(debtor) => debtor?.name,
