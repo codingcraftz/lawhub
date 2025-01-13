@@ -27,20 +27,6 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 		if (!formData.name.trim()) {
 			newErrors.name = "이름은 필수입니다.";
 		}
-		// 날짜: YYYY-MM-DD 형식
-		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-		if (!dateRegex.test(formData.birth_date)) {
-			newErrors.birth_date = "생년월일을 YYYY-MM-DD 형식으로 입력해주세요.";
-		}
-		// 전화번호: 010-XXXX-XXXX
-		const phoneRegex = /^\d{3}-\d{3,4}-\d{4}$/;
-		if (!phoneRegex.test(formData.phone_number)) {
-			newErrors.phone_number = "전화번호를 010-XXXX-XXXX 형식으로 입력해주세요.";
-		}
-		if (!formData.address.trim()) {
-			newErrors.address = "주소는 필수입니다.";
-		}
-
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};

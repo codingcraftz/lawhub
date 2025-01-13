@@ -22,9 +22,9 @@ const GroupCasePage = () => {
           id,
           description,
           created_at,
-          assignment_debtors!inner (name),
-          assignment_creditors!inner (name),
-          assignment_groups!inner (group_id)
+          assignment_debtors!left (name),
+          assignment_creditors!left (name),
+          assignment_groups!inner (group_id, type)
         `)
 				.eq("assignment_groups.group_id", groupId);
 
@@ -78,7 +78,9 @@ const GroupCasePage = () => {
 							href={`/client/assignment/${assignment.id}`}
 						>
 							<DebtorCard
+								name={groupName}
 								type={groupName}
+								clientType={assignment.assignment_groups[0].type}
 								description={assignment.description}
 								createdAt={assignment.created_at}
 								debtors={assignment.assignment_debtors?.map(

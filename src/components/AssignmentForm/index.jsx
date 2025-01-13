@@ -31,6 +31,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 	const [selectedCreditors, setSelectedCreditors] = useState([]);
 	const [selectedGroups, setSelectedGroups] = useState([]);
 	const [selectedDebtors, setSelectedDebtors] = useState([]);
+	const [userType, setUserType] = useState(null);
 	const router = useRouter();
 
 	// --------------------- 의뢰 내용 + react-hook-form ---------------------
@@ -66,18 +67,6 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 				alert("의뢰인을 선택하거나 '의뢰인 없음'을 켜주세요.");
 				return;
 			}
-		} else if (step === 2) {
-			// Step2 검증: 채권자는 최소 1명 이상 필요하다고 가정
-			if (selectedCreditors.length === 0) {
-				alert("채권자를 최소 1명 이상 추가해주세요.");
-				return;
-			}
-		} else if (step === 3) {
-			// Step3 검증: 채무자도 최소 1명 이상
-			if (selectedDebtors.length === 0) {
-				alert("채무자를 최소 1명 이상 추가해주세요.");
-				return;
-			}
 		}
 		setStep(step + 1);
 	};
@@ -111,16 +100,14 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 			// Step 2: 의뢰인 데이터 추가
 			if (!noClientSelected) {
 				if (selectedClients.length > 0) {
-					// 개인 의뢰인 추가
 					const clientInsertData = selectedClients.map((client) => ({
 						assignment_id: assignmentId,
 						client_id: client.id,
+						type: userType
 					}));
-
 					const { error: clientError } = await supabase
 						.from("assignment_clients")
 						.insert(clientInsertData);
-
 					if (clientError) {
 						console.error("Assignment Clients 추가 오류:", clientError);
 						alert("Clients 추가 중 오류가 발생했습니다.");
@@ -129,16 +116,14 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 				}
 
 				if (selectedGroups.length > 0) {
-					// 그룹 의뢰인 추가
 					const groupInsertData = selectedGroups.map((group) => ({
 						assignment_id: assignmentId,
 						group_id: group.id,
+						type: userType
 					}));
-
 					const { error: groupError } = await supabase
 						.from("assignment_groups")
 						.insert(groupInsertData);
-
 					if (groupError) {
 						console.error("Assignment Groups 추가 오류:", groupError);
 						alert("Groups 추가 중 오류가 발생했습니다.");
@@ -147,14 +132,13 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 				}
 			}
 
-			// Step 3: 채권자 데이터 추가
 			if (selectedCreditors.length > 0) {
 				const creditorsInsertData = selectedCreditors.map((creditor) => ({
 					assignment_id: assignmentId,
 					name: creditor.name,
-					birth_date: creditor.birth_date,
-					phone_number: creditor.phone_number,
-					address: creditor.address,
+					birth_date: creditor?.birth_date || null,
+					phone_number: creditor?.phone_number || null,
+					address: creditor?.address || null,
 				}));
 
 				const { error: creditorError } = await supabase
@@ -168,14 +152,13 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 				}
 			}
 
-			// Step 4: 채무자 데이터 추가
 			if (selectedDebtors.length > 0) {
 				const debtorsInsertData = selectedDebtors.map((debtor) => ({
 					assignment_id: assignmentId,
 					name: debtor.name,
-					birth_date: debtor.birth_date,
-					phone_number: debtor.phone_number,
-					address: debtor.address,
+					birth_date: debtor?.birth_date || null,
+					phone_number: debtor?.phone_number || null,
+					address: debtor.address || null,
 				}));
 
 				const { error: debtorError } = await supabase
@@ -294,6 +277,8 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 										selectedGroups={selectedGroups}
 										setSelectedGroups={setSelectedGroups}
 										removeGroup={removeGroup}
+										userType={userType}
+										setUserType={setUserType}
 									/>
 								)}
 

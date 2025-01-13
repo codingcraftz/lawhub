@@ -3,33 +3,55 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { useUser } from "@/hooks/useUser";
-import DebtorInfo from "./DebtorInfo";
+import Inquiry from "./Inquiry";
+import AssignmentTimelines from "./AssignmentTiemlines";
 import CreditorInfo from "./CreditorInfo";
+import DebtorInfo from "./DebtorInfo";
 import BondDetails from "./BondDetails";
 import CaseList from "./CaseList";
 import EnforcementList from "./EnforcementList";
-import AssignmentTimelines from "./AssignmentTiemlines";
-import Inquiry from "./Inquiry";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import ClientInfoModal from "../_components/ClientInfoModal";
+import GroupInfoModal from "../_components/GroupInfoModal";
 
 const AssignmentPage = () => {
 	const { id: assignmentId } = useParams();
 	const { user } = useUser();
-	const [assignment, setAssignment] = useState();
+	const [assignment, setAssignment] = useState(null);
+	const [assignmentType, setAssignmentType] = useState(null); // 그룹인지 개인인지
+	const [clientModalOpen, setClientModalOpen] = useState(false);
+	const [groupModalOpen, setGroupModalOpen] = useState(false);
 	const router = useRouter();
 
 	const fetchAssignments = async () => {
-		const { data, error } = await supabase
-			.from("assignments")
-			.select("*")
-			.eq("id", assignmentId)
-			.single();
+		try {
+			const { data, error } = await supabase
+				.from("assignments")
+				.select(`
+          id,
+          description,
+          created_at,
+          assignment_clients!left (client_id, type),
+          assignment_groups!left (group_id, type)
+        `)
+				.eq("id", assignmentId)
+				.single();
 
-		if (!error && data) {
-			setAssignment(data);
-		} else {
-			console.error("Failed to fetch assignment:", error);
+			if (error || !data) {
+				console.error("Error fetching assignment:", error);
+				return;
+			}
+
+			if (data.assignment_clients?.length > 0) {
+				setAssignmentType("client");
+				setAssignment(data);
+			} else if (data.assignment_groups?.length > 0) {
+				setAssignmentType("group");
+				setAssignment(data);
+			}
+		} catch (error) {
+			console.error("Unexpected error:", error);
 		}
 	};
 
@@ -49,6 +71,40 @@ const AssignmentPage = () => {
 			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
 				<p>{assignment?.description}</p>
 			</div>
+
+			{/* "정보보기" 버튼 */}
+			{assignmentType === "client" && (
+				<>
+					<button
+						className="px-4 py-2 bg-blue-500 text-white rounded mb-4"
+						onClick={() => setClientModalOpen(true)}
+					>
+						의뢰인 정보보기
+					</button>
+					<ClientInfoModal
+						open={clientModalOpen}
+						onOpenChange={setClientModalOpen}
+						clientId={assignment.assignment_clients[0].client_id}
+						type={assignment.assignment_clients[0].type}
+					/>
+				</>
+			)}
+			{assignmentType === "group" && (
+				<>
+					<button
+						className="px-4 py-2 bg-green-500 text-white rounded mb-4"
+						onClick={() => setGroupModalOpen(true)}
+					>
+						그룹 정보보기
+					</button>
+					<GroupInfoModal
+						open={groupModalOpen}
+						onOpenChange={setGroupModalOpen}
+						groupId={assignment.assignment_groups[0].group_id}
+						type={assignment.assignment_groups[0].type}
+					/>
+				</>
+			)}
 
 			<AssignmentTimelines assignmentId={assignmentId} user={user} />
 
