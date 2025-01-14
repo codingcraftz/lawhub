@@ -175,12 +175,11 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 							{isExpanded ? "닫기" : "더보기"}
 						</Button>
 					}
-
 				</>
 			)}
-
 			{isFormOpen && (
 				<TimelineForm
+					open={isFormOpen}
 					initialData={currentTimeline}
 					onOpenChange={setIsFormOpen}
 					onSubmit={handleSaveTimeline}

@@ -13,6 +13,7 @@ const Assignment = ({ clientId }) => {
 	const [individualAssignments, setIndividualAssignments] = useState([]);
 	const [groupAssignments, setGroupAssignments] = useState([]);
 	const router = useRouter();
+	const hasAssignments = individualAssignments.length > 0 || groupAssignments.length > 0
 
 	const fetchAssignments = async () => {
 		try {
@@ -112,6 +113,8 @@ const Assignment = ({ clientId }) => {
 		fetchUser();
 		fetchAssignments();
 	}, [clientId, fetchUser]);
+
+	if (!hasAssignments) return <div><p>등록된 의뢰가 없습니다.</p></div>
 
 	return (
 		<div className="py-4 w-full">

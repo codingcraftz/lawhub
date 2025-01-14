@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
@@ -19,7 +19,6 @@ const LoginDialog = () => {
 			throw new Error("Failed to fetch Kakao profile");
 		}
 		return res.json();
-
 	};
 
 	useEffect(() => {
@@ -27,10 +26,9 @@ const LoginDialog = () => {
 			async (event, session) => {
 				if (event === "SIGNED_IN" && session?.user) {
 					try {
-						console.log("User ID:", session.user.id);
 						const userId = session.user.id;
 
-						// Fetch existing user
+						// 1. `users` 테이블에 사용자 존재 확인
 						const { data: existingUser, error: fetchError } = await supabase
 							.from("users")
 							.select("*")
@@ -38,78 +36,58 @@ const LoginDialog = () => {
 							.maybeSingle();
 
 						if (fetchError) {
-							console.error("Error fetching user:", fetchError.message);
-							console.error("Error details:", fetchError);
+							console.error("Error fetching user:", fetchError);
 							return;
 						}
 
-						console.log("Existing user fetched:", existingUser);
-
-						if (existingUser) {
-							console.log("User already exists in the database.");
-							if (!existingUser.is_kakao_user) {
-								const { error: updateError } = await supabase
-									.from("users")
-									.update({ is_kakao_user: true })
-									.eq("id", userId);
-
-								if (updateError) {
-									console.error("Error updating user:", updateError.message);
-								} else {
-									console.log("User marked as Kakao user.");
-								}
+						if (!existingUser) {
+							// 2. 사용자 정보를 Kakao에서 가져오기
+							const kakaoAccessToken = session.provider_token;
+							if (!kakaoAccessToken) {
+								console.error("No Kakao access token found.");
+								return;
 							}
-							return;
-						}
 
-						// Fetch Kakao profile
-						const kakaoAccessToken = session.provider_token;
-						if (!kakaoAccessToken) {
-							console.error("No Kakao access token found.");
-							return;
-						}
+							let kakaoProfile;
+							try {
+								kakaoProfile = await fetchKakaoProfile(kakaoAccessToken);
+							} catch (err) {
+								console.error("Failed to fetch Kakao profile:", err);
+								return;
+							}
 
-						let kakaoProfile;
-						try {
-							kakaoProfile = await fetchKakaoProfile(kakaoAccessToken);
-						} catch (err) {
-							console.error("Failed to fetch Kakao profile:", err);
-							return;
-						}
+							const email = kakaoProfile?.kakao_account?.email || session.user?.email || null;
+							const nickname = kakaoProfile?.kakao_account?.profile?.nickname || null;
+							const profileImage = kakaoProfile?.kakao_account?.profile?.profile_image_url || null;
+							const gender = kakaoProfile?.kakao_account?.gender || null;
+							const birthyear = kakaoProfile?.kakao_account?.birthyear || null;
+							const birthday = kakaoProfile?.kakao_account?.birthday || null;
+							const kakao_id = kakaoProfile?.id || null;
+							const phone_number = kakaoProfile?.kakao_account?.phone_number || null;
+							const name = kakaoProfile?.kakao_account?.name || null;
 
-						console.log("Kakao profile fetched:", kakaoProfile);
+							// 3. `users` 테이블에 사용자 추가
+							const { error: upsertError } = await supabase.from("users").insert({
+								id: userId,
+								kakao_id,
+								phone_number,
+								name,
+								email,
+								nickname,
+								profile_image: profileImage,
+								gender,
+								birth_date: birthday
+									? `${birthyear}-${birthday.slice(0, 2)}-${birthday.slice(2, 4)}`
+									: null,
+								is_kakao_user: true,
+								role: "client",
+							});
 
-						const email = kakaoProfile?.kakao_account?.email || session.user?.email || null;
-						const nickname = kakaoProfile?.kakao_account?.profile?.nickname || null;
-						const profileImage = kakaoProfile?.kakao_account?.profile?.profile_image_url || null;
-						const gender = kakaoProfile?.kakao_account?.gender || null;
-						const birthyear = kakaoProfile?.kakao_account?.birthyear || null;
-						const birthday = kakaoProfile?.kakao_account?.birthday || null;
-						const kakao_id = kakaoProfile?.id || null;
-						const phone_number = kakaoProfile?.kakao_account?.phone_number || null;
-						const name = kakaoProfile?.kakao_account?.name || null;
-
-						// Insert new user
-						const { error: upsertError } = await supabase.from("users").insert({
-							id: userId,
-							kakao_id,
-							phone_number,
-							name,
-							email,
-							nickname,
-							profile_image: profileImage,
-							gender,
-							birth_date: birthday
-								? `${birthyear}-${birthday.slice(0, 2)}-${birthday.slice(2, 4)}`
-								: null,
-							is_kakao_user: true,
-							role: "client",
-						});
-
-						if (upsertError) {
-							console.error("Error inserting Kakao user:", upsertError);
-						} else {
-							console.log("Kakao user inserted successfully.");
+							if (upsertError) {
+								console.error("Error inserting Kakao user:", upsertError);
+							} else {
+								console.log("Kakao user inserted successfully.");
+							}
 						}
 					} catch (err) {
 						console.error("Unexpected error in onAuthStateChange:", err);
@@ -123,7 +101,6 @@ const LoginDialog = () => {
 		};
 	}, []);
 
-
 	const handleKakaoLogin = async () => {
 		try {
 			const { error } = await supabase.auth.signInWithOAuth({
@@ -131,6 +108,7 @@ const LoginDialog = () => {
 				options: {
 					scopes:
 						"profile_nickname profile_image account_email name gender birthday birthyear phone_number",
+					redirectTo: `${window.location.origin}/oauth/callback`, // 리디렉션 URL 설정
 				},
 			});
 

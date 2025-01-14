@@ -85,7 +85,7 @@ export default function CaseList({ assignmentId, user }) {
 					소송 목록
 				</Text>
 				{isAdmin && (
-					<Button variant="soft" onClick={openCreateForm}>
+					<Button onClick={openCreateForm}>
 						등록
 					</Button>
 				)}

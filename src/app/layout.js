@@ -75,7 +75,7 @@ export default function RootLayout({ children }) {
 						>
 							<Header />
 							<div
-								className="flex flex-1 w-full px-4 justify-center max-w-screen-xl"
+								className="flex flex-1 w-full px-6 justify-center max-w-screen-xl"
 								style={{
 									backgroundColor: "var(--gray-2)",
 								}}

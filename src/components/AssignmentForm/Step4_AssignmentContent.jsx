@@ -12,14 +12,10 @@ export default function Step4_AssignmentContent({
 }) {
 	return (
 		<form onSubmit={handleSubmit(onSubmit)}>
-			<Text className="font-semibold text-xl mb-3">
-				4단계: 의뢰 내용을 입력하세요
-			</Text>
-
-			<Box mb="3">
+			<Box>
 				<textarea
 					{...register("description")}
-					placeholder="예) 사건의 배경, 의뢰 진행 요청사항 등 자세히 입력해주세요."
+					placeholder="예) 사건의 배경, 의뢰 진행 요청사항 등 의뢰내용을 입력해주세요."
 					rows={5}
 					className="
             w-full

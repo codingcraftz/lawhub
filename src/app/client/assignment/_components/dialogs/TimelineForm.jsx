@@ -84,8 +84,8 @@ export default function TimelineForm({
 				</Flex>
 
 				<form onSubmit={handleSave}>
-					<Box mb="3">
-						<Text size="2" color="gray" className="mb-1">
+					<Box className="flex flex-col gap-2">
+						<Text size="2" color="gray">
 							진행 상황
 						</Text>
 						<textarea

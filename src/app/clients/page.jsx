@@ -182,7 +182,6 @@ const ClientManagementPage = () => {
 							<Text size="2" color={client.type === "client" ? "blue" : "green"}>
 								{client.type === "client" ? "[개인]" : "[단체]"}
 							</Text>
-
 							<Text className="mr-3" size="4" weight="bold">
 								{client.name}
 							</Text>
