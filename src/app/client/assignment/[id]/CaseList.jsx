@@ -1,43 +1,64 @@
+// CaseList.jsx
+
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { Button } from "@radix-ui/themes";
-import Timeline from "@/components/Timeline";
-import CaseForm from "../_components/dialogs/CaseForm";
-import StatusForm from "../_components/dialogs/StatusForm";
+import { Button, Flex, Text, Box } from "@radix-ui/themes";
+import { motion } from "framer-motion";
 
-const CaseList = ({ assignmentId, user }) => {
+import CaseForm from "../_components/dialogs/CaseForm";
+import CaseDeadlines from "./CaseDeadlines";
+import CaseTimelines from "./CaseTimelines";
+
+export default function CaseList({ assignmentId, user }) {
 	const [cases, setCases] = useState([]);
+	const [expandedCaseId, setExpandedCaseId] = useState(null);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [currentCase, setCurrentCase] = useState(null);
 
-	// 타임라인(상세보기) state
-	const [timelineOpenMap, setTimelineOpenMap] = useState({});
-	// 상태 수정 폼 state
-	const [statusFormOpenMap, setStatusFormOpenMap] = useState({});
-
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
+	// 1) cases 목록
 	const fetchCases = async () => {
-		const { data, error } = await supabase
+		// (예) 기본: 가장 최근 타임라인 1건 가져오려면
+		// -> 방법 A) 두 번 쿼리
+		//    B) case_timelines 조인 후 프런트서 최신만 사용
+		// 여기서는 단순 "*"만 받아오고, 아래에서 Promise.all 방식으로 최신 타임라인을 붙인다
+
+		const { data: rawCases, error } = await supabase
 			.from("cases")
 			.select("*")
-			.eq("assignment_id", assignmentId);
-		if (!error && data) {
-			setCases(data);
+			.eq("assignment_id", assignmentId)
+			.order("created_at", { ascending: false });
+
+		if (error || !rawCases) return;
+
+		// 각 case별로 가장 최근 타임라인 1건
+		const updatedCases = [];
+		for (const c of rawCases) {
+			const { data: latestT } = await supabase
+				.from("case_timelines")
+				.select("text, created_at")
+				.eq("case_id", c.id)
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			updatedCases.push({
+				...c,
+				latestTimeline: latestT?.text || null,
+			});
 		}
+
+		setCases(updatedCases);
 	};
 
 	useEffect(() => {
-		fetchCases();
+		if (assignmentId) fetchCases();
 	}, [assignmentId]);
 
-	const handleFormSuccess = () => {
-		setIsFormOpen(false);
-		fetchCases();
-	};
-
+	// 2) 소송 등록/수정
 	const openCreateForm = () => {
 		setCurrentCase(null);
 		setIsFormOpen(true);
@@ -47,96 +68,84 @@ const CaseList = ({ assignmentId, user }) => {
 		setIsFormOpen(true);
 	};
 
-	const openTimeline = (caseId) => {
-		setTimelineOpenMap((prev) => ({ ...prev, [caseId]: true }));
-	};
-	const closeTimeline = (caseId) => {
-		setTimelineOpenMap((prev) => ({ ...prev, [caseId]: false }));
+	const handleFormSuccess = () => {
+		setIsFormOpen(false);
+		fetchCases();
 	};
 
-	const openStatusForm = (caseId) => {
-		setStatusFormOpenMap((prev) => ({ ...prev, [caseId]: true }));
-	};
-	const closeStatusForm = (caseId) => {
-		setStatusFormOpenMap((prev) => ({ ...prev, [caseId]: false }));
+	// 3) 펼침/접힘
+	const toggleExpand = (caseId) => {
+		setExpandedCaseId((prev) => (prev === caseId ? null : caseId));
 	};
 
 	return (
 		<section className="flex flex-col mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
-			<div className="flex justify-between mb-3">
-				<h2 className="font-semibold text-lg">소송 목록</h2>
-				{isAdmin && <Button onClick={openCreateForm}>등록</Button>}
-			</div>
+			<Flex justify="between" align="center" className="mb-3">
+				<Text as="h2" className="font-semibold text-lg">
+					소송 목록
+				</Text>
+				{isAdmin && (
+					<Button variant="soft" onClick={openCreateForm}>
+						등록
+					</Button>
+				)}
+			</Flex>
 
 			{cases.length === 0 ? (
-				<p>등록된 소송이 없습니다.</p>
+				<Text>등록된 소송이 없습니다.</Text>
 			) : (
-				<ul className="flex space-y-3 w-full">
+				<ul className="flex flex-col gap-3 w-full">
 					{cases.map((item) => (
 						<li
 							key={item.id}
-							className="flex justify-between p-3 bg-gray-3 border border-gray-6 rounded items-center w-full"
+							className="p-3 bg-gray-3 border border-gray-6 rounded flex flex-col gap-2"
 						>
-							<div className="flex flex-col flex-1" style={{ maxWidth: "calc(100% - 120px)" }}>
-								<p className="font-medium">
-									{item.court_name} {item.case_year} {item.case_type}{" "}
-									{item.case_number} {item.case_subject}
-								</p>
-								<div className="flex gap-2 items-center flex-1">
-									<p className="text-sm text-gray-11">
-										상태: {item?.status || "알 수 없음"}
-									</p>
+							<Flex justify="between" align="center">
+								<Box className="flex flex-col" style={{ maxWidth: "calc(100% - 140px)" }}>
+									<Text className="font-medium">
+										{item.court_name} {item.case_year} {item.case_type}{" "}
+										{item.case_number} {item.case_subject}
+									</Text>
+									<Text size="2" color="gray">
+										상태: {item.latestTimeline || "진행상황 없음"}
+									</Text>
+								</Box>
+								<Flex gap="2">
 									{isAdmin && (
-										<Button
-											size="1"
-											variant="soft"
-											onClick={() => openStatusForm(item.id)}
-										>
+										<Button variant="soft" onClick={() => openEditForm(item)}>
 											수정
 										</Button>
 									)}
-								</div>
-							</div>
-							<div className="flex gap-2">
-								{isAdmin && (
-									<Button variant="soft" onClick={() => openEditForm(item)}>
-										수정
+									<Button
+										variant="soft"
+										onClick={() => toggleExpand(item.id)}
+									>
+										{expandedCaseId === item.id ? "닫기" : "상세보기"}
 									</Button>
-								)}
-								{/* 상세보기 버튼 */}
-								<Button variant="soft" onClick={() => openTimeline(item.id)}>
-									상세
-								</Button>
+								</Flex>
+							</Flex>
 
-								{/* Timeline (상세보기) */}
-								{timelineOpenMap[item.id] && (
-									<Timeline
-										caseId={item.id}
-										caseStatus={item.status}
-										description={item.description}
-										open={timelineOpenMap[item.id] || false}
-										onOpenChange={(opened) => {
-											if (!opened) closeTimeline(item.id);
-										}}
-									/>
-								)}
+							{/* 펼쳐진 상세 */}
+							{expandedCaseId === item.id && (
+								<motion.div
+									initial={{ height: 0, opacity: 0 }}
+									animate={{ height: "auto", opacity: 1 }}
+									transition={{ duration: 0.3 }}
+									className="overflow-hidden p-2 bg-gray-2 border border-gray-6 rounded"
+								>
+									{/* (A) 기일 */}
+									<CaseDeadlines caseId={item.id} isAdmin={isAdmin} />
 
-								{/* StatusForm 다이얼로그 */}
-								{statusFormOpenMap[item.id] && (
-									<StatusForm
-										open={statusFormOpenMap[item.id]}
-										caseId={item.id}
-										currentStatus={item.status}
-										onSuccess={fetchCases}
-										onClose={() => closeStatusForm(item.id)}
-									/>
-								)}
-							</div>
+									{/* (B) 타임라인 */}
+									<CaseTimelines caseId={item.id} isAdmin={isAdmin} />
+								</motion.div>
+							)}
 						</li>
 					))}
 				</ul>
 			)}
 
+			{/* 소송 등록/수정 폼 (Dialog) */}
 			{isFormOpen && (
 				<CaseForm
 					open={isFormOpen}
@@ -149,7 +158,5 @@ const CaseList = ({ assignmentId, user }) => {
 			)}
 		</section>
 	);
-};
-
-export default CaseList;
+}
 

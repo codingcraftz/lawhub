@@ -193,7 +193,7 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 
 					{/* 버튼 */}
 					<Flex justify="end" gap="2">
-						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
+						<Button type="button" variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
 						<Button variant="solid" type="submit">

@@ -2,19 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Button } from "@radix-ui/themes";
-import EnforcementComments from "./EnforcementComments";
+import { Button, Flex, Text } from "@radix-ui/themes";
+import { motion } from "framer-motion";
+
 import EnforcementForm from "../_components/dialogs/EnforcementForm";
+import EnforcementComments from "./EnforcementComments";
 
 const EnforcementList = ({ assignmentId, user }) => {
 	const [enforcements, setEnforcements] = useState([]);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [currentEnforcement, setCurrentEnforcement] = useState(null);
-	const [detailOpenMap, setDetailOpenMap] = useState({});
+	const [expandedMap, setExpandedMap] = useState({}); // 상세보기 펼침 여부
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 	const kor_status = { ongoing: "진행중", scheduled: "대기", closed: "종결" };
 
+	// 1) 목록 조회
 	const fetchEnforcements = async () => {
 		const { data, error } = await supabase
 			.from("enforcements")
@@ -27,9 +30,12 @@ const EnforcementList = ({ assignmentId, user }) => {
 	};
 
 	useEffect(() => {
-		fetchEnforcements();
+		if (assignmentId) {
+			fetchEnforcements();
+		}
 	}, [assignmentId]);
 
+	// 2) 등록/수정 Form
 	const handleFormSuccess = () => {
 		setIsFormOpen(false);
 		fetchEnforcements();
@@ -45,59 +51,71 @@ const EnforcementList = ({ assignmentId, user }) => {
 		setIsFormOpen(true);
 	};
 
-	const openDetail = (id) => {
-		setDetailOpenMap((prev) => ({ ...prev, [id]: true }));
-	};
-
-	const closeDetail = (id) => {
-		setDetailOpenMap((prev) => ({ ...prev, [id]: false }));
+	// 3) 상세보기 펼침/접힘
+	const toggleExpand = (id) => {
+		setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }));
 	};
 
 	return (
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
-			<div className="flex justify-between mb-3">
-				<h2 className="font-semibold text-lg">강제집행 목록</h2>
+			<Flex justify="between" align="center" className="mb-3">
+				<Text as="h2" className="font-semibold text-lg">
+					강제집행 목록
+				</Text>
 				{isAdmin && (
 					<Button onClick={openCreate}>
 						등록
 					</Button>
 				)}
-			</div>
+			</Flex>
+
 			{enforcements?.length === 0 ? (
-				<p>등록된 강제집행이 없습니다.</p>
+				<Text>등록된 강제집행이 없습니다.</Text>
 			) : (
 				<ul className="space-y-3">
 					{enforcements.map((item) => (
 						<li
 							key={item.id}
-							className="flex items-center justify-between bg-gray-3 border border-gray-6 p-3 rounded"
+							className="flex flex-col bg-gray-3 border border-gray-6 p-3 rounded gap-2"
 						>
-							<div>
-								<p className="font-medium">{item.type}</p>
-								<p className="text-sm text-gray-11">
-									상태: {kor_status[item?.status]} / 금액:{" "}
-									{item?.amount?.toLocaleString()}원
-								</p>
-							</div>
-							<div className="flex gap-2">
-								{isAdmin && (
-									<Button variant="soft" onClick={() => openEdit(item)}>
-										수정
+							{/* 상단부: 기본 정보 표시 */}
+							<Flex justify="between" align="center">
+								<div className="flex flex-col">
+									<Text className="font-medium">{item.type}</Text>
+									<Text size="2" color="gray">
+										상태: {kor_status[item?.status] || "알 수 없음"} / 금액:{" "}
+										{item?.amount?.toLocaleString()}원
+									</Text>
+								</div>
+								<Flex gap="2">
+									{isAdmin && (
+										<Button variant="soft" onClick={() => openEdit(item)}>
+											수정
+										</Button>
+									)}
+									<Button
+										variant="soft"
+										onClick={() => toggleExpand(item.id)}
+									>
+										{expandedMap[item.id] ? "닫기" : "상세"}
 									</Button>
-								)}
-								<Button variant="soft" onClick={() => openDetail(item.id)}>
-									상세
-								</Button>
-								<EnforcementComments
-									item={item}
-									enforcementId={item.id}
-									open={detailOpenMap[item.id] || false}
-									onOpenChange={(opened) => {
-										if (!opened) closeDetail(item.id);
-									}}
-									user={user}
-								/>
-							</div>
+								</Flex>
+							</Flex>
+
+							{/* 펼쳐지는 댓글(코멘트) 영역 */}
+							{expandedMap[item.id] && (
+								<motion.div
+									initial={{ height: 0, opacity: 0 }}
+									animate={{ height: "auto", opacity: 1 }}
+									transition={{ duration: 0.3 }}
+									className="overflow-hidden p-2 bg-gray-2 border border-gray-6 rounded"
+								>
+									<EnforcementComments
+										enforcementId={item.id}
+										user={user}
+									/>
+								</motion.div>
+							)}
 						</li>
 					))}
 				</ul>

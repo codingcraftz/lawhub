@@ -113,10 +113,10 @@ const EditCreditInfo = ({
 				</Flex>
 
 				<Flex justify="end" mt="4" gap="2">
-					<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
+					<Button variant="soft" color="gray" type="button" onClick={() => onOpenChange(false)}>
 						닫기
 					</Button>
-					<Button variant="solid" color="blue" onClick={handleSave}>
+					<Button variant="solid" color="blue" type="submit" onClick={handleSave}>
 						저장
 					</Button>
 				</Flex>
