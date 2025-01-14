@@ -9,13 +9,14 @@ import { supabase } from "@/utils/supabase";
 import DebtorCard from "../_components/DebtorCard";
 import Link from "next/link";
 import CardList from "../_components/CardList";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const ClientCasePage = () => {
 	const router = useRouter();
 	const { id: clientId } = useParams();
 	const [clientName, setClientName] = useState("");
 	const [assignments, setAssignments] = useState([]);
-
+	useRoleRedirect(["staff", "admin", "client"], "/");
 
 	const fetchAssignments = async () => {
 		try {

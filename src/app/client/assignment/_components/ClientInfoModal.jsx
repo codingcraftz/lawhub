@@ -66,9 +66,9 @@ const ClientInfoModal = ({ open, onOpenChange, clientId, type }) => {
 				<div className="flex justify-between items-center mb-4">
 					<Dialog.Title className="text-xl font-bold">의뢰인 정보</Dialog.Title>
 					<Dialog.Close asChild>
-						<button>
+						<Button variant="ghost" color="gray">
 							<Cross2Icon width={20} height={20} />
-						</button>
+						</Button>
 					</Dialog.Close>
 				</div>
 				<div className="mb-4">
@@ -97,7 +97,9 @@ const ClientInfoModal = ({ open, onOpenChange, clientId, type }) => {
 						</Button>
 					) : (
 						<Button
+							size="1"
 							onClick={() => setIsEditing(true)}
+							variant="soft"
 						>
 							수정
 						</Button>

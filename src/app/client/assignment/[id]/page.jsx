@@ -16,8 +16,10 @@ import FileList from "./FileList";
 import ClientInfoModal from "../_components/ClientInfoModal";
 import GroupInfoModal from "../_components/GroupInfoModal";
 import { Button } from "@radix-ui/themes";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const AssignmentPage = () => {
+	useRoleRedirect(["staff", "admin", "client"], "/");
 	const { id: assignmentId } = useParams();
 	const { user } = useUser();
 	const [assignment, setAssignment] = useState(null);

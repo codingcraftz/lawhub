@@ -5,8 +5,10 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text, Card } from "@radix-ui/themes";
 import GroupForm from "./GroupForm";
 import GroupMembersEditor from "./GroupMembersEditor";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 export default function GroupManagementPage() {
+	useRoleRedirect(["staff", "admin", "client"], "/");
 	const [groups, setGroups] = useState([]);
 	const [selectedGroup, setSelectedGroup] = useState(null);
 	const [isAddingGroup, setIsAddingGroup] = useState(false);
@@ -93,8 +95,8 @@ export default function GroupManagementPage() {
 							key={group.id}
 							p="2"
 							className={`cursor-pointer rounded-md ${selectedGroup?.id === group.id
-									? "bg-primary-3 text-primary-11"
-									: "hover:bg-gray-3"
+								? "bg-primary-3 text-primary-11"
+								: "hover:bg-gray-3"
 								}`}
 							onClick={() => setSelectedGroup(group)}
 						>
