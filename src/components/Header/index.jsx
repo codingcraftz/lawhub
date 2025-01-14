@@ -47,7 +47,7 @@ const Header = () => {
 
 	return (
 		<Box className="border-b border-b-gray-9 px-12 py-5 flex justify-center w-full">
-			<Flex className="justify-between items-center max-w-screen-lg w-full">
+			<Flex className="justify-between items-center max-w-screen-xl w-full">
 				<Flex className="items-center gap-4">
 					<Link
 						className="hover:scale-105 transition-transform duration-300"

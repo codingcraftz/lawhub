@@ -131,7 +131,7 @@ const ClientManagementPage = () => {
 		<Box className="py-4 w-full">
 			<Flex direction="column" gap="4">
 				<header className="flex justify-between items-center">
-					<Text size="5" weight="bold">
+					<Text className="text-2xl font-bold">
 						의뢰인 목록
 					</Text>
 					<Button

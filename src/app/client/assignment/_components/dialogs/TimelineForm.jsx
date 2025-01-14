@@ -1,115 +1,113 @@
+// TimelineForm.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
+import { supabase } from "@/utils/supabase";
+import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
-export default function TimelineForm({ initialData, onOpenChange, onSubmit }) {
-	const [formData, setFormData] = useState({
-		description: "",
-	});
-	const [errors, setErrors] = useState({});
+export default function TimelineForm({
+	open,
+	onOpenChange,
+	caseId,
+	timelineData,
+	onSuccess,
+}) {
+	const [textValue, setTextValue] = useState("");
 
 	useEffect(() => {
-		if (initialData) {
-			setFormData(initialData); // Load initial data for editing
+		if (timelineData) {
+			setTextValue(timelineData.text || "");
+		} else {
+			setTextValue("");
 		}
-	}, [initialData]);
+	}, [timelineData]);
 
-	const validate = () => {
-		const newErrors = {};
-		if (!formData.description.trim()) {
-			newErrors.description = "목표를 작성해주세요.";
-		}
-		setErrors(newErrors);
-		return Object.keys(newErrors).length === 0;
-	};
-
-	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.name]: e.target.value });
-	};
-
-	const handleSubmit = (e) => {
+	const handleSave = async (e) => {
 		e.preventDefault();
-		if (!validate()) return;
-		onSubmit(formData);
+		if (!textValue.trim()) {
+			alert("진행 상황을 입력해주세요.");
+			return;
+		}
+
+		try {
+			if (timelineData) {
+				// 수정
+				const { error } = await supabase
+					.from("case_timelines")
+					.update({ text: textValue })
+					.eq("id", timelineData.id);
+				if (error) throw error;
+			} else {
+				// 추가
+				const { error } = await supabase
+					.from("case_timelines")
+					.insert({ case_id: caseId, text: textValue });
+				if (error) throw error;
+			}
+			alert("저장되었습니다.");
+			if (onSuccess) onSuccess();
+		} catch (err) {
+			console.error("Error saving timeline:", err);
+			alert("저장 중 오류가 발생했습니다.");
+		}
 	};
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			{/* 오버레이 */}
 			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
-
-			{/* 컨텐츠 */}
 			<Dialog.Content
 				className="
-          fixed 
-          left-1/2 top-1/2 
-          w-full max-w-[600px] 
-          max-h-[85vh]
-          -translate-x-1/2 -translate-y-1/2 
-          rounded-md 
-          p-[25px] 
-          bg-gray-2 
-          border border-gray-6 
-          shadow-md shadow-gray-7 
-          focus:outline-none 
-          z-50 
-          overflow-y-auto
+          fixed
+          left-1/2 top-1/2
+          w-full max-w-[500px]
+          -translate-x-1/2 -translate-y-1/2
+          bg-gray-2 border border-gray-6
+          rounded-md p-4
+          shadow-md shadow-gray-7
+          text-gray-12
+          z-50
+          focus:outline-none
         "
 			>
-				{/* 헤더 */}
 				<Flex justify="between" align="center" className="mb-3">
-					<Dialog.Title className="font-bold text-xl text-gray-12">
-						{initialData ? "목표 수정" : "목표 등록"}
+					<Dialog.Title className="font-bold text-xl">
+						타임라인 {timelineData ? "수정" : "추가"}
 					</Dialog.Title>
 					<Dialog.Close asChild>
 						<Button variant="ghost" color="gray">
-							<Cross2Icon width={25} height={25} />
+							<Cross2Icon width={20} height={20} />
 						</Button>
 					</Dialog.Close>
 				</Flex>
 
-				{/* 폼 본문 */}
-				<form onSubmit={handleSubmit}>
-					<Box mb="2">
+				<form onSubmit={handleSave}>
+					<Box mb="3">
 						<Text size="2" color="gray" className="mb-1">
-							목표를 작성하세요.
+							진행 상황
 						</Text>
 						<textarea
-							name="description"
-							placeholder="예) 채권 회수를 위한 책임추궁대상의 확장"
-							value={formData.description}
-							onChange={handleChange}
-							className="
-                w-full 
-                p-2 
-                border border-gray-6 
-                rounded 
-                text-gray-12
-                focus:outline-none 
-                focus:border-gray-8
-              "
+							value={textValue}
+							onChange={(e) => setTextValue(e.target.value)}
 							rows={4}
+							className="
+                w-full p-2
+                border border-gray-6
+                rounded text-gray-12
+                focus:outline-none focus:border-gray-8
+              "
+							placeholder="사건진행상황 입력 예) 지급명령중, 재판중"
 						/>
-						{errors.description && (
-							<Text color="red" size="2" className="mt-1">
-								{errors.description}
-							</Text>
-						)}
 					</Box>
 
-					<Flex justify="end" gap="2" mt="3">
-						<Button
-							variant="soft"
-							color="gray"
-							onClick={() => onOpenChange(false)}
-						>
+					<Flex justify="end" gap="2">
+						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
 						<Button variant="solid" type="submit">
-							{initialData ? "수정" : "등록"}
+							저장
 						</Button>
 					</Flex>
 				</form>

@@ -1,26 +1,25 @@
-import React, { useState, useEffect } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { supabase } from "@/utils/supabase";
-import { TextArea, Box, Button, Flex, Text } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+// EnforcementComments.jsx
 
-const EnforcementComments = ({ item, enforcementId, open, onOpenChange, user }) => {
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase";
+import { Box, Flex, Text, Button, TextArea } from "@radix-ui/themes";
+
+export default function EnforcementComments({ enforcementId, user }) {
 	const [comments, setComments] = useState([]);
 	const [newComment, setNewComment] = useState("");
 	const [editingCommentId, setEditingCommentId] = useState(null);
 	const [editedContent, setEditedContent] = useState("");
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-
-	useEffect(() => {
-		if (enforcementId) fetchComments(enforcementId);
-	}, [enforcementId]);
-
-	const fetchComments = async (id) => {
+	// 1) 목록 불러오기
+	const fetchComments = async () => {
+		if (!enforcementId) return;
 		const { data, error } = await supabase
 			.from("enforcement_comments")
 			.select("*, user:users(name)")
-			.eq("enforcement_id", id)
+			.eq("enforcement_id", enforcementId)
 			.order("created_at", { ascending: true });
 
 		if (error) {
@@ -30,28 +29,31 @@ const EnforcementComments = ({ item, enforcementId, open, onOpenChange, user }) 
 		}
 	};
 
-	// Add a new comment
+	useEffect(() => {
+		fetchComments();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [enforcementId]);
+
+	// 2) 추가
 	const handleAddComment = async () => {
 		if (!newComment.trim()) return;
-
 		const { error } = await supabase.from("enforcement_comments").insert({
 			enforcement_id: enforcementId,
 			comment: newComment,
 			user_id: user?.id,
 		});
-
 		if (error) {
 			console.error("Error adding comment:", error);
+			alert("댓글 등록 중 오류가 발생했습니다.");
 		} else {
 			setNewComment("");
-			fetchComments(enforcementId);
+			fetchComments();
 		}
 	};
 
-	// Edit an existing comment
+	// 3) 수정
 	const handleEditComment = async () => {
 		if (!editedContent.trim()) return;
-
 		const { error } = await supabase
 			.from("enforcement_comments")
 			.update({ comment: editedContent })
@@ -59,123 +61,118 @@ const EnforcementComments = ({ item, enforcementId, open, onOpenChange, user }) 
 
 		if (error) {
 			console.error("Error editing comment:", error);
+			alert("댓글 수정 중 오류가 발생했습니다.");
 		} else {
 			setEditingCommentId(null);
 			setEditedContent("");
-			fetchComments(enforcementId);
+			fetchComments();
 		}
 	};
 
-	// Delete a comment
+	// 4) 삭제
 	const handleDeleteComment = async (id) => {
-		if (window.confirm("정말로 삭제하시겠습니까?")) {
-			const { error } = await supabase
-				.from("enforcement_comments")
-				.delete()
-				.eq("id", id);
+		if (!window.confirm("정말로 삭제하시겠습니까?")) return;
+		const { error } = await supabase
+			.from("enforcement_comments")
+			.delete()
+			.eq("id", id);
 
-			if (error) {
-				console.error("Error deleting comment:", error);
-			} else {
-				fetchComments(enforcementId);
-			}
+		if (error) {
+			console.error("Error deleting comment:", error);
+			alert("댓글 삭제 중 오류가 발생했습니다.");
+		} else {
+			fetchComments();
 		}
-
 	};
 
 	return (
-		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-10" />
-			<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] min-w-[450px] max-w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow z-20 overflow-y-auto">
-				<Dialog.Title className="font-bold text-xl">{item.type}</Dialog.Title>
-				<Dialog.Close asChild>
-					<Button
-						variant="ghost"
-						color="gray"
-						style={{ position: "absolute", top: 24, right: 24 }}
-					>
-						<Cross2Icon width={25} height={25} />
-					</Button>
-				</Dialog.Close>
-
-				<Box>
-					{comments.length ?
-						<Box className="space-y-4">
-							{comments.map((comment) => (
-								<Box
-									key={comment.id}
-									className="p-3 bg-gray-2 rounded shadow-sm space-y-2"
-								>
-									<Flex justify="between" align="center">
-										<Text size="2" weight="medium">
-											{comment.user?.name}
-										</Text>
-										<Text size="1" color="gray">
-											{new Date(comment.created_at).toLocaleString("ko-KR")}
-										</Text>
-									</Flex>
-									{editingCommentId === comment.id ? (
-										<Box>
-											<TextArea
-												value={editedContent}
-												onChange={(e) => setEditedContent(e.target.value)}
-											/>
-											<Flex gap="2" justify="end" className="mt-2">
-												<Button
-													variant="soft"
-													onClick={() => setEditingCommentId(null)}
-												>
-													닫기
-												</Button>
-												<Button onClick={handleEditComment}>저장</Button>
-											</Flex>
-										</Box>
-									) : (
-										<Text>{comment.comment}</Text>
-									)}
-									{comment.user_id === user?.id && (
-										<Flex gap="2" className="mt-2">
-											<Button
-												variant="ghost"
-												size="1"
-												onClick={() => {
-													setEditingCommentId(comment.id);
-													setEditedContent(comment.comment);
-												}}
-											>
-												수정
-											</Button>
-											<Button
-												variant="ghost"
-												size="1"
-												onClick={() => handleDeleteComment(comment.id)}
-											>
-												삭제
-											</Button>
-										</Flex>
-									)}
-								</Box>
-							))}
-						</Box>
-						: <Box className="space-y-2"><Text>등록된 내역이 없습니다.</Text></Box>
-					}
-
-					{isAdmin && (
-						<Box className="mt-4">
-							<TextArea
-								placeholder="댓글을 입력하세요"
-								value={newComment}
-								onChange={(e) => setNewComment(e.target.value)}
-							/>
-							<Flex justify="end" className="mt-2">
-								<Button onClick={handleAddComment}>등록</Button>
+		<Box>
+			{/* 목록 */}
+			{comments.length === 0 ? (
+				<Text size="2">등록된 댓글이 없습니다.</Text>
+			) : (
+				<Box className="space-y-4 mb-4">
+					{comments.map((comment) => (
+						<Box
+							key={comment.id}
+							className="p-3 bg-gray-3 border border-gray-6 rounded shadow-sm space-y-2"
+						>
+							<Flex justify="between" align="center">
+								<Text size="2" weight="medium">
+									{comment.user?.name}
+								</Text>
+								<Text size="1" color="gray">
+									{new Date(comment.created_at).toLocaleString("ko-KR")}
+								</Text>
 							</Flex>
-						</Box>
-					)}
-				</Box>
-			</Dialog.Content>
-		</Dialog.Root>
-	);
-};
 
-export default EnforcementComments;
+							{editingCommentId === comment.id ? (
+								// 수정중
+								<Box>
+									<TextArea
+										value={editedContent}
+										onChange={(e) => setEditedContent(e.target.value)}
+									/>
+									<Flex gap="2" justify="end" className="mt-2">
+										<Button
+											variant="soft"
+											onClick={() => {
+												setEditingCommentId(null);
+												setEditedContent("");
+											}}
+										>
+											취소
+										</Button>
+										<Button onClick={handleEditComment}>저장</Button>
+									</Flex>
+								</Box>
+							) : (
+								// 일반 표시
+								<Text>{comment.comment}</Text>
+							)}
+
+							{/* 수정/삭제 버튼: 작성자(또는 관리자)만 */}
+							{(comment.user_id === user?.id || isAdmin) && editingCommentId !== comment.id && (
+								<Flex gap="2" className="mt-2 justify-end">
+									<Button
+										variant="ghost"
+										size="1"
+										onClick={() => {
+											setEditingCommentId(comment.id);
+											setEditedContent(comment.comment);
+										}}
+									>
+										수정
+									</Button>
+									<Button
+										variant="ghost"
+										size="1"
+										onClick={() => handleDeleteComment(comment.id)}
+									>
+										삭제
+									</Button>
+								</Flex>
+							)}
+						</Box>
+					))}
+				</Box>
+			)}
+
+			{/* 새 댓글 등록 */}
+			{(isAdmin || user?.id) && (
+				<Box className="mt-4">
+					<TextArea
+						placeholder="댓글을 입력하세요"
+						value={newComment}
+						onChange={(e) => setNewComment(e.target.value)}
+						className="mb-2 border border-gray-6 rounded p-2 w-full"
+					/>
+					<Flex justify="end">
+						<Button onClick={handleAddComment}>등록</Button>
+					</Flex>
+				</Box>
+			)}
+		</Box>
+	);
+}
+

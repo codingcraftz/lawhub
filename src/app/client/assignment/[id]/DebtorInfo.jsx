@@ -28,7 +28,6 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			return;
 		}
 
-		// 각 debtor에 대해 credit info도 로드
 		const updatedDebtors = await Promise.all(
 			debtorsData.map(async (debtor) => {
 				const { data: creditInfo, error: creditError } = await supabase
@@ -110,7 +109,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			.upsert({
 				debtor_id: selectedDebtor.id,
 				owned: updatedInfo,
-			});
+			}, { onConflict: "debtor_id" });
 
 		if (!error) {
 			setOpenCreditInfo(false);
@@ -124,6 +123,8 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			[debtorId]: !prev[debtorId],
 		}));
 	};
+
+	console.log(debtors)
 
 	return (
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
@@ -201,7 +202,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 							>
 								<Box className="bg-gray-2 p-3 border border-gray-6 rounded">
 									{debtor.creditInfo ? (
-										<ul className="list-disc ml-4">
+										<ul >
 											{Object.entries(debtor.creditInfo).map(([key, value]) => (
 												<li key={key}>
 													<Text size="2" color="gray">

@@ -97,6 +97,21 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 			const assignmentId = assignmentData.id;
 
+			if (noClientSelected) {
+				const { error: clientError } = await supabase
+					.from("assignment_clients")
+					.insert({
+						assignment_id: assignmentId,
+						client_id: "e8353222-07e6-4d05-ac2c-5e004c043ce6"
+					});
+				if (clientError) {
+					console.error("Assignment Clients 추가 오류:", clientError);
+					alert("Clients 추가 중 오류가 발생했습니다.");
+					return;
+				}
+
+
+			}
 			// Step 2: 의뢰인 데이터 추가
 			if (!noClientSelected) {
 				if (selectedClients.length > 0) {

@@ -44,14 +44,14 @@ const DebtorCard = ({
 				<div>
 					<h4 className="text-sm font-medium">채권자:</h4>
 					<p className="text-sm" >
-						{creditors?.join(", ") || <span className="text-gray-10">없음</span>}
+						{creditors?.join(", ") || <span className="text-gray-10">미등록</span>}
 					</p>
 				</div>
 				{/* 채무자 */}
 				<div>
 					<h4 className="text-sm font-medium">채무자:</h4>
 					<p className="text-sm">
-						{debtors?.join(", ") || <span className="text-gray-10">없음</span>}
+						{debtors?.join(", ") || <span className="text-gray-10">미등록</span>}
 					</p>
 				</div>
 			</div>
