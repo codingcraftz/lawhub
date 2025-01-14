@@ -237,7 +237,7 @@ export default function Step1_ClientAndGroupSelection({
 											size="2"
 											onClick={() => removeGroup(g.id)}
 										>
-											<Cross2Icon width={15} height={15} />
+											<Cross2Icon width={20} height={20} />
 										</Button>
 									</Flex>
 								))}

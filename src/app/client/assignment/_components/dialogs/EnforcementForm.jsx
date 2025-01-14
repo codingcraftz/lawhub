@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase";
 import { Button, Flex, Text } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useForm } from "react-hook-form";
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 const EnforcementForm = ({
 	open,
@@ -114,7 +115,7 @@ const EnforcementForm = ({
 					</Dialog.Title>
 					<Dialog.Close asChild>
 						<Button variant="ghost" color="gray">
-							닫기
+							<Cross2Icon width={20} height={20} />
 						</Button>
 					</Dialog.Close>
 				</Flex>

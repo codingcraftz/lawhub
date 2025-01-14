@@ -153,7 +153,7 @@ export default function GroupMembersEditor({ group }) {
 							size="2"
 							onClick={() => handleRemoveMember(m.id)}
 						>
-							<Cross2Icon width={15} height={15} />
+							<Cross2Icon width={20} height={20} />
 						</Button>
 					</Flex>
 				))}

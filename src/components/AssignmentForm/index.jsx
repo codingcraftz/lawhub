@@ -91,7 +91,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 			if (assignmentError) {
 				console.error("Assignment 추가 오류:", assignmentError);
-				alert("Assignment 추가 중 오류가 발생했습니다.");
+				alert("의뢰 추가 중 오류가 발생했습니다.");
 				return;
 			}
 
@@ -106,7 +106,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 					});
 				if (clientError) {
 					console.error("Assignment Clients 추가 오류:", clientError);
-					alert("Clients 추가 중 오류가 발생했습니다.");
+					alert("고객 추가 중 오류가 발생했습니다.");
 					return;
 				}
 
@@ -162,7 +162,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 				if (creditorError) {
 					console.error("Assignment Creditors 추가 오류:", creditorError);
-					alert("Creditors 추가 중 오류가 발생했습니다.");
+					alert("채권자 추가 중 오류가 발생했습니다.");
 					return;
 				}
 			}
@@ -182,19 +182,19 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 				if (debtorError) {
 					console.error("Assignment Debtors 추가 오류:", debtorError);
-					alert("Debtors 추가 중 오류가 발생했습니다.");
+					alert("채무자 추가 중 오류가 발생했습니다.");
 					return;
 				}
 			}
 
 			// 성공 메시지 및 페이지 이동
-			alert("Assignment가 성공적으로 등록되었습니다!");
+			alert("의뢰가 성공적으로 등록되었습니다!");
 			onSuccess && onSuccess();
 			onOpenChange(false);
 			router.push(`/client/assignment/${assignmentId}`);
 		} catch (err) {
-			console.error("Assignment 추가 중 예기치 못한 오류:", err);
-			alert("Assignment 추가 중 오류가 발생했습니다.");
+			console.error("의뢰 추가 중 예기치 못한 오류:", err);
+			alert("의뢰 추가 중 오류가 발생했습니다.");
 		}
 	};
 
@@ -243,7 +243,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 							<Button
 								variant="ghost"
 								color="gray"
-								style={{ position: "absolute", top: 8, right: 8 }}
+								style={{ position: "absolute", top: 24, right: 24 }}
 							>
 								<Cross2Icon width={25} height={25} />
 							</Button>
@@ -252,7 +252,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 						{/* ========== Step1: 의뢰인 선택 ========== */}
 						{step === 1 && (
 							<>
-								<Dialog.Title className="font-bold text-xl mb-3">
+								<Dialog.Title className="font-bold text-xl pb-6">
 									1단계: 의뢰인을 선택해주세요
 								</Dialog.Title>
 
@@ -315,7 +315,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 						{/* ========== Step2: 채권자(Creditor) 등록 ========== */}
 						{step === 2 && (
 							<>
-								<Dialog.Title className="font-bold text-xl mb-3">
+								<Dialog.Title className="font-bold text-xl pb-6">
 									2단계: 채권자 정보를 입력하세요
 								</Dialog.Title>
 
@@ -339,7 +339,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 						{/* ========== Step3: 채무자(Debtor) 등록 ========== */}
 						{step === 3 && (
 							<>
-								<Dialog.Title className="font-bold text-xl mb-3">
+								<Dialog.Title className="font-bold text-xl pb-6">
 									3단계: 채무자 정보를 입력하세요
 								</Dialog.Title>
 
@@ -362,13 +362,18 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 
 						{/* ========== Step4: 의뢰 내용 입력 ========== */}
 						{step === 4 && (
-							<Step4_AssignmentContent
-								register={register}
-								goToPrevStep={goToPrevStep}
-								handleSubmit={handleSubmit}
-								onSubmit={onSubmit}
-								errors={errors}
-							/>
+							<>
+								<Dialog.Title className="font-bold text-xl pb-6">
+									4단계: 의뢰 내용을 입력하세요
+								</Dialog.Title>
+								<Step4_AssignmentContent
+									register={register}
+									goToPrevStep={goToPrevStep}
+									handleSubmit={handleSubmit}
+									onSubmit={onSubmit}
+									errors={errors}
+								/>
+							</>
 						)}
 					</Dialog.Content>
 				</Theme>

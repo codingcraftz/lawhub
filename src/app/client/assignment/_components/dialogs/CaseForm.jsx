@@ -184,7 +184,7 @@ const CaseForm = ({
 					</Dialog.Title>
 					<Dialog.Close asChild>
 						<Button variant="ghost" color="gray">
-							<Cross2Icon />
+							<Cross2Icon width={20} height={20} />
 						</Button>
 					</Dialog.Close>
 				</Flex>

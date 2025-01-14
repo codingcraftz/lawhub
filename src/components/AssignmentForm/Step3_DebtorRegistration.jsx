@@ -51,7 +51,7 @@ export default function Step3_DebtorRegistration({
 									size="2"
 									onClick={() => removeDebtor(index)}
 								>
-									<Cross2Icon width={15} height={15} />
+									<Cross2Icon width={20} height={20} />
 								</Button>
 							</Flex>
 						))}

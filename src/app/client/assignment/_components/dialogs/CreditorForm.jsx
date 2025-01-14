@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import InputMask from "react-input-mask"; // ★ react-input-mask 설치 후 import
+import InputMask from "react-input-mask";
 
 export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const [formData, setFormData] = useState({
@@ -65,7 +65,7 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 					</Dialog.Title>
 					<Dialog.Close asChild>
 						<Button variant="ghost" color="gray">
-							<Cross2Icon width={25} height={25} />
+							<Cross2Icon width={20} height={20} />
 						</Button>
 					</Dialog.Close>
 				</Flex>

@@ -51,7 +51,7 @@ const StatusForm = ({ open, caseId, currentStatus, onSuccess, onClose }) => {
 						style={{ position: "absolute", top: 16, right: 16 }}
 						onClick={onClose}
 					>
-						<Cross2Icon width={25} height={25} />
+						<Cross2Icon width={20} height={20} />
 					</Button>
 				</Dialog.Close>
 

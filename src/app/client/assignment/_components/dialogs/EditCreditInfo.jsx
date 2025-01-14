@@ -71,7 +71,7 @@ const EditCreditInfo = ({
 					</Dialog.Title>
 					<Dialog.Close asChild>
 						<Button variant="ghost" color="gray">
-							<Cross2Icon width={25} height={25} />
+							<Cross2Icon width={20} height={20} />
 						</Button>
 					</Dialog.Close>
 				</Flex>

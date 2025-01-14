@@ -124,8 +124,6 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		}));
 	};
 
-	console.log(debtors)
-
 	return (
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
