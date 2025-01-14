@@ -11,10 +11,13 @@ import { useTheme } from "next-themes";
 import * as HoverCard from "@radix-ui/react-hover-card"; // HoverCard import
 import NotificationDropdown from "./NotificationDropdown";
 import LoginDialog from "./LoginDialog";
+import Hero from "../Hero";
+import { useRouter } from "next/navigation";
 
 const Header = () => {
 	const { user, setUser } = useUser();
 	const { theme, setTheme } = useTheme();
+	const router = useRouter();
 
 	const NAV_LIST = [
 		{
@@ -36,9 +39,9 @@ const Header = () => {
 		if (error) {
 			console.error("Logout failed:", error.message);
 		} else {
-			console.log("User logged out");
 			setUser(null);
 		}
+		router.push('/')
 	};
 
 	const toggleTheme = () => {
@@ -147,7 +150,7 @@ const Header = () => {
 							</Link>
 						)}
 
-						{user && user.role === "admin" && (
+						{user && user.role === "default" && (
 							<Link href="/admin">
 								<Button
 									variant="ghost"
@@ -181,14 +184,7 @@ const Header = () => {
 						<NotificationDropdown />
 					)}
 					{user ? (
-						<Button
-							onClick={handleLogout}
-							variant="ghost"
-							color="red"
-							className="px-4 py-2 rounded-lg"
-						>
-							로그아웃
-						</Button>
+						<Hero user={user} onLogout={handleLogout} />
 					) : (
 						<LoginDialog />
 					)}

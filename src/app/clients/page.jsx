@@ -14,7 +14,7 @@ import useRoleRedirect from "@/hooks/userRoleRedirect";
 const PAGE_SIZE = 12;
 
 const ClientManagementPage = () => {
-	//useRoleRedirect(["staff", "admin"], "/login");
+	useRoleRedirect(["staff", "admin"], "/");
 
 	const [clients, setClients] = useState([]);
 	const [filteredClients, setFilteredClients] = useState([]);

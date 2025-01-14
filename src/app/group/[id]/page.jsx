@@ -7,8 +7,10 @@ import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import CardList from "@/app/client/_components/CardList";
 import DebtorCard from "@/app/client/_components/DebtorCard";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const GroupCasePage = () => {
+	useRoleRedirect(["staff", "admin", "client"], "/");
 	const router = useRouter();
 	const { id: groupId } = useParams();
 	const [groupName, setGroupName] = useState("");

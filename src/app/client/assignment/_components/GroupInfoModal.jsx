@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import { Button } from "@radix-ui/themes";
 
 const GroupInfoModal = ({ open, onOpenChange, groupId, type }) => {
 	const [group, setGroup] = useState(null);
@@ -63,55 +64,60 @@ const GroupInfoModal = ({ open, onOpenChange, groupId, type }) => {
 			<Dialog.Overlay className="fixed inset-0 bg-black opacity-50 z-40" />
 			<Dialog.Content
 				className="
-          fixed left-1/2 top-1/2
+          fixed
+          left-1/2 top-1/2
+          max-h-[85vh] min-w-[450px] max-w-[650px]
           -translate-x-1/2 -translate-y-1/2
-          bg-white p-6 rounded-lg shadow-lg
-          max-w-lg w-full
+          rounded-md p-6
+          bg-gray-2 border border-gray-6
+          shadow-md shadow-gray-7
           text-gray-12
+          focus:outline-none
+          z-50
+          overflow-y-auto
         "
 			>
 				<div className="flex justify-between items-center mb-4">
 					<Dialog.Title className="text-xl font-bold">그룹 정보</Dialog.Title>
 					<Dialog.Close asChild>
-						<button>
+						<Button variant="ghost" color="gray">
 							<Cross2Icon width={20} height={20} />
-						</button>
+						</Button>
 					</Dialog.Close>
 				</div>
-
-				<div className="mb-4">
+				<div className="mb-2">
 					<p>그룹 이름: {group.name}</p>
 				</div>
-
-				<div className="mb-4">
+				<div className="flex items-center gap-1">
 					<p>직위:</p>
 					{isEditing ? (
 						<input
-							value={groupType}
-							onChange={(e) => setGroupType(e.target.value)}
-							className="border rounded p-2 w-full"
+							value={groupType || ""}
+							placeholder="예)채권자, 채무자 등"
+							onChange={(e) => setClientType(e.target.value)}
+							className="border rounded p-1 border-gray-6"
 						/>
 					) : (
-						<p>{groupType}</p>
+						<p>{groupType || "미등록"}</p>
 					)}
 					{isEditing ? (
-						<button
+						<Button
 							onClick={updateGroupType}
-							className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
 						>
 							저장
-						</button>
+						</Button>
 					) : (
-						<button
+						<Button
+							size="1"
 							onClick={() => setIsEditing(true)}
-							className="mt-2 bg-gray-300 px-4 py-2 rounded"
+							variant="soft"
 						>
 							수정
-						</button>
+						</Button>
 					)}
 				</div>
 
-				<h3 className="text-lg font-semibold mb-2">그룹원</h3>
+				<h3 className="text-lg font-semibold my-4">그룹원</h3>
 				<ul>
 					{groupMembers.map((member) => (
 						<li key={member.user_id} className="mb-1">
