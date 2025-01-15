@@ -90,12 +90,9 @@ export default function FileList({ assignmentId, user }) {
 
 	return (
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
-			<Flex justify="between" align="center" className="mb-3">
-				<Text as="h2" className="font-semibold text-lg">
-					첨부 파일
-				</Text>
-				<Text size="2" color="gray">
-					총 {files.length}개
+			<Flex align="center" className="mb-3">
+				<Text className="text-lg font-semibold">
+					첨부 파일 <span className="text-md text-gray-10">({files.length}개)</span>
 				</Text>
 			</Flex>
 

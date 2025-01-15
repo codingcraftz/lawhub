@@ -16,6 +16,7 @@ const GroupCasePage = () => {
 	const [groupName, setGroupName] = useState("");
 	const [assignments, setAssignments] = useState([]);
 
+	// 1) 의뢰 목록 불러오기
 	const fetchAssignments = async () => {
 		try {
 			const { data, error } = await supabase
@@ -24,6 +25,7 @@ const GroupCasePage = () => {
           id,
           description,
           created_at,
+          status,
           assignment_debtors!left (name),
           assignment_creditors!left (name),
           assignment_groups!inner (group_id, type)
@@ -35,12 +37,24 @@ const GroupCasePage = () => {
 				return;
 			}
 
-			setAssignments(data || []);
+			// (A) ongoing → closed 순으로 정렬
+			const sorted = (data || []).sort((a, b) => {
+				const aStatus = a.status === "ongoing" ? 0 : 1;
+				const bStatus = b.status === "ongoing" ? 0 : 1;
+				if (aStatus !== bStatus) {
+					return aStatus - bStatus;
+				}
+				// ongoing끼리는 created_at 기준 오름차 정렬
+				return new Date(a.created_at) - new Date(b.created_at);
+			});
+
+			setAssignments(sorted);
 		} catch (err) {
 			console.error("Unexpected error:", err);
 		}
 	};
 
+	// 2) 그룹 이름 불러오기
 	const fetchGroup = useCallback(async () => {
 		if (!groupId) return;
 		const { data: groupData, error } = await supabase
@@ -69,9 +83,12 @@ const GroupCasePage = () => {
 						className="w-8 h-8 cursor-pointer"
 						onClick={() => router.back()}
 					/>
-					<h1 className="text-2xl font-bold">{groupName} 의뢰 목록</h1>
+					<h1 className="text-2xl font-bold">
+						{groupName} 의뢰 목록
+					</h1>
 				</div>
 			</header>
+
 			<main>
 				<CardList>
 					{assignments.map((assignment) => (
@@ -85,12 +102,9 @@ const GroupCasePage = () => {
 								clientType={assignment.assignment_groups[0].type}
 								description={assignment.description}
 								createdAt={assignment.created_at}
-								debtors={assignment.assignment_debtors?.map(
-									(debtor) => debtor?.name
-								)}
-								creditors={assignment.assignment_creditors?.map(
-									(creditor) => creditor?.name
-								)}
+								debtors={assignment.assignment_debtors?.map((debtor) => debtor?.name)}
+								creditors={assignment.assignment_creditors?.map((creditor) => creditor?.name)}
+								status={assignment.status}  // status 전달 -> DebtorCard에서 완결 처리
 							/>
 						</Link>
 					))}

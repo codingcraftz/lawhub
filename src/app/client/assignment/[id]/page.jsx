@@ -12,6 +12,7 @@ import DebtorInfo from "./DebtorInfo";
 import BondDetails from "./BondDetails";
 import CaseList from "./CaseList";
 import EnforcementList from "./EnforcementList";
+import AssignmentTasks from "./AssignmentTasks";
 import FileList from "./FileList";
 import ClientInfoModal from "../_components/ClientInfoModal";
 import GroupInfoModal from "../_components/GroupInfoModal";
@@ -125,8 +126,7 @@ const AssignmentPage = () => {
 						onClick={() => router.back()}
 					/>
 					<h1 className="text-2xl font-bold">의뢰 상세 페이지</h1>
-					{/* "정보보기" 버튼 */}
-					{assignmentType === "client" && (
+					{assignmentType === "client" && isAdmin && (
 						<>
 							<Button onClick={() => setClientModalOpen(true)}>
 								의뢰인 정보보기
@@ -139,7 +139,7 @@ const AssignmentPage = () => {
 							/>
 						</>
 					)}
-					{assignmentType === "group" && (
+					{assignmentType === "group" && isAdmin && (
 						<>
 							<Button color="green" onClick={() => setGroupModalOpen(true)}>
 								그룹 정보보기
@@ -181,10 +181,8 @@ const AssignmentPage = () => {
 			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
 				<p>{assignment?.description}</p>
 			</div>
-
 			{/* 기존 컴포넌트들 */}
 			<AssignmentTimelines assignmentId={assignmentId} user={user} />
-
 			<div className="grid grid-cols-2 gap-4 mt-4">
 				<CreditorInfo assignmentId={assignmentId} user={user} />
 				<DebtorInfo assignmentId={assignmentId} user={user} />
@@ -193,6 +191,7 @@ const AssignmentPage = () => {
 				<EnforcementList assignmentId={assignmentId} user={user} />
 				<FileList assignmentId={assignmentId} user={user} />
 				<Inquiry assignmentId={assignmentId} user={user} />
+				<AssignmentTasks assignmentId={assignmentId} user={user} />
 			</div>
 		</div>
 	);
