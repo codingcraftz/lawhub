@@ -150,7 +150,7 @@ const Header = () => {
 							</Link>
 						)}
 
-						{user && user.role === "default" && (
+						{user && user.role === "admin" && (
 							<Link href="/admin">
 								<Button
 									variant="ghost"
