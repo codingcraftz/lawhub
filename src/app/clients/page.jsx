@@ -1,5 +1,3 @@
-// src/app/clients/page.jsx
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -27,9 +25,12 @@ const ClientManagementPage = () => {
 	const router = useRouter();
 	const { user } = useUser();
 
+	// 1) Fetch all clients + all groups
+	// 2) Then fetch assignment_clients + assignment_groups (no status filter)
+	//    We'll see status in the sub-relation, and count how many are "ongoing"
 	const fetchClientsAndGroups = async () => {
 		try {
-			// 개인 의뢰인 가져오기
+			// (A) All users with role=client
 			const { data: allClients, error: clientsError } = await supabase
 				.from("users")
 				.select("id, name, role")
@@ -37,58 +38,67 @@ const ClientManagementPage = () => {
 
 			if (clientsError) throw clientsError;
 
-			// 그룹 가져오기
+			// (B) All groups
 			const { data: allGroups, error: groupsError } = await supabase
 				.from("groups")
 				.select("id, name");
 
 			if (groupsError) throw groupsError;
 
-			// 개인 진행 중 사건 가져오기
+			// (C) assignment_clients with sub-relation for the assignments' status
+			//  .select("client_id, assignments!inner(status)")
+			// means we fetch all relations, no filter on status
 			const { data: clientAssignments, error: clientAssignmentsError } = await supabase
 				.from("assignment_clients")
-				.select("client_id, assignments(status)")
-				.eq("assignments.status", "ongoing");
+				.select("client_id, assignments(status)");
 
 			if (clientAssignmentsError) throw clientAssignmentsError;
 
-			// 그룹 진행 중 사건 가져오기
+			// (D) assignment_groups with sub-relation
 			const { data: groupAssignments, error: groupAssignmentsError } = await supabase
 				.from("assignment_groups")
-				.select("group_id, assignments(status)")
-				.eq("assignments.status", "ongoing");
+				.select("group_id, assignments(status)");
 
 			if (groupAssignmentsError) throw groupAssignmentsError;
 
-			// 개인 진행 중 사건 수 계산
+			// Now let's count how many ongoing assignments each client/group has
+			// We'll do an object: ongoingCaseCounts[client_id] = number
 			const clientCaseCounts = clientAssignments.reduce((acc, item) => {
-				acc[item.client_id] = (acc[item.client_id] || 0) + 1;
+				// item.assignments is an array or single object if 1:1
+				// But in Supabase, .select("client_id, assignments(status)") typically
+				// returns 'assignments' as an array if there's a 1..n relation
+				// or a single object if there's a 1..1. 
+				// We must handle carefully:
+				const assignmentStatus = item.assignments?.status;
+				if (assignmentStatus === "ongoing") {
+					acc[item.client_id] = (acc[item.client_id] || 0) + 1;
+				}
 				return acc;
 			}, {});
 
-			// 그룹 진행 중 사건 수 계산
 			const groupCaseCounts = groupAssignments.reduce((acc, item) => {
-				acc[item.group_id] = (acc[item.group_id] || 0) + 1;
+				const assignmentStatus = item.assignments?.status;
+				if (assignmentStatus === "ongoing") {
+					acc[item.group_id] = (acc[item.group_id] || 0) + 1;
+				}
 				return acc;
 			}, {});
 
-			// 개인 데이터에 진행 중 사건 수 추가
-			const clientsWithCounts = allClients.map((client) => ({
-				id: client.id,
-				name: client.name,
-				type: "client", // 데이터 구분용
-				ongoing_case_count: clientCaseCounts[client.id] || 0,
+			// Build final arrays
+			const clientsWithCounts = allClients.map((c) => ({
+				id: c.id,
+				name: c.name,
+				type: "client",
+				ongoing_case_count: clientCaseCounts[c.id] || 0,
 			}));
 
-			// 그룹 데이터에 진행 중 사건 수 추가
-			const groupsWithCounts = allGroups.map((group) => ({
-				id: group.id,
-				name: group.name,
-				type: "group", // 데이터 구분용
-				ongoing_case_count: groupCaseCounts[group.id] || 0,
+			const groupsWithCounts = allGroups.map((g) => ({
+				id: g.id,
+				name: g.name,
+				type: "group",
+				ongoing_case_count: groupCaseCounts[g.id] || 0,
 			}));
 
-			// 개인과 그룹 데이터를 병합
 			const combinedData = [...clientsWithCounts, ...groupsWithCounts];
 			setClients(combinedData);
 		} catch (error) {
@@ -96,20 +106,25 @@ const ClientManagementPage = () => {
 		}
 	};
 
-
 	useEffect(() => {
-		fetchClientsAndGroups();
+		if (user) {
+			fetchClientsAndGroups();
+		}
 	}, [user]);
 
+	// Re-filter whenever "clients" or toggles/pagination change
 	useEffect(() => {
+		// (1) If showOngoingOnly, we filter out items with ongoing_case_count===0
 		const ongoingFiltered = showOngoingOnly
 			? clients.filter((item) => item.ongoing_case_count > 0)
 			: clients;
 
+		// (2) Search filter by name
 		const searchFiltered = ongoingFiltered.filter((item) =>
 			item.name.toLowerCase().includes(searchQuery.toLowerCase())
 		);
 
+		// (3) Pagination
 		const startIndex = (currentPage - 1) * PAGE_SIZE;
 		const endIndex = startIndex + PAGE_SIZE;
 
@@ -117,31 +132,28 @@ const ClientManagementPage = () => {
 		setTotalPages(Math.ceil(searchFiltered.length / PAGE_SIZE));
 	}, [clients, currentPage, showOngoingOnly, searchQuery]);
 
-
 	const handlePageChange = (page) => {
 		setCurrentPage(page);
 	};
 
 	const handleCaseSuccess = () => {
 		setIsNewCaseModalOpen(false);
+		// Re-fetch to reflect newly added assignment
 		fetchClientsAndGroups();
 	};
 
 	return (
 		<Box className="py-4 w-full">
 			<Flex direction="column" gap="4">
+				{/* Header */}
 				<header className="flex justify-between items-center">
-					<Text className="text-2xl font-bold">
-						의뢰인 목록
-					</Text>
-					<Button
-						onClick={() => setIsNewCaseModalOpen(true)}
-						color="green"
-						className="px-4 py-2 text-white rounded-md"
-					>
+					<Text className="text-2xl font-bold">의뢰인 목록</Text>
+					<Button color="green" onClick={() => setIsNewCaseModalOpen(true)}>
 						새 의뢰 등록
 					</Button>
 				</header>
+
+				{/* Search + Toggle */}
 				<Flex align="center" justify="between">
 					<input
 						className="rounded-lg"
@@ -160,38 +172,45 @@ const ClientManagementPage = () => {
 							checked={showOngoingOnly}
 							onCheckedChange={(checked) => {
 								setShowOngoingOnly(checked);
-								setCurrentPage(1); // 페이지를 첫 번째로 초기화
+								setCurrentPage(1);
 							}}
 						/>
 					</Flex>
 				</Flex>
 
+				{/* List */}
 				<Flex className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					{filteredClients.map((client) => (
-						<Card
-							key={client.id}
-							className="cursor-pointer p-4 shadow-sm flex items-center gap-1"
+					{filteredClients.map((item) => (
+						<div
+							key={item.id}
+							className="
+                cursor-pointer p-4 shadow-sm 
+                flex flex-col border border-gray-6 rounded
+              "
 							onClick={() =>
 								router.push(
-									client.type === "client"
-										? `/client/${client.id}` // 개인 클라이언트 경로
-										: `/group/${client.id}` // 단체 클라이언트 경로
+									item.type === "client"
+										? `/client/${item.id}` // 개인 클라이언트 경로
+										: `/group/${item.id}`  // 단체 클라이언트 경로
 								)
 							}
 						>
-							<Text size="2" color={client.type === "client" ? "blue" : "green"}>
-								{client.type === "client" ? "[개인]" : "[단체]"}
-							</Text>
-							<Text className="mr-3" size="4" weight="bold">
-								{client.name}
-							</Text>
+							<Flex gap="2">
+								<Text size="2" color={item.type === "client" ? "blue" : "green"}>
+									{item.type === "client" ? "[개인]" : "[단체]"}
+								</Text>
+								<Text className="mr-3" size="4" weight="bold">
+									{item.name}
+								</Text>
+							</Flex>
 							<Text size="3" color="gray">
-								진행 중 사건: {client.ongoing_case_count}건
+								진행 중 사건: {item.ongoing_case_count}건
 							</Text>
-						</Card>
+						</div>
 					))}
 				</Flex>
 
+				{/* Pagination */}
 				{totalPages > 1 && (
 					<Pagination
 						currentPage={currentPage}
@@ -201,6 +220,7 @@ const ClientManagementPage = () => {
 				)}
 			</Flex>
 
+			{/* 의뢰 등록 폼 (모달) */}
 			<AssignmentForm
 				open={isNewCaseModalOpen}
 				onOpenChange={setIsNewCaseModalOpen}
