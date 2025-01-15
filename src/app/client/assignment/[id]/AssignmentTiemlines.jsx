@@ -13,7 +13,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 	const [currentTimeline, setCurrentTimeline] = useState(null);
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 1. Fetch timelines
+	// Fetch timelines
 	const fetchTimelines = async () => {
 		const { data, error } = await supabase
 			.from("assignment_timelines")
@@ -32,17 +32,15 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		fetchTimelines();
 	}, [assignmentId]);
 
-	// 2. Handle form submission
+	// Handle form submission
 	const handleSaveTimeline = async (timelineData) => {
 		let response;
 		if (currentTimeline) {
-			// Update
 			response = await supabase
 				.from("assignment_timelines")
 				.update(timelineData)
 				.eq("id", currentTimeline.id);
 		} else {
-			// Insert
 			response = await supabase
 				.from("assignment_timelines")
 				.insert({ ...timelineData, assignment_id: assignmentId });
@@ -54,11 +52,11 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		} else {
 			setIsFormOpen(false);
 			setCurrentTimeline(null);
-			fetchTimelines();
+			await fetchTimelines(); // Reload timelines after save
 		}
 	};
 
-	// 3. Handle delete
+	// Handle delete
 	const handleDeleteTimeline = async (timelineId) => {
 		const { error } = await supabase
 			.from("assignment_timelines")
@@ -69,7 +67,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 			console.error("Failed to delete timeline:", error);
 			alert("목표 삭제 중 오류가 발생했습니다.");
 		} else {
-			fetchTimelines();
+			await fetchTimelines(); // Reload timelines after delete
 		}
 	};
 
@@ -101,18 +99,41 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 								현재 진행 상황:{" "}
 								{timelines[timelines.length - 1]?.description || "정보 없음"}
 							</Text>
-							<Text size="2" color="gray">
-								{new Date(
-									timelines[timelines.length - 1]?.created_at
-								).toLocaleString("ko-KR", {
-									year: "numeric",
-									month: "2-digit",
-									day: "2-digit",
-								}) || "정보 없음"}
-							</Text>
+							<div className="flex gap-4">
+								<Text size="2" color="gray">
+									{new Date(
+										timelines[timelines.length - 1]?.created_at
+									).toLocaleString("ko-KR", {
+										year: "numeric",
+										month: "2-digit",
+										day: "2-digit",
+									}) || "정보 없음"}
+								</Text>
+								{isAdmin && (
+									<Flex gap="2">
+										<Button
+											variant="soft"
+											size="2"
+											onClick={() => {
+												setCurrentTimeline(timelines[timelines.length - 1]);
+												setIsFormOpen(true);
+											}}
+										>
+											수정
+										</Button>
+										<Button
+											variant="soft"
+											color="red"
+											size="2"
+											onClick={() => handleDeleteTimeline(timelines[timelines.length - 1].id)}
+										>
+											삭제
+										</Button>
+									</Flex>
+								)}
+							</div>
 						</Box>
 					</Flex>
-
 
 					<motion.div
 						initial={{ height: 0, opacity: 0 }}
@@ -170,19 +191,24 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 								</Box>
 							))}
 					</motion.div>
-					{timelines.length > 1 &&
-						<Button className="ml-auto w-full" variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
+					{timelines.length > 1 && (
+						<Button
+							className="ml-auto w-full"
+							variant="ghost"
+							onClick={() => setIsExpanded(!isExpanded)}
+						>
 							{isExpanded ? "닫기" : "더보기"}
 						</Button>
-					}
+					)}
 				</>
 			)}
 			{isFormOpen && (
 				<TimelineForm
 					open={isFormOpen}
-					initialData={currentTimeline}
+					assignmentId={assignmentId}
+					timelineData={currentTimeline}
 					onOpenChange={setIsFormOpen}
-					onSubmit={handleSaveTimeline}
+					onSuccess={fetchTimelines} // Refresh after save
 				/>
 			)}
 		</section>

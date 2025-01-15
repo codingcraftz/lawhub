@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase"; // 실제 프로젝트에 맞게 경로 수정
 import { Box, Text } from "@radix-ui/themes";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@radix-ui/react-tabs";
+import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 // 하위 탭 컴포넌트
 import StaffManagementTab from "./StaffManagementTab";
@@ -15,6 +16,7 @@ export default function AdminPage() {
 	const [assignments, setAssignments] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 
+	useRoleRedirect(["admin"], "/");
 	// 모든 유저와 모든 assignments 불러오기
 	const fetchAllData = async () => {
 		setIsLoading(true);

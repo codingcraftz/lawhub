@@ -1,5 +1,3 @@
-// TimelineForm.jsx
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -11,24 +9,30 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 export default function TimelineForm({
 	open,
 	onOpenChange,
-	caseId,
+	assignmentId,
 	timelineData,
 	onSuccess,
 }) {
-	const [textValue, setTextValue] = useState("");
+	const [descriptionValue, setDescriptionValue] = useState("");
 
 	useEffect(() => {
 		if (timelineData) {
-			setTextValue(timelineData.text || "");
+			setDescriptionValue(timelineData.description || "");
 		} else {
-			setTextValue("");
+			setDescriptionValue("");
 		}
 	}, [timelineData]);
 
 	const handleSave = async (e) => {
 		e.preventDefault();
-		if (!textValue.trim()) {
+
+		if (!descriptionValue.trim()) {
 			alert("진행 상황을 입력해주세요.");
+			return;
+		}
+
+		if (!assignmentId) {
+			alert("assignmentId가 누락되었습니다. 다시 시도해주세요.");
 			return;
 		}
 
@@ -36,18 +40,20 @@ export default function TimelineForm({
 			if (timelineData) {
 				// 수정
 				const { error } = await supabase
-					.from("case_timelines")
-					.update({ text: textValue })
+					.from("assignment_timelines")
+					.update({ description: descriptionValue })
 					.eq("id", timelineData.id);
 				if (error) throw error;
 			} else {
 				// 추가
 				const { error } = await supabase
-					.from("case_timelines")
-					.insert({ case_id: caseId, text: textValue });
+					.from("assignment_timelines")
+					.insert({ assignment_id: assignmentId, description: descriptionValue });
 				if (error) throw error;
 			}
+
 			alert("저장되었습니다.");
+			onOpenChange(false)
 			if (onSuccess) onSuccess();
 		} catch (err) {
 			console.error("Error saving timeline:", err);
@@ -89,8 +95,8 @@ export default function TimelineForm({
 							진행 상황
 						</Text>
 						<textarea
-							value={textValue}
-							onChange={(e) => setTextValue(e.target.value)}
+							value={descriptionValue}
+							onChange={(e) => setDescriptionValue(e.target.value)}
 							rows={4}
 							className="
                 w-full p-2
