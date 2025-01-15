@@ -97,7 +97,6 @@ const ClientCasePage = () => {
 							<DebtorCard
 								description={assignment.description}
 								name={clientName}
-								clientType={assignment.assignment_clients[0].type}
 								createdAt={assignment.created_at}
 								status={assignment.status}
 								debtors={assignment.assignment_debtors?.map((d) => d?.name)}

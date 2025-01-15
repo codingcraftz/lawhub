@@ -35,7 +35,6 @@ export default function Step1_ClientAndGroupSelection({
 		const { data, error } = await supabase
 			.from("users")
 			.select("id, name, phone_number, birth_date")
-			.eq("role", "client") // 필요에 따라 조정
 			.ilike("name", `%${userSearchTerm}%`);
 
 		if (error) {

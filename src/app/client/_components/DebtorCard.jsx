@@ -8,11 +8,9 @@ const DebtorCard = ({
 	createdAt,
 	debtors,
 	creditors,
-	clientType,
 	name,
 	status,
 }) => {
-	console.log(status)
 	const isClosed = status === "closed";
 
 	return (
@@ -27,22 +25,19 @@ const DebtorCard = ({
 			<div className="flex justify-between items-center border-b pb-3">
 				<div className="flex items-center gap-2">
 					<span className="font-semibold">{name}</span>
-					{clientType && (
-						<span
-							className={`
+					<span
+						className={`
                 text-sm font-semibold py-1 px-3 rounded-full
                 ${type === "개인"
-									? "bg-blue-200 text-blue-800"
-									: "bg-green-200 text-green-800"
-								}
+								? "bg-blue-200 text-blue-800"
+								: "bg-green-200 text-green-800"
+							}
               `}
-						>
-							{clientType}
-						</span>
-					)}
+					>
+						{type === "개인" ? "개인" : "단체"}
+					</span>
 				</div>
 
-				{/* 날짜 */}
 				<span className="text-xs text-gray-12">
 					{new Date(createdAt).toLocaleDateString("ko-KR", {
 						year: "numeric",

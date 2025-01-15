@@ -115,7 +115,8 @@ const Assignment = ({ clientId }) => {
 	}, [clientId, fetchUser]);
 
 	if (!hasAssignments) return <div><p>등록된 의뢰가 없습니다.</p></div>
-
+	console.log(individualAssignments)
+	console.log(groupAssignments)
 	return (
 		<div className="py-4 w-full">
 			<header className="flex justify-between items-center mb-6">
@@ -137,6 +138,7 @@ const Assignment = ({ clientId }) => {
 						>
 							<DebtorCard
 								type="개인"
+								name={assignment.assignment_clients[0].name}
 								description={assignment.description}
 								createdAt={assignment.created_at}
 								debtors={assignment.assignment_debtors?.map((debtor) => debtor.name)}
@@ -150,7 +152,8 @@ const Assignment = ({ clientId }) => {
 							href={`/client/assignment/${assignment.id}`}
 						>
 							<DebtorCard
-								type={assignment.group_name}
+								type="그룹"
+								name={assignment.assignment_groups[0].name}
 								description={assignment.description}
 								createdAt={assignment.created_at}
 								debtors={assignment.assignment_debtors?.map((debtor) => debtor.name)}

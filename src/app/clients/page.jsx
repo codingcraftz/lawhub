@@ -25,16 +25,11 @@ const ClientManagementPage = () => {
 	const router = useRouter();
 	const { user } = useUser();
 
-	// 1) Fetch all clients + all groups
-	// 2) Then fetch assignment_clients + assignment_groups (no status filter)
-	//    We'll see status in the sub-relation, and count how many are "ongoing"
 	const fetchClientsAndGroups = async () => {
 		try {
-			// (A) All users with role=client
 			const { data: allClients, error: clientsError } = await supabase
 				.from("users")
 				.select("id, name, role")
-				.eq("role", "client");
 
 			if (clientsError) throw clientsError;
 
@@ -45,9 +40,6 @@ const ClientManagementPage = () => {
 
 			if (groupsError) throw groupsError;
 
-			// (C) assignment_clients with sub-relation for the assignments' status
-			//  .select("client_id, assignments!inner(status)")
-			// means we fetch all relations, no filter on status
 			const { data: clientAssignments, error: clientAssignmentsError } = await supabase
 				.from("assignment_clients")
 				.select("client_id, assignments(status)");
@@ -61,14 +53,7 @@ const ClientManagementPage = () => {
 
 			if (groupAssignmentsError) throw groupAssignmentsError;
 
-			// Now let's count how many ongoing assignments each client/group has
-			// We'll do an object: ongoingCaseCounts[client_id] = number
 			const clientCaseCounts = clientAssignments.reduce((acc, item) => {
-				// item.assignments is an array or single object if 1:1
-				// But in Supabase, .select("client_id, assignments(status)") typically
-				// returns 'assignments' as an array if there's a 1..n relation
-				// or a single object if there's a 1..1. 
-				// We must handle carefully:
 				const assignmentStatus = item.assignments?.status;
 				if (assignmentStatus === "ongoing") {
 					acc[item.client_id] = (acc[item.client_id] || 0) + 1;
@@ -220,7 +205,6 @@ const ClientManagementPage = () => {
 				)}
 			</Flex>
 
-			{/* 의뢰 등록 폼 (모달) */}
 			<AssignmentForm
 				open={isNewCaseModalOpen}
 				onOpenChange={setIsNewCaseModalOpen}
