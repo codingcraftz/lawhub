@@ -17,6 +17,7 @@ import FileList from "./FileList";
 import ClientInfoModal from "../_components/ClientInfoModal";
 import GroupInfoModal from "../_components/GroupInfoModal";
 import AssignmentEditModal from "./AssignmentEditModal"; // 추가
+import AssignmentAssigneeDialog from "../_components/dialogs/AssignmentAssigneeDialog"; // 추가
 import { Button } from "@radix-ui/themes";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
@@ -29,6 +30,7 @@ const AssignmentPage = () => {
 	const [clientModalOpen, setClientModalOpen] = useState(false);
 	const [groupModalOpen, setGroupModalOpen] = useState(false);
 	const [editModalOpen, setEditModalOpen] = useState(false);
+	const [assigneeModalOpen, setAssigneeModalOpen] = useState(false);
 	const router = useRouter();
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
@@ -42,6 +44,15 @@ const AssignmentPage = () => {
           description,
           created_at,
           status,
+									assignment_assignees (
+					user_id,
+					users (
+						id,
+						name,
+						position,
+						employee_type
+					)
+				),
           assignment_clients (
             id,
             client_id,
@@ -129,6 +140,9 @@ const AssignmentPage = () => {
 		}
 	};
 
+	const assignees = assignment?.assignment_assignees?.map(a => a.users.name)
+
+
 	return (
 		<div className="p-4 mx-auto flex flex-col w-full text-gray-12">
 			<div className="flex mb-4 justify-between">
@@ -167,6 +181,7 @@ const AssignmentPage = () => {
 				{/* (예시) 관리자만 "삭제하기", "종결" 버튼 보이기 + "수정" 버튼 추가 */}
 				{isAdmin && assignment && (
 					<div className="flex gap-2">
+						<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>담당자 배정</Button>
 						{/* 의뢰 수정 버튼 */}
 						<Button variant="soft" onClick={() => setEditModalOpen(true)}>
 							의뢰 수정
@@ -185,9 +200,14 @@ const AssignmentPage = () => {
 				)}
 			</div>
 
-			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
+
+			<div className="p-2 text-gray-11 bg-gray-2 rounded">
 				<p>{assignment?.description}</p>
 			</div>
+			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
+				<p>{`담당자: ${assignees.join(", ")}`}</p>
+			</div>
+
 
 			{/* 기존 컴포넌트들 */}
 			<AssignmentTimelines assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
@@ -209,6 +229,16 @@ const AssignmentPage = () => {
 					onOpenChange={setEditModalOpen}
 					assignment={assignment}
 					onAssignmentUpdated={fetchAssignments}
+				/>
+			)}
+
+			{assignment && (
+				<AssignmentAssigneeDialog
+					open={assigneeModalOpen}
+					onOpenChange={setAssigneeModalOpen}
+					assignmentId={assignmentId}
+					existingAssignees={assignment.assignment_assignees || []}
+					onAssigneesUpdated={fetchAssignments}
 				/>
 			)}
 		</div>

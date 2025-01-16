@@ -28,6 +28,7 @@ const ClientCasePage = () => {
           status,
           assignment_debtors!left (name),
           assignment_creditors!left (name),
+					assignment_assignees!left (user_id, users(name)),
           assignment_clients!inner (client_id, type)
         `)
 				.eq("assignment_clients.client_id", clientId);
@@ -99,6 +100,7 @@ const ClientCasePage = () => {
 								name={clientName}
 								createdAt={assignment.created_at}
 								status={assignment.status}
+								assignees={assignment.assignment_assignees.map((d) => d?.users?.name)}
 								debtors={assignment.assignment_debtors?.map((d) => d?.name)}
 								creditors={assignment.assignment_creditors?.map((c) => c?.name)}
 							/>
