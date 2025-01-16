@@ -32,7 +32,6 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		fetchTimelines();
 	}, [assignmentId]);
 
-	// Handle form submission
 	const handleSaveTimeline = async (timelineData) => {
 		let response;
 		if (currentTimeline) {

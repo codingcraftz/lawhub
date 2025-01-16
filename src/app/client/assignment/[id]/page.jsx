@@ -17,6 +17,7 @@ import FileList from "./FileList";
 import ClientInfoModal from "../_components/ClientInfoModal";
 import GroupInfoModal from "../_components/GroupInfoModal";
 import AssignmentEditModal from "./AssignmentEditModal"; // 추가
+import AssignmentAssigneeDialog from "../_components/dialogs/AssignmentAssigneeDialog"; // 추가
 import { Button } from "@radix-ui/themes";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
@@ -28,10 +29,9 @@ const AssignmentPage = () => {
 	const [assignmentType, setAssignmentType] = useState(null);
 	const [clientModalOpen, setClientModalOpen] = useState(false);
 	const [groupModalOpen, setGroupModalOpen] = useState(false);
-	const [editModalOpen, setEditModalOpen] = useState(false); // 의뢰 수정 모달
+	const [editModalOpen, setEditModalOpen] = useState(false);
+	const [assigneeModalOpen, setAssigneeModalOpen] = useState(false);
 	const router = useRouter();
-
-	// 관리자 권한 여부
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
 	const fetchAssignments = async () => {
@@ -44,6 +44,15 @@ const AssignmentPage = () => {
           description,
           created_at,
           status,
+									assignment_assignees (
+					user_id,
+					users (
+						id,
+						name,
+						position,
+						employee_type
+					)
+				),
           assignment_clients (
             id,
             client_id,
@@ -73,7 +82,6 @@ const AssignmentPage = () => {
 				return;
 			}
 
-			// assignment_clients 또는 assignment_groups 배열 존재 여부 파악
 			if (data.assignment_clients?.length > 0) {
 				setAssignmentType("client");
 			} else if (data.assignment_groups?.length > 0) {
@@ -132,6 +140,9 @@ const AssignmentPage = () => {
 		}
 	};
 
+	const assignees = assignment?.assignment_assignees?.map(a => a.users.name)
+
+
 	return (
 		<div className="p-4 mx-auto flex flex-col w-full text-gray-12">
 			<div className="flex mb-4 justify-between">
@@ -170,6 +181,7 @@ const AssignmentPage = () => {
 				{/* (예시) 관리자만 "삭제하기", "종결" 버튼 보이기 + "수정" 버튼 추가 */}
 				{isAdmin && assignment && (
 					<div className="flex gap-2">
+						<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>담당자 배정</Button>
 						{/* 의뢰 수정 버튼 */}
 						<Button variant="soft" onClick={() => setEditModalOpen(true)}>
 							의뢰 수정
@@ -188,21 +200,26 @@ const AssignmentPage = () => {
 				)}
 			</div>
 
-			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
+
+			<div className="p-2 text-gray-11 bg-gray-2 rounded">
 				<p>{assignment?.description}</p>
 			</div>
+			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
+				<p>{`담당자: ${assignees.join(", ")}`}</p>
+			</div>
+
 
 			{/* 기존 컴포넌트들 */}
-			<AssignmentTimelines assignmentId={assignmentId} user={user} />
+			<AssignmentTimelines assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 			<div className="grid grid-cols-2 gap-4 mt-4">
-				<CreditorInfo assignmentId={assignmentId} user={user} />
-				<DebtorInfo assignmentId={assignmentId} user={user} />
-				<BondDetails assignmentId={assignmentId} user={user} />
-				<CaseList assignmentId={assignmentId} user={user} />
-				<EnforcementList assignmentId={assignmentId} user={user} />
-				<FileList assignmentId={assignmentId} user={user} />
-				<Inquiry assignmentId={assignmentId} user={user} />
-				<AssignmentTasks assignmentId={assignmentId} user={user} />
+				<CreditorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<DebtorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<BondDetails assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<CaseList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<EnforcementList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<FileList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<Inquiry assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 			</div>
 
 			{/* 의뢰 수정 모달 */}
@@ -212,6 +229,16 @@ const AssignmentPage = () => {
 					onOpenChange={setEditModalOpen}
 					assignment={assignment}
 					onAssignmentUpdated={fetchAssignments}
+				/>
+			)}
+
+			{assignment && (
+				<AssignmentAssigneeDialog
+					open={assigneeModalOpen}
+					onOpenChange={setAssigneeModalOpen}
+					assignmentId={assignmentId}
+					existingAssignees={assignment.assignment_assignees || []}
+					onAssigneesUpdated={fetchAssignments}
 				/>
 			)}
 		</div>

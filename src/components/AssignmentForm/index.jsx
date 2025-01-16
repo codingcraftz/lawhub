@@ -18,6 +18,7 @@ import Step3_DebtorRegistration from "./Step3_DebtorRegistration";
 import Step4_AssignmentContent from "./Step4_AssignmentContent";
 import { useRouter } from "next/navigation";
 import Step1_ClientAndGroupSelection from "./Step1_ClientAndGroupSelection";
+import Step2_AssigneeRegistration from "./Step2_AssigneeRegistration";
 
 // 밸리데이션 스키마
 const assignmentSchema = yup.object().shape({
@@ -31,6 +32,7 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 	const [selectedCreditors, setSelectedCreditors] = useState([]);
 	const [selectedGroups, setSelectedGroups] = useState([]);
 	const [selectedDebtors, setSelectedDebtors] = useState([]);
+	const [selectedAssignees, setSelectedAssignees] = useState([]);
 	const [userType, setUserType] = useState(null);
 	const router = useRouter();
 
@@ -109,8 +111,21 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 					alert("고객 추가 중 오류가 발생했습니다.");
 					return;
 				}
+			}
 
+			const assigneeInsertData = selectedAssignees.map((assignee) => ({
+				assignment_id: assignmentId,
+				user_id: assignee.id,
+				role: assignee.employee_type,
+			}));
 
+			const { error: assigneeError } = await supabase
+				.from("assignment_assignees")
+				.insert(assigneeInsertData);
+
+			if (assigneeError) {
+				console.error("담당자 추가 오류:", assigneeError);
+				return;
 			}
 			// Step 2: 의뢰인 데이터 추가
 			if (!noClientSelected) {
@@ -312,11 +327,33 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 							</>
 						)}
 
-						{/* ========== Step2: 채권자(Creditor) 등록 ========== */}
 						{step === 2 && (
 							<>
 								<Dialog.Title className="font-bold text-xl pb-6">
-									2단계: 채권자 정보를 입력하세요
+									2단계: 담당자를 선택해주세요
+								</Dialog.Title>
+
+								<Step2_AssigneeRegistration
+									selectedAssignees={selectedAssignees}
+									setSelectedAssignees={setSelectedAssignees}
+								/>
+
+								<Flex justify="end" mt="4" gap="2">
+									<Button variant="soft" color="gray" onClick={goToPrevStep}>
+										이전
+									</Button>
+									<Button variant="soft" onClick={goToNextStep}>
+										다음
+									</Button>
+								</Flex>
+							</>
+						)}
+
+						{/* ========== Step2: 채권자(Creditor) 등록 ========== */}
+						{step === 3 && (
+							<>
+								<Dialog.Title className="font-bold text-xl pb-6">
+									3단계: 채권자 정보를 입력하세요
 								</Dialog.Title>
 
 								<Step2_CreditorRegistration
@@ -337,10 +374,10 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 						)}
 
 						{/* ========== Step3: 채무자(Debtor) 등록 ========== */}
-						{step === 3 && (
+						{step === 4 && (
 							<>
 								<Dialog.Title className="font-bold text-xl pb-6">
-									3단계: 채무자 정보를 입력하세요
+									4단계: 채무자 정보를 입력하세요
 								</Dialog.Title>
 
 								<Step3_DebtorRegistration
@@ -361,10 +398,10 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
 						)}
 
 						{/* ========== Step4: 의뢰 내용 입력 ========== */}
-						{step === 4 && (
+						{step === 5 && (
 							<>
 								<Dialog.Title className="font-bold text-xl pb-6">
-									4단계: 의뢰 내용을 입력하세요
+									5단계: 의뢰 내용을 입력하세요
 								</Dialog.Title>
 								<Step4_AssignmentContent
 									register={register}

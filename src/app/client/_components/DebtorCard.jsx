@@ -8,15 +8,17 @@ const DebtorCard = ({
 	createdAt,
 	debtors,
 	creditors,
+	assignees,
 	name,
 	status,
 }) => {
 	const isClosed = status === "closed";
+	console.log("assignees", assignees)
 
 	return (
 		<div
 			className={`
-        bg-gray-2 shadow-md rounded-lg p-6 flex flex-col gap-4
+        bg-gray-2 shadow-md rounded-lg p-6 flex flex-col gap-4 h-full
         hover:shadow-lg transition-shadow cursor-pointer border border-gray-7
         ${isClosed ? "opacity-80" : ""}
       `}
@@ -48,17 +50,26 @@ const DebtorCard = ({
 			</div>
 
 			{/* Content */}
-			<div className="flex flex-col gap-3">
+			<div className="flex flex-col gap-3 flex-1">
 				{/* 의뢰 설명 */}
-				<h3 className="font-bold text-md text-gray-11">{description}</h3>
+				<h3 className="font-bold text-md text-gray-11 flex-1">{description}</h3>
 
 				{/* 상태가 closed이면 "완결" 표시 */}
 				{isClosed && (
 					<div className="text-red-9 text-sm font-semibold">[완결된 사건]</div>
 				)}
 
+				<div className="flex gap-2">
+					<h4 className="text-sm font-medium">담당자:</h4>
+					<p className="text-sm">
+						{assignees?.join(", ") || (
+							<span className="text-gray-10">미배정</span>
+						)}
+					</p>
+				</div>
+
 				{/* 채권자 */}
-				<div>
+				<div className="flex gap-2">
 					<h4 className="text-sm font-medium">채권자:</h4>
 					<p className="text-sm">
 						{creditors?.join(", ") || (
@@ -68,7 +79,7 @@ const DebtorCard = ({
 				</div>
 
 				{/* 채무자 */}
-				<div>
+				<div className="flex gap-2">
 					<h4 className="text-sm font-medium">채무자:</h4>
 					<p className="text-sm">
 						{debtors?.join(", ") || (
