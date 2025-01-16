@@ -1,5 +1,3 @@
-// src/contexts/UserContext.jsx
-
 "use client";
 
 import React, { createContext, useState, useEffect, useCallback } from "react";
@@ -16,12 +14,14 @@ export const UserProvider = ({ children }) => {
 	const [modalMessage, setModalMessage] = useState("");
 	const router = useRouter();
 
+	// Fetch user profile and store it in state
 	const fetchUser = useCallback(async () => {
 		const {
 			data: { user: authUser },
 		} = await supabase.auth.getUser();
 
 		if (authUser) {
+			// If user is logged in, fetch the user profile from the database
 			const { data: profile, error } = await supabase
 				.from("users")
 				.select("*")
@@ -29,24 +29,27 @@ export const UserProvider = ({ children }) => {
 				.single();
 
 			if (error) {
-				router.push("/login")
+				router.push("/login");
 				console.error("Error fetching profile:", error);
 			} else {
+				// If profile exists, set it in the context
 				setUser({ ...profile });
 			}
 		} else {
+			// No user logged in, set the user state to null
 			setUser(null);
 		}
 	}, []);
 
 	useEffect(() => {
-		console.log("fetchUser");
 		fetchUser();
 
+		// Set up an auth listener to handle session changes
 		const { data: listener } = supabase.auth.onAuthStateChange(() => {
 			fetchUser();
 		});
 
+		// Cleanup the listener on component unmount
 		return () => {
 			listener.subscription.unsubscribe();
 		};
@@ -86,3 +89,4 @@ export const UserProvider = ({ children }) => {
 		</UserContext.Provider>
 	);
 };
+

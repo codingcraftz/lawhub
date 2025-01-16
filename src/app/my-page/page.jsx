@@ -86,6 +86,7 @@ const MyPage = () => {
 					size="6"
 					radius="full"
 				/>
+				<p className="mt-2">{`안녕하세요! ${user?.name} ${user?.position}님`}</p>
 				{/* 정보 카드 */}
 				<Box width="100%" border="1px solid var(--gray-5)" p="4" rounded="md">
 					<Flex direction="column" gap="3">
