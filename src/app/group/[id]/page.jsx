@@ -76,8 +76,8 @@ const GroupCasePage = () => {
 	}, [groupId]);
 
 	return (
-		<div className="py-4 w-full">
-			<header className="flex justify-between items-center mb-4">
+		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
+			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
 				<div className="flex items-center gap-2">
 					<ArrowLeftIcon
 						className="w-8 h-8 cursor-pointer"
