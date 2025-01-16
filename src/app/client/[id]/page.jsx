@@ -16,7 +16,6 @@ const ClientCasePage = () => {
 	const [assignments, setAssignments] = useState([]);
 	useRoleRedirect(["staff", "admin", "client"], "/");
 
-	// 의뢰 목록 불러오기
 	const fetchAssignments = async () => {
 		try {
 			const { data, error } = await supabase
@@ -37,16 +36,13 @@ const ClientCasePage = () => {
 				console.error("Error fetching assignments:", error);
 				return;
 			}
-			// 1) status='ongoing' 먼저, 그 다음 status='closed' 순
-			//    나머지 상태가 있다면(예: scheduled?) 필요 시 추가
+
 			const sorted = (data || []).sort((a, b) => {
 				const orderA = a.status === "ongoing" ? 0 : 1;
 				const orderB = b.status === "ongoing" ? 0 : 1;
 				if (orderA !== orderB) {
 					return orderA - orderB;
 				}
-				// 진행중끼리는 created_at DESC 등 원하는 정렬을 할 수도 있음
-				// 여기서는 그냥 created_at ASC로 두겠습니다.
 				return new Date(a.created_at) - new Date(b.created_at);
 			});
 
@@ -56,7 +52,6 @@ const ClientCasePage = () => {
 		}
 	};
 
-	// 의뢰인(클라이언트) 정보 불러오기
 	const fetchUser = useCallback(async () => {
 		if (!clientId) return;
 		const { data: clientData, error } = await supabase
@@ -77,11 +72,9 @@ const ClientCasePage = () => {
 		fetchUser();
 	}, [clientId]);
 
-	console.log(assignments)
-
 	return (
-		<div className="py-4 w-full">
-			<header className="flex justify-between items-center mb-4">
+		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
+			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
 				<div className="flex items-center gap-2">
 					<ArrowLeftIcon
 						className="w-8 h-8 cursor-pointer"

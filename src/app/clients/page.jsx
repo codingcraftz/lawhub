@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
-import { Box, Flex, Text, Card, Button, Switch } from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Switch } from "@radix-ui/themes";
 import { useUser } from "@/hooks/useUser";
 import Pagination from "@/components/Pagination";
 import AssignmentForm from "@/components/AssignmentForm";
@@ -29,11 +29,10 @@ const ClientManagementPage = () => {
 		try {
 			const { data: allClients, error: clientsError } = await supabase
 				.from("users")
-				.select("id, name, role")
+				.select("id, name, role");
 
 			if (clientsError) throw clientsError;
 
-			// (B) All groups
 			const { data: allGroups, error: groupsError } = await supabase
 				.from("groups")
 				.select("id, name");
@@ -46,7 +45,6 @@ const ClientManagementPage = () => {
 
 			if (clientAssignmentsError) throw clientAssignmentsError;
 
-			// (D) assignment_groups with sub-relation
 			const { data: groupAssignments, error: groupAssignmentsError } = await supabase
 				.from("assignment_groups")
 				.select("group_id, assignments(status)");
@@ -69,7 +67,6 @@ const ClientManagementPage = () => {
 				return acc;
 			}, {});
 
-			// Build final arrays
 			const clientsWithCounts = allClients.map((c) => ({
 				id: c.id,
 				name: c.name,
@@ -97,19 +94,15 @@ const ClientManagementPage = () => {
 		}
 	}, [user]);
 
-	// Re-filter whenever "clients" or toggles/pagination change
 	useEffect(() => {
-		// (1) If showOngoingOnly, we filter out items with ongoing_case_count===0
 		const ongoingFiltered = showOngoingOnly
 			? clients.filter((item) => item.ongoing_case_count > 0)
 			: clients;
 
-		// (2) Search filter by name
 		const searchFiltered = ongoingFiltered.filter((item) =>
 			item.name.toLowerCase().includes(searchQuery.toLowerCase())
 		);
 
-		// (3) Pagination
 		const startIndex = (currentPage - 1) * PAGE_SIZE;
 		const endIndex = startIndex + PAGE_SIZE;
 
@@ -123,25 +116,28 @@ const ClientManagementPage = () => {
 
 	const handleCaseSuccess = () => {
 		setIsNewCaseModalOpen(false);
-		// Re-fetch to reflect newly added assignment
 		fetchClientsAndGroups();
 	};
 
 	return (
-		<Box className="py-4 w-full">
+		<Box className="py-4 w-full px-4 md:px-8 lg:px-12">
 			<Flex direction="column" gap="4">
 				{/* Header */}
-				<header className="flex justify-between items-center">
+				<Flex
+					className="flex-col md:flex-row justify-between items-start md:items-center gap-4"
+				>
 					<Text className="text-2xl font-bold">의뢰인 목록</Text>
 					<Button color="green" onClick={() => setIsNewCaseModalOpen(true)}>
 						새 의뢰 등록
 					</Button>
-				</header>
+				</Flex>
 
 				{/* Search + Toggle */}
-				<Flex align="center" justify="between">
+				<Flex
+					className="flex-col md:flex-row gap-4 items-start md:items-center justify-between"
+				>
 					<input
-						className="rounded-lg"
+						className="rounded-lg w-full md:w-auto"
 						type="text"
 						placeholder="이름으로 검색"
 						value={searchQuery}
@@ -175,8 +171,8 @@ const ClientManagementPage = () => {
 							onClick={() =>
 								router.push(
 									item.type === "client"
-										? `/client/${item.id}` // 개인 클라이언트 경로
-										: `/group/${item.id}`  // 단체 클라이언트 경로
+										? `/client/${item.id}`
+										: `/group/${item.id}`
 								)
 							}
 						>

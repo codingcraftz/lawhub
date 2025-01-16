@@ -150,45 +150,37 @@ const DebtorInfo = ({ assignmentId, user }) => {
 						key={debtor.id}
 						className="mb-4 p-3 bg-gray-3 border border-gray-6 rounded"
 					>
-						<Flex justify="between" align="center">
-							<Box>
-								<Text>
-									<span className="font-semibold">이름: </span>
-									{debtor.name}
-								</Text>
-							</Box>
-							{isAdmin && (
-								<Flex gap="2">
-									<Button
-										variant="soft"
-										size="2"
-										onClick={() => {
-											setSelectedDebtor(debtor);
-											setIsFormOpen(true);
-										}}
-									>
-										수정
-									</Button>
-									<Button
-										variant="soft"
-										color="red"
-										size="2"
-										onClick={() => handleDeleteDebtor(debtor.id)}
-									>
-										삭제
-									</Button>
-									<Button
-										variant="soft"
-										size="2"
-										onClick={() => handleEditCreditInfo(debtor)}
-									>
-										신용정보 수정
-									</Button>
-								</Flex>
-							)}
-							<Button variant="ghost" onClick={() => toggleExpand(debtor.id)}>
-								{isExpanded[debtor.id] ? "닫기" : "신용 정보"}
-							</Button>
+						<Flex justify="between" align="center" className="flex-col md:flex-row">
+							<div className="flex justify-between items-center gap-2 w-full">
+								<p className="flex flex-col md:flex-row items-center gap-2 flex-start">
+									<p className="font-semibold mr-auto"> {`이름: ${debtor.name}`}</p>
+									{isAdmin && (
+										<Flex className="items-center gap-2">
+											<Button
+												variant="soft"
+												size="2"
+												onClick={() => {
+													setSelectedDebtor(debtor);
+													setIsFormOpen(true);
+												}}
+											>
+												수정
+											</Button>
+											<Button
+												variant="soft"
+												color="red"
+												size="2"
+												onClick={() => handleDeleteDebtor(debtor.id)}
+											>
+												삭제
+											</Button>
+										</Flex>
+									)}
+								</p>
+								<Button variant="ghost" onClick={() => toggleExpand(debtor.id)}>
+									{isExpanded[debtor.id] ? "닫기" : "신용 정보"}
+								</Button>
+							</div>
 						</Flex>
 
 						{isExpanded[debtor.id] && (
@@ -198,12 +190,24 @@ const DebtorInfo = ({ assignmentId, user }) => {
 								transition={{ duration: 0.3 }}
 								className="overflow-hidden mt-3"
 							>
+								{isAdmin &&
+									<div className="flex flex-end w-full mb-2">
+										<Button
+											className="ml-auto"
+											variant="soft"
+											size="2"
+											onClick={() => handleEditCreditInfo(debtor)}
+										>
+											신용정보 수정
+										</Button>
+									</div>
+								}
 								<Box className="bg-gray-2 p-3 border border-gray-6 rounded">
 									{debtor.creditInfo ? (
 										<ul >
 											{Object.entries(debtor.creditInfo).map(([key, value]) => (
 												<li key={key}>
-													<Text size="2" color="gray">
+													<Text>
 														{key}: {value}
 													</Text>
 												</li>

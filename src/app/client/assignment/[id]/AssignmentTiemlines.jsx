@@ -32,6 +32,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		fetchTimelines();
 	}, [assignmentId]);
 
+	// Handle form submission
 	const handleSaveTimeline = async (timelineData) => {
 		let response;
 		if (currentTimeline) {
@@ -93,13 +94,13 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 			) : (
 				<>
 					<Flex justify="between" align="center" className="mb-3">
-						<Box className="flex gap-4 items-center justify-between w-full px-2">
-							<Text className="font-semibold">
+						<Box className="font-semibold w-full">
+							<Text as="p" className="font-semibold">
 								현재 진행 상황:{" "}
 								{timelines[timelines.length - 1]?.description || "정보 없음"}
 							</Text>
-							<div className="flex gap-4">
-								<Text size="2" color="gray">
+							<div className="flex gap-2 pr-2 items-center justify-end w-full">
+								<Text as="p" size="2" color="gray" className="whitespace-nowrap">
 									{new Date(
 										timelines[timelines.length - 1]?.created_at
 									).toLocaleString("ko-KR", {
@@ -109,7 +110,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 									}) || "정보 없음"}
 								</Text>
 								{isAdmin && (
-									<Flex gap="2">
+									<>
 										<Button
 											variant="soft"
 											size="2"
@@ -128,7 +129,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 										>
 											삭제
 										</Button>
-									</Flex>
+									</>
 								)}
 							</div>
 						</Box>
@@ -152,40 +153,44 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 									className="mb-4 p-3 bg-gray-2 rounded border border-gray-6"
 								>
 									<Flex justify="between" align="center">
-										<Box className="flex justify-between w-full">
-											<Text>
+										<Box className="font-semibold w-full">
+											<Text as="p">
 												{timeline.description}
 											</Text>
-											<Text size="2" color="gray">
-												{new Date(timeline.created_at).toLocaleString("ko-KR", {
-													year: "numeric",
-													month: "2-digit",
-													day: "2-digit",
-												})}
-											</Text>
+											<div className="flex gap-2 pr-2 items-center justify-end w-full">
+
+												<Text as="p" size="2" color="gray" className="whitespace-nowrap">
+
+													{new Date(timeline.created_at).toLocaleString("ko-KR", {
+														year: "numeric",
+														month: "2-digit",
+														day: "2-digit",
+													})}
+												</Text>
+												{isAdmin && (
+													<>
+														<Button
+															variant="soft"
+															size="2"
+															onClick={() => {
+																setCurrentTimeline(timeline);
+																setIsFormOpen(true);
+															}}
+														>
+															수정
+														</Button>
+														<Button
+															variant="soft"
+															color="red"
+															size="2"
+															onClick={() => handleDeleteTimeline(timeline.id)}
+														>
+															삭제
+														</Button>
+													</>
+												)}
+											</div>
 										</Box>
-										{isAdmin && (
-											<Flex gap="2" className="px-4">
-												<Button
-													variant="soft"
-													size="2"
-													onClick={() => {
-														setCurrentTimeline(timeline);
-														setIsFormOpen(true);
-													}}
-												>
-													수정
-												</Button>
-												<Button
-													variant="soft"
-													color="red"
-													size="2"
-													onClick={() => handleDeleteTimeline(timeline.id)}
-												>
-													삭제
-												</Button>
-											</Flex>
-										)}
 									</Flex>
 								</Box>
 							))}

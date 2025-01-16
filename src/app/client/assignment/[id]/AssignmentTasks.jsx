@@ -78,8 +78,8 @@ const AssignmentTasks = ({ assignmentId, user }) => {
 
 	return (
 		<section className="flex flex-col mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
-			<Flex justify="between" align="center" className="mb-3">
-				<Text className="text-lg font-semibold">
+			<Flex justify="between" align="center" className="mb-3 flex-wrap gap-2">
+				<Text className="text-lg font-semibold flex-1">
 					업무 목록 <span className="text-md text-gray-10">({ongoingCount}개 진행중)</span>
 				</Text>
 				{isAdmin && (
@@ -99,45 +99,34 @@ const AssignmentTasks = ({ assignmentId, user }) => {
 							className={`bg-gray-3 border border-gray-6 p-3 rounded ${task.status === "closed" ? "opacity-80" : ""
 								}`}
 						>
-							<Flex justify="between" align="center">
-								<Box className="flex flex-col">
-									<Text className="font-medium">
+							<Flex justify="between" align="center" className="flex-wrap gap-2">
+								<Box className="flex-1">
+									<Text className="font-medium text-sm md:text-base">
 										{task.title}{" "}
 										{task.status === "ongoing" && (
-											<span className="text-green-9 text-sm ml-1">[진행 중]</span>
+											<span className="text-green-9 text-xs md:text-sm ml-1">[진행 중]</span>
 										)}
 										{task.status === "closed" && (
-											<span className="text-red-9 text-sm ml-1">[완료]</span>
+											<span className="text-red-9 text-xs md:text-sm ml-1">[완료]</span>
 										)}
 									</Text>
-									<Text size="2" color="gray">
+									<Text size="2" color="gray" className="text-xs md:text-sm">
 										작성자: {task.users?.name || "알 수 없음"} /{" "}
 										{new Date(task.created_at).toLocaleDateString("ko-KR")}
 									</Text>
 								</Box>
-								<Flex className="items-center gap-3">
-									{(isAdmin && user.id === task.created_by) && (
+								<Flex className="items-center gap-2">
+									{isAdmin && user.id === task.created_by && (
 										<div className="flex gap-1">
-											<Button
-												variant="soft"
-												onClick={() => openEditForm(task)}
-											>
+											<Button variant="soft" onClick={() => openEditForm(task)}>
 												수정
 											</Button>
-											<Button
-												variant="soft"
-												color="red"
-												onClick={() => handleDeleteTask(task.id)}
-											>
+											<Button variant="soft" color="red" onClick={() => handleDeleteTask(task.id)}>
 												삭제
 											</Button>
 										</div>
 									)}
-
-									<Button
-										variant="ghost"
-										onClick={() => toggleExpand(task.id)}
-									>
+									<Button variant="ghost" size="1" onClick={() => toggleExpand(task.id)}>
 										{expandedTaskId === task.id ? "닫기" : "상세보기"}
 									</Button>
 								</Flex>
@@ -168,6 +157,7 @@ const AssignmentTasks = ({ assignmentId, user }) => {
 				<Button
 					className="mt-4"
 					variant="ghost"
+					size="1"
 					onClick={() => setShowAll((prev) => !prev)}
 				>
 					{showAll ? "접기" : "더보기"}
