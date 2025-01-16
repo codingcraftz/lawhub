@@ -86,7 +86,7 @@ const NotificationDropdown = ({ user }) => {
 
 	const handleNotificationClick = async (notification) => {
 		await markAsRead(notification.id);
-		router.push(`/client/${notification.assignment_id}`);
+		router.push(`/client/assignment/${notification.assignment_id}`);
 	};
 
 	const markAsRead = async (id) => {

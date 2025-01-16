@@ -28,10 +28,8 @@ const AssignmentPage = () => {
 	const [assignmentType, setAssignmentType] = useState(null);
 	const [clientModalOpen, setClientModalOpen] = useState(false);
 	const [groupModalOpen, setGroupModalOpen] = useState(false);
-	const [editModalOpen, setEditModalOpen] = useState(false); // 의뢰 수정 모달
+	const [editModalOpen, setEditModalOpen] = useState(false);
 	const router = useRouter();
-
-	// 관리자 권한 여부
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
 	const fetchAssignments = async () => {
@@ -73,7 +71,6 @@ const AssignmentPage = () => {
 				return;
 			}
 
-			// assignment_clients 또는 assignment_groups 배열 존재 여부 파악
 			if (data.assignment_clients?.length > 0) {
 				setAssignmentType("client");
 			} else if (data.assignment_groups?.length > 0) {
@@ -193,16 +190,16 @@ const AssignmentPage = () => {
 			</div>
 
 			{/* 기존 컴포넌트들 */}
-			<AssignmentTimelines assignmentId={assignmentId} user={user} />
+			<AssignmentTimelines assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 			<div className="grid grid-cols-2 gap-4 mt-4">
-				<CreditorInfo assignmentId={assignmentId} user={user} />
-				<DebtorInfo assignmentId={assignmentId} user={user} />
-				<BondDetails assignmentId={assignmentId} user={user} />
-				<CaseList assignmentId={assignmentId} user={user} />
-				<EnforcementList assignmentId={assignmentId} user={user} />
-				<FileList assignmentId={assignmentId} user={user} />
-				<Inquiry assignmentId={assignmentId} user={user} />
-				<AssignmentTasks assignmentId={assignmentId} user={user} />
+				<CreditorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<DebtorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<BondDetails assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<CaseList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<EnforcementList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<FileList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<Inquiry assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 			</div>
 
 			{/* 의뢰 수정 모달 */}

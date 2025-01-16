@@ -14,94 +14,54 @@ export default function AssignmentEditModal({
 	onAssignmentUpdated,
 }) {
 	const [description, setDescription] = useState("");
-	const [assignedClients, setAssignedClients] = useState([]); // [{ client_id, name, phone_number, ... }]
-	const [assignedGroups, setAssignedGroups] = useState([]);   // [{ group_id, name, ... }]
+	const [assignedClients, setAssignedClients] = useState([]);
+	const [assignedGroups, setAssignedGroups] = useState([]);
 
-	// 의뢰인 / 그룹 목록 초기화
 	useEffect(() => {
 		if (open && assignment) {
 			setDescription(assignment.description || "");
-
-			// ─────────────────────────────────────────────────────────
-			// assignment.assignment_clients -> assignedClients
-			// 실제 DB 조인 결과를 보면, 각 원소는:
-			//  {
-			//    id: ...,
-			//    client_id: ...,
-			//    type: ...,
-			//    client: {
-			//      id: ...,
-			//      name: ...,
-			//      phone_number: ...
-			//    }
-			//  }
-			// 'client'가 null일 수도 있으니 안전하게 처리
-			// ─────────────────────────────────────────────────────────
 			const clientData = (assignment.assignment_clients || []).map((ac) => ({
 				client_id: ac.client_id,
 				type: ac.type,
-				name: ac.client?.name || "", // 조인된 users 테이블의 name
-				phone_number: ac.client?.phone_number || "", // 조인된 users 테이블의 phone_number
+				name: ac.client?.name || "",
+				phone_number: ac.client?.phone_number || "",
 			}));
 			setAssignedClients(clientData);
-
-			// ─────────────────────────────────────────────────────────
-			// assignment.assignment_groups -> assignedGroups
-			// 유사하게 각 원소는:
-			//  {
-			//    id: ...,
-			//    group_id: ...,
-			//    type: ...,
-			//    group: {
-			//      id: ...,
-			//      name: ...
-			//    }
-			//  }
-			// ─────────────────────────────────────────────────────────
 			const groupData = (assignment.assignment_groups || []).map((ag) => ({
 				group_id: ag.group_id,
 				type: ag.type,
-				name: ag.group?.name || "", // 조인된 groups 테이블의 name
+				name: ag.group?.name || "",
 			}));
 			setAssignedGroups(groupData);
 		}
 	}, [open, assignment]);
 
-	// 의뢰인 제거 함수
 	const removeClient = (clientId) => {
 		setAssignedClients((prev) => prev.filter((c) => c.client_id !== clientId));
 	};
 
-	// 그룹 제거 함수
 	const removeGroup = (groupId) => {
 		setAssignedGroups((prev) => prev.filter((g) => g.group_id !== groupId));
 	};
 
-	// 저장 버튼 클릭
 	const handleSave = async () => {
 		try {
-			// 1) assignments.description 업데이트
 			const { error: updateError } = await supabase
 				.from("assignments")
 				.update({ description })
 				.eq("id", assignment.id);
 
 			if (updateError) throw updateError;
-
-			// 2) assignment_clients 업데이트
 			const oldClients = assignment.assignment_clients || [];
 			const newClients = assignedClients;
 
-			// 제거해야 할 목록
 			const removed = oldClients.filter(
 				(oc) => !newClients.some((nc) => nc.client_id === oc.client_id)
 			);
-			// 새로 추가된 목록
 			const added = newClients.filter(
 				(nc) => !oldClients.some((oc) => oc.client_id === nc.client_id)
 			);
 
-			// 삭제
 			if (removed.length > 0) {
 				for (const r of removed) {
 					const { error: removeErr } = await supabase
@@ -126,7 +86,6 @@ export default function AssignmentEditModal({
 				if (addErr) throw addErr;
 			}
 
-			// 3) assignment_groups 업데이트
 			const oldGroups = assignment.assignment_groups || [];
 			const newGroups = assignedGroups;
 
