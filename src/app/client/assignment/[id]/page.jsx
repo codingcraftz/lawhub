@@ -16,8 +16,8 @@ import AssignmentTasks from "./AssignmentTasks";
 import FileList from "./FileList";
 import ClientInfoModal from "../_components/ClientInfoModal";
 import GroupInfoModal from "../_components/GroupInfoModal";
-import AssignmentEditModal from "./AssignmentEditModal"; // 추가
-import AssignmentAssigneeDialog from "../_components/dialogs/AssignmentAssigneeDialog"; // 추가
+import AssignmentEditModal from "./AssignmentEditModal";
+import AssignmentAssigneeDialog from "../_components/dialogs/AssignmentAssigneeDialog";
 import { Button } from "@radix-ui/themes";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
@@ -38,21 +38,20 @@ const AssignmentPage = () => {
 		try {
 			const { data, error } = await supabase
 				.from("assignments")
-				.select(
-					`
-					id,
+				.select(`
+          id,
           description,
           created_at,
           status,
-									assignment_assignees (
-					user_id,
-					users (
-						id,
-						name,
-						position,
-						employee_type
-					)
-				),
+          assignment_assignees (
+            user_id,
+            users (
+              id,
+              name,
+              position,
+              employee_type
+            )
+          ),
           assignment_clients (
             id,
             client_id,
@@ -72,8 +71,7 @@ const AssignmentPage = () => {
               name
             )
           )
-        `
-				)
+        `)
 				.eq("id", assignmentId)
 				.single();
 
@@ -97,7 +95,6 @@ const AssignmentPage = () => {
 		fetchAssignments();
 	}, [assignmentId]);
 
-	// 1) 의뢰 삭제하기
 	const handleDeleteAssignment = async () => {
 		if (!window.confirm("정말로 이 의뢰를 삭제하시겠습니까?")) return;
 
@@ -118,7 +115,6 @@ const AssignmentPage = () => {
 		}
 	};
 
-	// 2) 종결(Closed)로 상태 변경
 	const handleCloseAssignment = async () => {
 		if (!window.confirm("이 의뢰를 종결 처리하시겠습니까?")) return;
 
@@ -133,19 +129,18 @@ const AssignmentPage = () => {
 			}
 
 			alert("의뢰 상태가 종결 처리되었습니다.");
-			fetchAssignments(); // 다시 조회하여 상태 갱신
+			fetchAssignments();
 		} catch (err) {
 			console.error(err);
 			alert("종결 처리 실패");
 		}
 	};
 
-	const assignees = assignment?.assignment_assignees?.map(a => a.users.name)
-
+	const assignees = assignment?.assignment_assignees?.map((a) => a.users.name);
 
 	return (
 		<div className="p-4 mx-auto flex flex-col w-full text-gray-12">
-			<div className="flex mb-4 justify-between flex-wrap gap-4">
+			<div className="flex justify-between mb-4 flex-wrap gap-4">
 				<div className="flex items-center gap-2 flex-wrap">
 					<ArrowLeftIcon
 						className="w-8 h-8 cursor-pointer"
@@ -154,7 +149,9 @@ const AssignmentPage = () => {
 					<h1 className="text-lg md:text-2xl font-bold">의뢰 상세 페이지</h1>
 					{assignmentType === "client" && isAdmin && (
 						<>
-							<Button onClick={() => setClientModalOpen(true)}>의뢰인 정보보기</Button>
+							<Button onClick={() => setClientModalOpen(true)}>
+								의뢰인 정보보기
+							</Button>
 							<ClientInfoModal
 								open={clientModalOpen}
 								onOpenChange={setClientModalOpen}
@@ -177,47 +174,76 @@ const AssignmentPage = () => {
 						</>
 					)}
 				</div>
-
 				{isAdmin && assignment && (
-					<div className="flex sm:gap-1 gap-2 flex-wrap">
+					<div className="flex gap-2 flex-wrap">
 						<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>
 							담당자 배정
 						</Button>
 						<Button variant="soft" onClick={() => setEditModalOpen(true)}>
 							의뢰 수정
 						</Button>
-						<Button variant="soft" color="red" onClick={handleDeleteAssignment}>
+						<Button
+							variant="soft"
+							color="red"
+							onClick={handleDeleteAssignment}
+						>
 							의뢰 삭제
 						</Button>
 						{assignment?.status === "ongoing" && (
-							<Button variant="soft" color="green" onClick={handleCloseAssignment}>
+							<Button
+								variant="soft"
+								color="green"
+								onClick={handleCloseAssignment}
+							>
 								의뢰 종결
 							</Button>
 						)}
 					</div>
 				)}
 			</div>
-
 			<div className="p-2 text-gray-11 bg-gray-2 rounded">
 				<p>{assignment?.description}</p>
 			</div>
 			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
-				<p>{assignees?.length > 0 ? `담당자: ${assignees?.join(", ")}` : "담당자: 미배정"}</p>
+				<p>
+					{assignees?.length > 0
+						? `담당자: ${assignees?.join(", ")}`
+						: "담당자: 미배정"}
+				</p>
 			</div>
-
-			<AssignmentTimelines assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+			<AssignmentTimelines
+				assignmentId={assignmentId}
+				user={user}
+				assignmentType={assignmentType}
+			/>
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-				<CreditorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<DebtorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<BondDetails assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<CaseList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<EnforcementList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<FileList assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<Inquiry assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
+				<CreditorInfo assignmentId={assignmentId} user={user} />
+				<DebtorInfo assignmentId={assignmentId} user={user} />
+				<BondDetails assignmentId={assignmentId} user={user} />
+				<CaseList assignmentId={assignmentId} user={user} />
+				<EnforcementList assignmentId={assignmentId} user={user} />
+				<FileList assignmentId={assignmentId} user={user} />
+				<Inquiry assignmentId={assignmentId} user={user} />
+				<AssignmentTasks assignmentId={assignmentId} user={user} />
 			</div>
+			{assignment && (
+				<AssignmentEditModal
+					open={editModalOpen}
+					onOpenChange={setEditModalOpen}
+					assignment={assignment}
+					onAssignmentUpdated={fetchAssignments}
+				/>
+			)}
+			{assignment && (
+				<AssignmentAssigneeDialog
+					open={assigneeModalOpen}
+					onOpenChange={setAssigneeModalOpen}
+					assignmentId={assignmentId}
+					existingAssignees={assignment.assignment_assignees || []}
+					onAssigneesUpdated={fetchAssignments}
+				/>
+			)}
 		</div>
-
 	);
 };
 
