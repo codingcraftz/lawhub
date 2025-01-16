@@ -63,7 +63,7 @@ const DebtorCard = ({
 					<h4 className="text-sm font-medium">담당자:</h4>
 					<p className="text-sm">
 						{assignees?.join(", ") || (
-							<span className="text-gray-10">미등록</span>
+							<span className="text-gray-10">미배정</span>
 						)}
 					</p>
 				</div>
