@@ -145,13 +145,13 @@ const AssignmentPage = () => {
 
 	return (
 		<div className="p-4 mx-auto flex flex-col w-full text-gray-12">
-			<div className="flex mb-4 justify-between">
-				<div className="flex items-center gap-2">
+			<div className="flex mb-4 justify-between flex-wrap gap-4">
+				<div className="flex items-center gap-2 flex-wrap">
 					<ArrowLeftIcon
 						className="w-8 h-8 cursor-pointer"
 						onClick={() => router.back()}
 					/>
-					<h1 className="text-2xl font-bold">의뢰 상세 페이지</h1>
+					<h1 className="text-lg md:text-2xl font-bold">의뢰 상세 페이지</h1>
 					{assignmentType === "client" && isAdmin && (
 						<>
 							<Button onClick={() => setClientModalOpen(true)}>의뢰인 정보보기</Button>
@@ -178,19 +178,17 @@ const AssignmentPage = () => {
 					)}
 				</div>
 
-				{/* (예시) 관리자만 "삭제하기", "종결" 버튼 보이기 + "수정" 버튼 추가 */}
 				{isAdmin && assignment && (
-					<div className="flex gap-2">
-						<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>담당자 배정</Button>
-						{/* 의뢰 수정 버튼 */}
+					<div className="flex sm:gap-1 gap-2 flex-wrap">
+						<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>
+							담당자 배정
+						</Button>
 						<Button variant="soft" onClick={() => setEditModalOpen(true)}>
 							의뢰 수정
 						</Button>
-
 						<Button variant="soft" color="red" onClick={handleDeleteAssignment}>
 							의뢰 삭제
 						</Button>
-						{/* ongoing 상태일 때만 종결 버튼 */}
 						{assignment?.status === "ongoing" && (
 							<Button variant="soft" color="green" onClick={handleCloseAssignment}>
 								의뢰 종결
@@ -200,18 +198,15 @@ const AssignmentPage = () => {
 				)}
 			</div>
 
-
 			<div className="p-2 text-gray-11 bg-gray-2 rounded">
 				<p>{assignment?.description}</p>
 			</div>
 			<div className="p-2 text-gray-11 mb-6 bg-gray-2 rounded">
-				<p>{`담당자: ${assignees.join(", ")}`}</p>
+				<p>{assignees?.length > 0 ? `담당자: ${assignees?.join(", ")}` : "담당자: 미배정"}</p>
 			</div>
 
-
-			{/* 기존 컴포넌트들 */}
 			<AssignmentTimelines assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
-			<div className="grid grid-cols-2 gap-4 mt-4">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
 				<CreditorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 				<DebtorInfo assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 				<BondDetails assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
@@ -221,27 +216,8 @@ const AssignmentPage = () => {
 				<Inquiry assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentType={assignmentType} />
 			</div>
-
-			{/* 의뢰 수정 모달 */}
-			{assignment && (
-				<AssignmentEditModal
-					open={editModalOpen}
-					onOpenChange={setEditModalOpen}
-					assignment={assignment}
-					onAssignmentUpdated={fetchAssignments}
-				/>
-			)}
-
-			{assignment && (
-				<AssignmentAssigneeDialog
-					open={assigneeModalOpen}
-					onOpenChange={setAssigneeModalOpen}
-					assignmentId={assignmentId}
-					existingAssignees={assignment.assignment_assignees || []}
-					onAssigneesUpdated={fetchAssignments}
-				/>
-			)}
 		</div>
+
 	);
 };
 

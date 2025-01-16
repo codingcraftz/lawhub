@@ -110,7 +110,7 @@ export default function CaseList({ assignmentId, user }) {
 							className="p-3 bg-gray-3 border border-gray-6 rounded flex flex-col gap-2"
 						>
 							<Flex justify="between" align="center">
-								<Box className="flex flex-col" style={{ maxWidth: "calc(100% - 140px)" }}>
+								<Box className="flex flex-col" style={{ maxWidth: "calc(100% - 70px)" }}>
 									<Text className="font-medium">
 										{item.court_name} {item.case_year} {item.case_type}{" "}
 										{item.case_number} {item.case_subject}
@@ -119,17 +119,17 @@ export default function CaseList({ assignmentId, user }) {
 										상태: {item.latestTimeline}
 									</Text>
 									<Text size="2" color="gray">
-										다음 기일: {item.nextDeadline}
+										기일: {item.nextDeadline}
 									</Text>
 								</Box>
-								<Flex gap="2">
+								<Flex gap="2" className="items-center flex-col">
 									{isAdmin && (
 										<Button variant="soft" onClick={() => openEditForm(item)}>
 											수정
 										</Button>
 									)}
 									<Button
-										variant="soft"
+										variant="ghost"
 										onClick={() => toggleExpand(item.id)}
 									>
 										{expandedCaseId === item.id ? "닫기" : "상세보기"}

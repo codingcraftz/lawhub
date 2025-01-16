@@ -134,7 +134,7 @@ export default function FileList({ assignmentId, user }) {
 										<Text size="1" color="gray">
 											{/* 업로더 이름 + 업로드 날짜 */}
 											{file.uploaded_by
-												? `${file.uploaded_by} 님이 업로드`
+												? `${file.uploaded_by}`
 												: `업로더 정보 없음`}
 											{" / "}
 											{uploadedDate}
