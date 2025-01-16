@@ -180,9 +180,9 @@ const Header = () => {
 							<SunIcon width={20} height={20} />
 						)}
 					</Button>
-					{user && (user.role === "admin" || user.role === "staff") && (
-						<NotificationDropdown />
-					)}
+					{user &&
+						<NotificationDropdown user={user} />
+					}
 					{user ? (
 						<Hero user={user} onLogout={handleLogout} />
 					) : (

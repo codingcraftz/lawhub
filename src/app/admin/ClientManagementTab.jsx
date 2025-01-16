@@ -2,12 +2,14 @@
 
 import React, { useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Box, Button, Flex, Text } from "@radix-ui/themes";
 import InputMask from "react-input-mask";
 
 import ClientSearchBar from "./ClientSearchBar";
 
 export default function ClientManagementTab({ users, onRefresh }) {
+	const roles = ["admin", "staff", "client"];
+
 	const [searchTerm, setSearchTerm] = useState("");
 	const [editingUserId, setEditingUserId] = useState(null);
 	const [formData, setFormData] = useState({
@@ -51,6 +53,7 @@ export default function ClientManagementTab({ users, onRefresh }) {
 			.from("users")
 			.update({
 				name: formData.name,
+				role: formData.role,
 				phone_number: formattedPhone,
 				birth_date: formData.birth_date,
 			})
@@ -92,6 +95,7 @@ export default function ClientManagementTab({ users, onRefresh }) {
 							<th className="p-3 text-left border-b border-gray-6">이메일</th>
 							<th className="p-3 text-left border-b border-gray-6">전화번호</th>
 							<th className="p-3 text-left border-b border-gray-6">생년월일</th>
+							<th className="p-3 text-left border-b border-gray-6">역할</th>
 							<th className="p-3 text-left border-b border-gray-6">수정</th>
 						</tr>
 					</thead>
@@ -159,30 +163,52 @@ export default function ClientManagementTab({ users, onRefresh }) {
 										)}
 									</td>
 
+									<td className="p-2">
+										{isEditing ? (
+											<>
+												<select
+													value={user.role || ""}
+													onChange={(e) => handleChange("role", e.target.value)}
+													className="border border-gray-6 rounded px-2 py-1 w-full"
+												>
+													{roles.map((r) => (
+														<option key={r} value={r}>
+															{r}
+														</option>
+													))}
+												</select>
+
+											</>
+										) : (
+											user.role || "-"
+										)}
+									</td>
+
 									{/* 수정/저장/취소 버튼 */}
 									<td className="p-2">
 										{isEditing ? (
 											<div className="flex gap-2">
-												<button
+												<Button
+													type="button"
 													onClick={() => handleSaveEdit(user.id)}
-													className="bg-green-9 text-white px-3 py-1 rounded"
 												>
 													저장
-												</button>
-												<button
+												</Button>
+												<Button
+													type="button"
+													color="gray"
 													onClick={handleCancelEdit}
-													className="bg-gray-7 text-white px-3 py-1 rounded"
 												>
 													취소
-												</button>
+												</Button>
 											</div>
 										) : (
-											<button
+											<Button
+												type="button"
 												onClick={() => handleStartEdit(user)}
-												className="bg-blue-9 text-white px-3 py-1 rounded"
 											>
 												수정
-											</button>
+											</Button>
 										)}
 									</td>
 								</tr>

@@ -1,5 +1,3 @@
-// CaseList.jsx
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -19,24 +17,22 @@ export default function CaseList({ assignmentId, user }) {
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 1) cases 목록
+	// 1) Fetch cases and deadlines
 	const fetchCases = async () => {
-		// (예) 기본: 가장 최근 타임라인 1건 가져오려면
-		// -> 방법 A) 두 번 쿼리
-		//    B) case_timelines 조인 후 프런트서 최신만 사용
-		// 여기서는 단순 "*"만 받아오고, 아래에서 Promise.all 방식으로 최신 타임라인을 붙인다
-
 		const { data: rawCases, error } = await supabase
 			.from("cases")
 			.select("*")
 			.eq("assignment_id", assignmentId)
 			.order("created_at", { ascending: false });
 
-		if (error || !rawCases) return;
+		if (error || !rawCases) {
+			console.error("Failed to fetch cases:", error);
+			return;
+		}
 
-		// 각 case별로 가장 최근 타임라인 1건
 		const updatedCases = [];
 		for (const c of rawCases) {
+			// Fetch the latest timeline for each case
 			const { data: latestT } = await supabase
 				.from("case_timelines")
 				.select("text, created_at")
@@ -45,9 +41,22 @@ export default function CaseList({ assignmentId, user }) {
 				.limit(1)
 				.maybeSingle();
 
+			// Fetch the next closest deadline
+			const { data: nextD } = await supabase
+				.from("case_deadlines")
+				.select("type, deadline_date, location")
+				.eq("case_id", c.id)
+				.gt("deadline_date", new Date().toISOString())
+				.order("deadline_date", { ascending: true })
+				.limit(1)
+				.maybeSingle();
+
 			updatedCases.push({
 				...c,
-				latestTimeline: latestT?.text || null,
+				latestTimeline: latestT?.text || "진행상황 없음",
+				nextDeadline: nextD
+					? `${nextD.type} (${new Date(nextD.deadline_date).toLocaleDateString("ko-KR", { hour: "2-digit", minute: "2-digit" })} @ ${nextD.location || "위치 정보 없음"})`
+					: "예정된 기일 없음",
 			});
 		}
 
@@ -107,7 +116,10 @@ export default function CaseList({ assignmentId, user }) {
 										{item.case_number} {item.case_subject}
 									</Text>
 									<Text size="2" color="gray">
-										상태: {item.latestTimeline || "진행상황 없음"}
+										상태: {item.latestTimeline}
+									</Text>
+									<Text size="2" color="gray">
+										다음 기일: {item.nextDeadline}
 									</Text>
 								</Box>
 								<Flex gap="2">

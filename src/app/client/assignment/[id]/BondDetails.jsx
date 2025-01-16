@@ -137,7 +137,7 @@ const BondDetails = ({ assignmentId, user }) => {
 								{formattedEndDate(bond.interest_1_end_date)})
 							</Text>
 						</Text>
-						<Text size="2">이자율: {bond.interest_1_rate}%</Text>
+						<Text as="p" size="2">이자율: {bond.interest_1_rate}%</Text>
 						<Text size="2">
 							이자 총액: {Math.floor(totalInterest1).toLocaleString()}원
 						</Text>
@@ -151,7 +151,7 @@ const BondDetails = ({ assignmentId, user }) => {
 								{formattedEndDate(bond.interest_2_end_date)})
 							</Text>
 						</Text>
-						<Text size="2">이자율: {bond.interest_2_rate}%</Text>
+						<Text as="p" size="2">이자율: {bond.interest_2_rate}%</Text>
 						<Text size="2">
 							이자 총액: {Math.floor(totalInterest2).toLocaleString()}원
 						</Text>

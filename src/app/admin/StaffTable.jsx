@@ -4,7 +4,7 @@ import React from "react";
 
 export default function StaffTable({ staffList, onUpdateUser }) {
 	const roles = ["admin", "staff", "client"];
-	const positions = ["변호사", "법무사", "사무직원"];
+	const positions = ["대표", "변호사", "법무사", "사무직원", "실무자", "개발자"];
 	const employeeTypes = ["internal", "external"];
 
 	return (
