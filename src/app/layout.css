@@ -217,3 +217,30 @@ html.light .react-datepicker__day--disabled {
   color: var(--gray-12);
 }
 
+
+select {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 0.5rem; /* 오른쪽에 여유 공간 추가 */
+  margin-top: 0.25rem;
+  border: 1px solid var(--gray-6);
+  border-radius: 0.375rem;
+  color: var(--gray-12);
+  background-color: var(--gray-1);
+  height: 42px;
+  outline: none;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+  -moz-appearance: none; /* Firefox에서 기본 화살표 제거 */
+  -webkit-appearance: none; /* Chrome, Safari에서 기본 화살표 제거 */
+  appearance: none; /* 기본 화살표 제거 */
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%204%205'%3E%3Cpath%20fill='%23aaa'%20d='M2%200L0%202h4z'/%3E%3C/svg%3E"); /* 커스텀 화살표 추가 */
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center; /* 화살표 위치 조정 */
+  background-size: 1rem;
+}
+
+select:focus {
+  border-color: var(--gray-8);
+}
+
+
