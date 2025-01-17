@@ -5,9 +5,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
-import TimelineForm from "../_components/dialogs/TimelineForm";
+import CaseTimelineForm from "../_components/dialogs/CaseTimelineForm";
 
-export default function CaseTimelines({ caseId, isAdmin }) {
+export default function CaseTimelines({ caseId, isAdmin, handleSuccess }) {
 	const [timelines, setTimelines] = useState([]);
 	const [selectedTimeline, setSelectedTimeline] = useState(null);
 	const [timelineFormOpen, setTimelineFormOpen] = useState(false);
@@ -51,22 +51,24 @@ export default function CaseTimelines({ caseId, isAdmin }) {
 		if (!error) {
 			fetchTimelines();
 		}
+		handleSuccess()
 	};
 
 	const handleFormSuccess = () => {
 		setTimelineFormOpen(false);
 		fetchTimelines();
+		handleSuccess()
 	};
 
 	return (
 		<Box className="mb-6">
 			<Flex justify="between" align="center" className="mb-2">
 				<Text as="h3" className="font-semibold text-base">
-					소송 타임라인
+					진행 상황
 				</Text>
 				{isAdmin && (
 					<Button size="1" variant="soft" onClick={openCreateForm}>
-						타임라인 추가
+						진행 추가
 					</Button>
 				)}
 			</Flex>
@@ -110,7 +112,7 @@ export default function CaseTimelines({ caseId, isAdmin }) {
 
 			{/* Dialog: 타임라인 추가/수정 */}
 			{timelineFormOpen && (
-				<TimelineForm
+				<CaseTimelineForm
 					open={timelineFormOpen}
 					onOpenChange={setTimelineFormOpen}
 					caseId={caseId}

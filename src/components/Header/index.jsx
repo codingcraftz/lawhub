@@ -42,95 +42,97 @@ const Header = () => {
 
 	return (
 		<Box className="border-b border-b-gray-9 px-4 py-3 md:px-12 md:py-5 flex justify-between items-center w-full">
-			{/* Logo */}
-			<Flex className="items-center">
+			<Flex className="items-center gap-4">
 				<Link href="/">
 					<Text className="font-bold text-xl md:text-2xl">LawHub</Text>
 				</Link>
-			</Flex>
-
-			{/* Desktop Navigation */}
-			<Flex className="hidden md:flex gap-4 items-center">
-				{NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map((nav) => (
-					<Link href={nav.path} key={nav.path}>
-						<Button
-							variant="ghost"
-							color="gray"
-							style={{
+				<Flex className="hidden md:flex gap-4 items-center">
+					{NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map((nav) => (
+						<Link href={nav.path} key={nav.path}>
+							<Button
+								variant="ghost"
+								color="gray"
+								style={{
+									display: "flex",
+									alignItems: "center",
+									cursor: "pointer",
+								}}
+							>
+								{nav.title}
+							</Button>
+						</Link>
+					))}
+					{user && user.role !== "client" && (
+						<Link href="/group">
+							<Button variant="ghost" color="red" style={{
 								display: "flex",
 								alignItems: "center",
 								cursor: "pointer",
 							}}
-						>
-							{nav.title}
-						</Button>
-					</Link>
-				))}
-				{user && user.role !== "client" && (
-					<Link href="/group">
-						<Button variant="ghost" color="red">
-							그룹 관리
-						</Button>
-					</Link>
-				)}
-				{user && user.role === "admin" && (
-					<Link href="/admin">
-						<Button variant="ghost" color="red">
-							관리자
-						</Button>
-					</Link>
-				)}
-			</Flex>
-
-			{/* Mobile Menu */}
-			<DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
-				<DropdownMenu.Trigger asChild>
-					<Button className="md:hidden">
-						<HamburgerMenuIcon />
-					</Button>
-				</DropdownMenu.Trigger>
-				<DropdownMenu.Content
-					className="bg-gray-3 p-4 rounded-lg shadow-md flex flex-start"
-					sideOffset={5}
-					style={{ minWidth: "200px" }}
-				>
-					{NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map((nav) => (
-						<DropdownMenu.Item key={nav.path}>
-							<Link href={nav.path}>
-								<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
-									{nav.title}
-								</Text>
-							</Link>
-						</DropdownMenu.Item>
-					))}
-					<Separator className="my-2" />
-					{user && user.role !== "client" && (
-						<DropdownMenu.Item>
-							<Link href="/group">
-								<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
-									그룹 관리
-								</Text>
-							</Link>
-						</DropdownMenu.Item>
+							>
+								그룹 관리
+							</Button>
+						</Link>
 					)}
 					{user && user.role === "admin" && (
-						<DropdownMenu.Item>
-							<Link href="/admin">
-								<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
-									관리자
-								</Text>
-							</Link>
-						</DropdownMenu.Item>
+						<Link href="/admin">
+							<Button variant="ghost" color="red" style={{
+								display: "flex",
+								alignItems: "center",
+								cursor: "pointer",
+							}}
+							>
+								관리자
+							</Button>
+						</Link>
 					)}
-					{user && (
-						<DropdownMenu.Item onClick={handleLogout}>
-							<Text size="2" style={{ display: "block", padding: "0.5rem 0", color: "red" }}>
-								로그아웃
-							</Text>
-						</DropdownMenu.Item>
-					)}
-				</DropdownMenu.Content>
-			</DropdownMenu.Root>
+				</Flex>
+
+				{/* Mobile Menu */}
+				<DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
+					<DropdownMenu.Trigger asChild>
+						<Button className="md:hidden">
+							<HamburgerMenuIcon />
+						</Button>
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content
+						className="bg-gray-3 p-4 rounded-lg shadow-md flex flex-col flex-start"
+						sideOffset={5}
+						style={{ minWidth: "200px" }}
+					>
+						{NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map((nav) => (
+							<DropdownMenu.Item key={nav.path}>
+								<Link href={nav.path}>
+									<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
+										{nav.title}
+									</Text>
+								</Link>
+							</DropdownMenu.Item>
+						))}
+						<Separator className="my-2" />
+						{user && user.role !== "client" && (
+							<DropdownMenu.Item>
+								<Link href="/group">
+									<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
+										그룹 관리
+									</Text>
+								</Link>
+							</DropdownMenu.Item>
+						)}
+						{user && user.role === "admin" && (
+							<DropdownMenu.Item>
+								<Link href="/admin">
+									<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
+										관리자
+									</Text>
+								</Link>
+							</DropdownMenu.Item>
+						)}
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+
+
+			</Flex>
 
 			{/* Right Actions */}
 			<Flex align="center" gap="4">

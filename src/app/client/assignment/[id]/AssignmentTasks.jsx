@@ -2,16 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Text, Button } from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Badge } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 import TaskComments from "./TaskComments"; // 댓글 컴포넌트
 import TaskForm from "../_components/dialogs/TaskForm";
 
-/**
- * @param {string}   props.assignmentId
- * @param {object}   props.user
- * @param {array}    props.assignmentAssignees  // 부모에서 내려받은 담당자 목록
- */
 const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 	const [tasks, setTasks] = useState([]);
 	const [expandedTaskId, setExpandedTaskId] = useState(null);
@@ -21,7 +16,6 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 업무/요청 목록 가져오기
 	const fetchTasks = async () => {
 		const { data, error } = await supabase
 			.from("assignment_tasks")
@@ -105,16 +99,18 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 	const StatusBadge = ({ status }) => {
 		if (status === "ongoing") {
 			return (
-				<span className="bg-green-3 text-green-11 px-2 py-0.5 text-xs rounded">
-					진행중
-				</span>
+				<Badge color="green">
+					진행
+				</Badge>
+
 			);
 		}
 		if (status === "closed") {
 			return (
-				<span className="bg-red-3 text-red-11 px-2 py-0.5 text-xs rounded">
+				<Badge color="red">
 					완료
-				</span>
+				</Badge>
+
 			);
 		}
 		return null;
@@ -123,9 +119,9 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 	const TypeBadge = ({ type }) => {
 		if (type === "request") {
 			return (
-				<span className="bg-blue-3 text-blue-11 px-2 py-0.5 text-xs rounded">
+				<Badge>
 					요청
-				</span>
+				</Badge>
 			);
 		}
 		return null;
@@ -170,13 +166,11 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 									<Box className="flex-1">
 										{/* 제목 + (유형/상태 배지) */}
 										<Flex align="center" gap="2" className="mb-1 flex-wrap">
+											<StatusBadge status={task.status} />
+											<TypeBadge type={task.type} />
 											<Text className="font-medium text-sm md:text-base">
 												{task.title}
 											</Text>
-											{/* 요청인지 아닌지 */}
-											<TypeBadge type={task.type} />
-											{/* 진행중 / 완료 뱃지 */}
-											<StatusBadge status={task.status} />
 										</Flex>
 										<div className="flex gap-2">
 											{/* 작성자 or 요청자→수신자 */}

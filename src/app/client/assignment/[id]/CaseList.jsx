@@ -145,11 +145,8 @@ export default function CaseList({ assignmentId, user }) {
 									transition={{ duration: 0.3 }}
 									className="overflow-hidden p-2 bg-gray-2 border border-gray-6 rounded"
 								>
-									{/* (A) 기일 */}
-									<CaseDeadlines caseId={item.id} isAdmin={isAdmin} />
-
-									{/* (B) 타임라인 */}
-									<CaseTimelines caseId={item.id} isAdmin={isAdmin} />
+									<CaseDeadlines caseId={item.id} isAdmin={isAdmin} handleSuccess={fetchCases} />
+									<CaseTimelines caseId={item.id} isAdmin={isAdmin} assignmentId={assignmentId} handleSuccess={fetchCases} />
 								</motion.div>
 							)}
 						</li>

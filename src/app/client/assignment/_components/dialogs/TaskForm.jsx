@@ -126,6 +126,36 @@ export default function TaskForm({
 
 				<form onSubmit={handleSubmit(onSubmit)}>
 					<Flex direction="column" gap="3">
+						{/* 상태 */}
+						<Box>
+							<Text size="2" color="gray" className="mb-1">
+								상태
+							</Text>
+							<select
+								{...register("status")}
+								className="w-full p-1 border border-gray-6 rounded"
+							>
+								<option value="ongoing">진행</option>
+								<option value="closed">완료</option>
+							</select>
+						</Box>
+
+						{/* 유형 */}
+						<Box>
+							<Text size="2" color="gray" className="mb-1">
+								유형
+							</Text>
+							<select
+								{...register("type")}
+								className="w-full p-1 border border-gray-6 rounded"
+							>
+								<option value="task">일반</option>
+								<option value="request">요청</option>
+							</select>
+						</Box>
+
+
+
 						{/* 제목 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
@@ -153,20 +183,6 @@ export default function TaskForm({
 								placeholder="업무 상세 내용"
 								className="w-full border border-gray-6 rounded p-2"
 							/>
-						</Box>
-
-						{/* 유형 */}
-						<Box>
-							<Text size="2" color="gray" className="mb-1">
-								유형
-							</Text>
-							<select
-								{...register("type")}
-								className="w-full p-1 border border-gray-6 rounded"
-							>
-								<option value="task">일반 업무</option>
-								<option value="request">요청</option>
-							</select>
 						</Box>
 
 						{/* 요청일 때 수신자 RadioGroup */}
@@ -228,19 +244,6 @@ export default function TaskForm({
 							</Box>
 						)}
 
-						{/* 상태 */}
-						<Box>
-							<Text size="2" color="gray" className="mb-1">
-								상태
-							</Text>
-							<select
-								{...register("status")}
-								className="w-full p-1 border border-gray-6 rounded"
-							>
-								<option value="ongoing">진행중</option>
-								<option value="closed">완료</option>
-							</select>
-						</Box>
 
 						{/* 액션 버튼 */}
 						<Flex justify="end" gap="2">
