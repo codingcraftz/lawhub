@@ -139,15 +139,25 @@ const Header = () => {
 							</DropdownMenu.Item>
 						))}
 						<Separator className="my-2" />
-						{user && user.role === "admin" && (
+						{user && ((user.role === "staff" || user.role === "admin") && user.employee_type === "internal") && (
 							<DropdownMenu.Item>
-								<Link href="/admin">
-									<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
+								<Link href="/group" onClick={() => setMenuOpen(false)}>
+									<Text size="2" color="red" style={{ display: "block", padding: "0.5rem 0" }}>
+										그룹 관리
+									</Text>
+								</Link>
+							</DropdownMenu.Item>
+						)}
+						{user && (user.role === "admin" && user.employee_type === "internal") && (
+							<DropdownMenu.Item>
+								<Link href="/admin" onClick={() => setMenuOpen(false)}>
+									<Text size="2" color="red" style={{ display: "block", padding: "0.5rem 0" }}>
 										관리자
 									</Text>
 								</Link>
 							</DropdownMenu.Item>
 						)}
+
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			</Flex>
