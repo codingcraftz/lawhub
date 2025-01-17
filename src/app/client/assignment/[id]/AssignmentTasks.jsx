@@ -7,11 +7,6 @@ import { motion } from "framer-motion";
 import TaskComments from "./TaskComments"; // 댓글 컴포넌트
 import TaskForm from "../_components/dialogs/TaskForm";
 
-/**
- * @param {string}   props.assignmentId
- * @param {object}   props.user
- * @param {array}    props.assignmentAssignees  // 부모에서 내려받은 담당자 목록
- */
 const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 	const [tasks, setTasks] = useState([]);
 	const [expandedTaskId, setExpandedTaskId] = useState(null);
@@ -21,7 +16,6 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// 업무/요청 목록 가져오기
 	const fetchTasks = async () => {
 		const { data, error } = await supabase
 			.from("assignment_tasks")

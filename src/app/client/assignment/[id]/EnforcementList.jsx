@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Button, Flex, Text, Box } from "@radix-ui/themes";
+import { Button, Flex, Text, Box, Badge } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 
 import EnforcementForm from "../_components/dialogs/EnforcementForm"; // 등록/수정 Form
@@ -16,7 +16,27 @@ export default function EnforcementList({ assignmentId, user }) {
 	const [currentEnf, setCurrentEnf] = useState(null);
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
-	const korStatus = { ongoing: "진행중", scheduled: "대기", closed: "종결" };
+	const korStatus = { ongoing: "진행", scheduled: "대기", closed: "완료" };
+
+	const StatusBadge = ({ status }) => {
+		if (status === "ongoing") {
+			return (
+				<Badge color="green">
+					진행
+				</Badge>
+
+			);
+		}
+		if (status === "closed") {
+			return (
+				<Badge color="red">
+					완료
+				</Badge>
+
+			);
+		}
+		return null;
+	};
 
 	// 1) fetch enforcements
 	const fetchEnforcements = async () => {
@@ -117,11 +137,9 @@ export default function EnforcementList({ assignmentId, user }) {
 							<Flex justify="between" align="center">
 								<Box className="flex flex-col mr-2" style={{ maxWidth: "80%" }}>
 									<div className="flex items-center gap-2">
-										<Text className="text-blue-11 font-bold">
-											{enf.amount?.toLocaleString()}원
-										</Text>
+										<StatusBadge status={enf.status} />
 										<Text className="font-medium">
-											[{enf.type} ({korStatus[enf.status] || "알 수 없음"})]
+											{enf.type} - {enf.amount?.toLocaleString()}원
 										</Text>
 									</div>
 									<Text size="2" color="gray">

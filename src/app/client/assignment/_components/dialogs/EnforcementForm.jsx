@@ -128,6 +128,26 @@ export default function EnforcementForm({
 
 				<form onSubmit={handleSubmit(onSubmit)}>
 					<Flex direction="column" gap="4">
+						{/* 상태 */}
+						<div>
+							<Text size="2" color="gray" className="mb-1">
+								상태
+							</Text>
+							<select
+								{...register("status")}
+								className="
+                  w-full p-2
+                  border border-gray-6
+                  rounded text-gray-12
+                  focus:outline-none focus:border-gray-8
+                "
+							>
+								<option value="ongoing">진행</option>
+								<option value="closed">완료</option>
+							</select>
+						</div>
+
+
 						{/* 종류 */}
 						<div>
 							<Text size="2" color="gray" className="mb-1">
@@ -144,26 +164,6 @@ export default function EnforcementForm({
                 "
 								placeholder="예: 압류, 추심, 부동산 강제집행 등"
 							/>
-						</div>
-
-						{/* 상태 */}
-						<div>
-							<Text size="2" color="gray" className="mb-1">
-								상태
-							</Text>
-							<select
-								{...register("status")}
-								className="
-                  w-full p-2
-                  border border-gray-6
-                  rounded text-gray-12
-                  focus:outline-none focus:border-gray-8
-                "
-							>
-								<option value="ongoing">진행중</option>
-								<option value="scheduled">대기</option>
-								<option value="closed">종결</option>
-							</select>
 						</div>
 
 						{/* 금액 */}
