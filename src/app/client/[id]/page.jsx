@@ -14,7 +14,7 @@ const ClientCasePage = () => {
 	const { id: clientId } = useParams();
 	const [clientName, setClientName] = useState("");
 	const [assignments, setAssignments] = useState([]);
-	useRoleRedirect(["staff", "admin", "client"], "/");
+	useRoleRedirect(["staff", "admin", "client"], [], "/");
 
 	const fetchAssignments = async () => {
 		try {

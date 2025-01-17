@@ -10,7 +10,7 @@ import DebtorCard from "@/app/client/_components/DebtorCard";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const GroupCasePage = () => {
-	useRoleRedirect(["staff", "admin", "client"], "/");
+	useRoleRedirect(["staff", "admin", "client"], [], "/");
 	const router = useRouter();
 	const { id: groupId } = useParams();
 	const [groupName, setGroupName] = useState("");

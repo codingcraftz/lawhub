@@ -10,7 +10,7 @@ import useRoleRedirect from "@/hooks/userRoleRedirect";
 import { useUser } from "@/hooks/useUser";
 
 const StaffAssignmentsPage = () => {
-	useRoleRedirect(["staff", "admin"], "/"); // Only staff can access this page
+	useRoleRedirect(["staff", "admin"], [], "/"); // Only staff can access this page
 
 	const router = useRouter();
 	const { user } = useUser();
