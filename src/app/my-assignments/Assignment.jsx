@@ -34,6 +34,7 @@ const Assignment = ({ clientId }) => {
         id,
         description,
         created_at,
+				status,
         assignment_debtors ( name ),
         assignment_creditors ( name ),
         assignment_clients!inner ( client_id )
@@ -138,6 +139,7 @@ const Assignment = ({ clientId }) => {
 						>
 							<DebtorCard
 								type="개인"
+								status={assignment.status}
 								name={assignment.assignment_clients[0].name}
 								description={assignment.description}
 								createdAt={assignment.created_at}
@@ -153,6 +155,7 @@ const Assignment = ({ clientId }) => {
 						>
 							<DebtorCard
 								type="그룹"
+								status={assignment.status}
 								name={assignment.assignment_groups[0].name}
 								description={assignment.description}
 								createdAt={assignment.created_at}

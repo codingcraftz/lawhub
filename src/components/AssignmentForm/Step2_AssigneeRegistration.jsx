@@ -129,7 +129,7 @@ export default function Step2_AssigneeRegistration({
 					선택된 담당자
 				</Text>
 				{selectedAssignees.length === 0 ? (
-					<Text>담당자를 선택해주세요.</Text>
+					<Text as="p">선택된 담당자가 없습니다.</Text>
 				) : (
 					<Flex direction="column" gap="2">
 						{selectedAssignees.map((assignee) => (
