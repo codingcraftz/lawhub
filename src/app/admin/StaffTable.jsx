@@ -28,7 +28,6 @@ export default function StaffTable({ staffList, onUpdateUser }) {
 								<select
 									value={user.role || ""}
 									onChange={(e) => onUpdateUser(user.id, { role: e.target.value })}
-									className="border border-gray-6 rounded px-2 py-1 w-full"
 								>
 									{roles.map((r) => (
 										<option key={r} value={r}>
@@ -41,7 +40,6 @@ export default function StaffTable({ staffList, onUpdateUser }) {
 								<select
 									value={user.position || ""}
 									onChange={(e) => onUpdateUser(user.id, { position: e.target.value })}
-									className="border border-gray-6 rounded px-2 py-1 w-full"
 								>
 									<option value="">직책 선택</option>
 									{positions.map((pos) => (
@@ -57,7 +55,6 @@ export default function StaffTable({ staffList, onUpdateUser }) {
 									onChange={(e) =>
 										onUpdateUser(user.id, { employee_type: e.target.value })
 									}
-									className="border border-gray-6 rounded px-2 py-1 w-full"
 								>
 									<option value="">유형 선택</option>
 									{employeeTypes.map((etype) => (

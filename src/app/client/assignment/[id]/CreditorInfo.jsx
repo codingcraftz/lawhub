@@ -90,12 +90,7 @@ const CreditorInfo = ({ assignmentId, user }) => {
 						className="mb-4 p-3 bg-gray-3 border border-gray-6 rounded"
 					>
 						<div className="flex justify-between items-center">
-							<div>
-								<p>
-									<span className="font-semibold">이름: </span>
-									{creditor.name}
-								</p>
-							</div>
+							<p className="font-semibold mr-auto"> {`이름: ${creditor.name}`}</p>
 							{isAdmin && (
 								<div className="flex gap-2">
 									<Button

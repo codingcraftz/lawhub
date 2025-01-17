@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { Button, Flex, Text, Box } from "@radix-ui/themes";
+import { Button, Flex, Text, Box, Badge } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 
 import CaseForm from "../_components/dialogs/CaseForm";
@@ -87,6 +87,28 @@ export default function CaseList({ assignmentId, user }) {
 		setExpandedCaseId((prev) => (prev === caseId ? null : caseId));
 	};
 
+	const StatusBadge = ({ status }) => {
+		if (status === "ongoing") {
+			return (
+				<Badge color="green">
+					진행
+				</Badge>
+
+			);
+		}
+		if (status === "closed") {
+			return (
+				<Badge color="red">
+					완료
+				</Badge>
+
+			);
+		}
+		return null;
+	};
+
+
+
 	return (
 		<section className="flex flex-col mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
@@ -111,10 +133,13 @@ export default function CaseList({ assignmentId, user }) {
 						>
 							<Flex justify="between" align="center">
 								<Box className="flex flex-col" style={{ maxWidth: "calc(100% - 70px)" }}>
-									<Text className="font-medium">
-										{item.court_name} {item.case_year} {item.case_type}{" "}
-										{item.case_number} {item.case_subject}
-									</Text>
+									<div className="flex items-center gap-2">
+										<StatusBadge status={item.status} />
+										<Text className="font-medium">
+											{item.court_name} {item.case_year} {item.case_type}{" "}
+											{item.case_number} {item.case_subject}
+										</Text>
+									</div>
 									<Text size="2" color="gray">
 										상태: {item.latestTimeline}
 									</Text>

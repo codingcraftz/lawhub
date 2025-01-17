@@ -133,7 +133,6 @@ export default function TaskForm({
 							</Text>
 							<select
 								{...register("status")}
-								className="w-full p-1 border border-gray-6 rounded"
 							>
 								<option value="ongoing">진행</option>
 								<option value="closed">완료</option>
@@ -147,7 +146,6 @@ export default function TaskForm({
 							</Text>
 							<select
 								{...register("type")}
-								className="w-full p-1 border border-gray-6 rounded"
 							>
 								<option value="task">일반</option>
 								<option value="request">요청</option>

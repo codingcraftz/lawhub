@@ -135,12 +135,6 @@ export default function EnforcementForm({
 							</Text>
 							<select
 								{...register("status")}
-								className="
-                  w-full p-2
-                  border border-gray-6
-                  rounded text-gray-12
-                  focus:outline-none focus:border-gray-8
-                "
 							>
 								<option value="ongoing">진행</option>
 								<option value="closed">완료</option>

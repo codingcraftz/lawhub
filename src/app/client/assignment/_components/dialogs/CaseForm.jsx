@@ -40,6 +40,7 @@ const CaseForm = ({
 		formState: { errors },
 	} = useForm({
 		defaultValues: {
+			status: "ongoing",
 			category: "",
 			city: "",
 			court_name: "",
@@ -64,6 +65,7 @@ const CaseForm = ({
 			const foundCourt = COURT_LIST.find((c) => c.name === caseData.court_name);
 			setValue("city", foundCourt?.city || "");
 			setValue("category", caseData.category || "");
+			setValue("status", caseData?.status || "");
 			setValue("court_name", caseData.court_name || "");
 			setValue("case_type", caseData.case_type || "");
 			setValue("case_year", caseData.case_year || "");
@@ -94,6 +96,7 @@ const CaseForm = ({
 	const onSubmit = async (formValues) => {
 		try {
 			const payload = {
+				status: formValues.status || null,
 				category: formValues.category || null,
 				city: formValues.city || null,
 				court_name: formValues.court_name || null,
@@ -103,7 +106,6 @@ const CaseForm = ({
 				case_subject: formValues.case_subject || null,
 				description: formValues.description || null,
 				client_role: formValues.client_role || null,
-				status: "ongoing",
 				assignment_id: assignmentId || null,
 			};
 
@@ -191,14 +193,29 @@ const CaseForm = ({
 
 				<Box className="py-2 text-md">
 					<form onSubmit={handleSubmit(onSubmit)}>
+
 						<Flex direction="column" gap="4">
-							<DynamicSelect
-								label="카테고리"
-								placeholder="카테고리를 선택하세요"
-								options={CASE_CATEGORIES.map((cat) => ({ label: cat, value: cat }))}
-								value={watch("category")}
-								onChange={(value) => setValue("category", value)}
-							/>
+							<Flex gap="2">
+								<div className="flex flex-col flex-1" >
+									<Text size="2" color="gray" className="mb-1">
+										상태
+									</Text>
+									<select
+										{...register("status")}
+									>
+										<option value="ongoing">진행</option>
+										<option value="closed">완료</option>
+									</select>
+								</div>
+
+								<DynamicSelect
+									label="카테고리"
+									placeholder="카테고리를 선택하세요"
+									options={CASE_CATEGORIES.map((cat) => ({ label: cat, value: cat }))}
+									value={watch("category")}
+									onChange={(value) => setValue("category", value)}
+								/>
+							</Flex>
 
 							<Flex gap="2">
 								<DynamicSelect

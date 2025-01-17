@@ -153,7 +153,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 						<Flex justify="between" align="center" className="flex-col md:flex-row">
 							<div className="flex justify-between items-center gap-2 w-full">
 								<p className="flex flex-col md:flex-row items-center gap-2 flex-start">
-									<p className="font-semibold mr-auto"> {`이름: ${debtor.name}`}</p>
+									<p className="font-semibold"> {`이름: ${debtor.name}`}</p>
 									{isAdmin && (
 										<Flex className="items-center gap-2">
 											<Button

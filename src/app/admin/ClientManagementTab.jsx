@@ -169,7 +169,6 @@ export default function ClientManagementTab({ users, onRefresh }) {
 												<select
 													value={user.role || ""}
 													onChange={(e) => handleChange("role", e.target.value)}
-													className="border border-gray-6 rounded px-2 py-1 w-full"
 												>
 													{roles.map((r) => (
 														<option key={r} value={r}>
