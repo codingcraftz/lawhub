@@ -22,10 +22,10 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 	useEffect(() => {
 		if (initialData) {
 			setFormData({
-				name: initialData.name || "",
-				birth_date: initialData.birth_date || "",
-				phone_number: initialData.phone_number || "",
-				address: initialData.address || "",
+				name: initialData.name || null,
+				birth_date: initialData.birth_date || null,
+				phone_number: initialData.phone_number || null,
+				address: initialData.address || null,
 			});
 		}
 	}, [initialData]);
