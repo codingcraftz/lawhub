@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/utils/supabase";
@@ -18,6 +18,10 @@ const Header = () => {
 	const { theme, setTheme } = useTheme();
 	const [menuOpen, setMenuOpen] = useState(false);
 	const router = useRouter();
+
+	useEffect(() => {
+		setTheme("dark")
+	}, [])
 
 	const NAV_LIST = [
 		{ title: "의뢰 관리", path: `/clients`, roles: ["admin", "staff"] },
