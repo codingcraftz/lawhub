@@ -168,7 +168,7 @@ const BondDetails = ({ assignmentId, user }) => {
 								))}
 							</ul>
 						) : (
-							<Text size="2">비용 없음</Text>
+							<Text as="p" size="2">비용 미등록</Text>
 						)}
 					</Box>
 				</Flex>

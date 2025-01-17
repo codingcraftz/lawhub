@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@radix-ui/themes";
 import React from "react";
 
 const DebtorCard = ({
@@ -13,6 +14,25 @@ const DebtorCard = ({
 	status,
 }) => {
 	const isClosed = status === "closed";
+	const StatusBadge = ({ status }) => {
+		if (status === "ongoing") {
+			return (
+				<Badge color="green">
+					진행
+				</Badge>
+
+			);
+		}
+		if (status === "closed") {
+			return (
+				<Badge color="red">
+					완료
+				</Badge>
+
+			);
+		}
+		return null;
+	};
 
 	return (
 		<div
@@ -24,18 +44,11 @@ const DebtorCard = ({
 		>
 			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3">
 				<div className="flex items-center gap-2">
-					<span className="font-semibold">{name}</span>
-					<span
-						className={`
-                text-sm font-semibold py-1 px-3 rounded-full
-                ${type === "개인"
-								? "bg-blue-200 text-blue-800"
-								: "bg-green-200 text-green-800"
-							}
-              `}
-					>
+					<StatusBadge status={status} />
+					<Badge color={type === "개인" ? "blue" : "yellow"}>
 						{type === "개인" ? "개인" : "단체"}
-					</span>
+					</Badge>
+					<span className="font-semibold">{name}</span>
 				</div>
 
 				<span className="text-xs text-gray-12">
@@ -47,14 +60,9 @@ const DebtorCard = ({
 				</span>
 			</div>
 
-			<div className="flex flex-col gap-3 flex-1">
+			<div className="flex flex-col gap-1 flex-1">
 				<h3 className="font-bold text-md text-gray-11 flex-1">{description}</h3>
-
-				{isClosed && (
-					<div className="text-red-9 text-sm font-semibold">[완결된 사건]</div>
-				)}
-
-				<div className="flex gap-2">
+				<div className="flex gap-2 mt-1">
 					<h4 className="text-sm font-medium">담당자:</h4>
 					<p className="text-sm">
 						{assignees?.join(", ") || (

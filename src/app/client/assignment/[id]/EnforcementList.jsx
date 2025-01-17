@@ -16,7 +16,6 @@ export default function EnforcementList({ assignmentId, user }) {
 	const [currentEnf, setCurrentEnf] = useState(null);
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
-	const korStatus = { ongoing: "진행", scheduled: "대기", closed: "완료" };
 
 	const StatusBadge = ({ status }) => {
 		if (status === "ongoing") {
@@ -118,7 +117,7 @@ export default function EnforcementList({ assignmentId, user }) {
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
 				<Text as="h2" className="font-semibold text-lg">
-					회수 활동 목록
+					회수 활동
 				</Text>
 				{isAdmin && (
 					<Button onClick={openCreateForm}>등록</Button>
