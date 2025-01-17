@@ -13,7 +13,6 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 	const [currentTimeline, setCurrentTimeline] = useState(null);
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// Fetch timelines
 	const fetchTimelines = async () => {
 		const { data, error } = await supabase
 			.from("assignment_timelines")
@@ -31,30 +30,6 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 	useEffect(() => {
 		fetchTimelines();
 	}, [assignmentId]);
-
-	// Handle form submission
-	const handleSaveTimeline = async (timelineData) => {
-		let response;
-		if (currentTimeline) {
-			response = await supabase
-				.from("assignment_timelines")
-				.update(timelineData)
-				.eq("id", currentTimeline.id);
-		} else {
-			response = await supabase
-				.from("assignment_timelines")
-				.insert({ ...timelineData, assignment_id: assignmentId });
-		}
-
-		if (response.error) {
-			console.error("Failed to save timeline:", response.error);
-			alert("목표 등록/수정 중 오류가 발생했습니다.");
-		} else {
-			setIsFormOpen(false);
-			setCurrentTimeline(null);
-			await fetchTimelines(); // Reload timelines after save
-		}
-	};
 
 	// Handle delete
 	const handleDeleteTimeline = async (timelineId) => {

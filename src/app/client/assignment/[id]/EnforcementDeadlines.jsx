@@ -1,69 +1,68 @@
-// CaseDeadlines.jsx
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
-import DeadlineForm from "../_components/dialogs/DeadlineForm";
+import EnforcementDeadlineForm from "../_components/dialogs/EnforcementDeadlineForm";
 
-
-export default function CaseDeadlines({ caseId, isAdmin, handleSuccess }) {
+export default function EnforcementDeadlines({ enforcementId, isAdmin, handleSuccess }) {
 	const [deadlines, setDeadlines] = useState([]);
-	const [selectedDeadline, setSelectedDeadline] = useState(null); // 수정 시
-	const [deadlineFormOpen, setDeadlineFormOpen] = useState(false);
+	const [selectedDeadline, setSelectedDeadline] = useState(null);
+	const [formOpen, setFormOpen] = useState(false);
 
-	// 1) 목록
+	// 1) 기일 목록
 	const fetchDeadlines = async () => {
-		const { data, error } = await supabase
-			.from("case_deadlines")
-			.select("*")
-			.eq("case_id", caseId)
-			.order("deadline_date", { ascending: true });
+		try {
+			const { data, error } = await supabase
+				.from("enforcement_deadlines")
+				.select("*")
+				.eq("enforcement_id", enforcementId)
+				.order("deadline_date", { ascending: true });
 
-		if (!error && data) {
-			setDeadlines(data);
+			if (error) throw error;
+			setDeadlines(data || []);
+		} catch (err) {
+			console.error("Failed to fetch enforcement deadlines:", err);
 		}
 	};
 
 	useEffect(() => {
-		if (caseId) {
-			fetchDeadlines();
-		}
-	}, [caseId]);
+		if (enforcementId) fetchDeadlines();
+	}, [enforcementId]);
 
-	// 2) 추가/수정 폼 열기
+	// 2) 추가/수정
 	const openCreateForm = () => {
 		setSelectedDeadline(null);
-		setDeadlineFormOpen(true);
+		setFormOpen(true);
 	};
 	const openEditForm = (dl) => {
 		setSelectedDeadline(dl);
-		setDeadlineFormOpen(true);
+		setFormOpen(true);
+	};
+	const handleFormSuccess = () => {
+		setFormOpen(false);
+		fetchDeadlines();
+		handleSuccess();
 	};
 
 	// 3) 삭제
 	const handleDelete = async (id) => {
 		if (!window.confirm("기일을 삭제하시겠습니까?")) return;
-		const { error } = await supabase
-			.from("case_deadlines")
-			.delete()
-			.eq("id", id);
-		if (!error) {
+		try {
+			const { error } = await supabase
+				.from("enforcement_deadlines")
+				.delete()
+				.eq("id", id);
+			if (error) throw error;
 			fetchDeadlines();
+			handleSuccess();
+		} catch (err) {
+			console.error("Error deleting enforcement deadline:", err);
 		}
-		handleSuccess();
-	};
-
-	// 4) 저장 후
-	const handleFormSuccess = () => {
-		setDeadlineFormOpen(false);
-		fetchDeadlines();
-		handleSuccess();
 	};
 
 	return (
-		<Box className="mb-6">
+		<Box className="mb-4">
 			<Flex justify="between" align="center" className="mb-2">
 				<Text as="h3" className="font-semibold text-base">
 					기일 목록
@@ -86,7 +85,7 @@ export default function CaseDeadlines({ caseId, isAdmin, handleSuccess }) {
 							key={dl.id}
 							className="p-2 bg-gray-3 border border-gray-6 rounded flex justify-between items-center"
 						>
-							<div className="flex flex-col">
+							<Box className="flex flex-col gap-1">
 								<Text color="gray" size="2">
 									{dl.type}
 								</Text>
@@ -95,21 +94,15 @@ export default function CaseDeadlines({ caseId, isAdmin, handleSuccess }) {
 										장소: {dl.location}
 									</Text>
 								)}
-							</div>
-							<div className="flex gap-1 items-center" >
+							</Box>
+							<Flex gap="2" align="center">
 								<Text size="1" color="gray">
 									{dl.deadline_date
-										? new Date(dl.deadline_date).toLocaleString("ko-KR", {
-											year: "numeric",
-											month: "2-digit",
-											day: "2-digit",
-											hour: "2-digit",
-											minute: "2-digit",
-										})
-										: null}
+										? new Date(dl.deadline_date).toLocaleString("ko-KR")
+										: ""}
 								</Text>
 								{isAdmin && (
-									<Flex gap="2">
+									<>
 										<Button
 											size="1"
 											variant="soft"
@@ -125,28 +118,25 @@ export default function CaseDeadlines({ caseId, isAdmin, handleSuccess }) {
 										>
 											삭제
 										</Button>
-									</Flex>
+									</>
 								)}
-							</div>
+							</Flex>
 						</li>
 					))}
 				</ul>
-			)
-			}
+			)}
 
-			{/* (Dialog) 기일 추가/수정 폼 */}
-			{
-				deadlineFormOpen && (
-					<DeadlineForm
-						open={deadlineFormOpen}
-						onOpenChange={setDeadlineFormOpen}
-						caseId={caseId}
-						deadlineData={selectedDeadline}
-						onSuccess={handleFormSuccess}
-					/>
-				)
-			}
-		</Box >
+			{/* 기일 등록/수정 폼 */}
+			{formOpen && (
+				<EnforcementDeadlineForm
+					open={formOpen}
+					onOpenChange={setFormOpen}
+					enforcementId={enforcementId}
+					deadlineData={selectedDeadline}
+					onSuccess={handleFormSuccess}
+				/>
+			)}
+		</Box>
 	);
 }
 
