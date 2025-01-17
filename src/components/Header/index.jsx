@@ -100,7 +100,7 @@ const Header = () => {
 						</Button>
 					</DropdownMenu.Trigger>
 					<DropdownMenu.Content
-						className="bg-gray-3 p-4 rounded-lg shadow-md flex flex-col flex-start"
+						className="bg-gray-3 p-4 rounded-lg shadow-md flex flex-col flex-start z-[9999]"
 						sideOffset={5}
 						style={{ minWidth: "200px" }}
 					>
