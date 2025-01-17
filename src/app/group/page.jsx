@@ -8,7 +8,7 @@ import GroupMembersEditor from "./GroupMembersEditor";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 export default function GroupManagementPage() {
-	useRoleRedirect(["staff", "admin", "client"], [], "/");
+	useRoleRedirect(["staff", "admin"], ["internal"], "/");
 	const [groups, setGroups] = useState([]);
 	const [selectedGroup, setSelectedGroup] = useState(null);
 	const [isAddingGroup, setIsAddingGroup] = useState(false);

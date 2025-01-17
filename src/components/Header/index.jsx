@@ -76,6 +76,22 @@ const Header = () => {
 							</Button>
 						</Link>
 					))}
+					{user && ((user.role === "staff" || user.role === "admin") && user.employee_type === "internal") && (
+						<Link href="/group">
+							<Button
+								variant="ghost"
+								color="red"
+								style={{
+									display: "flex",
+									alignItems: "center",
+									cursor: "pointer",
+								}}
+							>
+								그룹 관리
+							</Button>
+						</Link>
+					)}
+
 					{user && (user.role === "admin" && user.employee_type === "internal") && (
 						<Link href="/admin">
 							<Button
