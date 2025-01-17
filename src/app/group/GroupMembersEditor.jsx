@@ -84,12 +84,11 @@ export default function GroupMembersEditor({ group }) {
 	};
 
 	return (
-		<Box className="py-2 flex flex-col gap-4">
-			<Text size="4" weight="bold" mb="2">
+		<Box className="py-2 flex flex-col gap-2">
+			<Text size="4" weight="bold" className="mb-1 lg:mb-1">
 				그룹 멤버 관리
 			</Text>
-			{/* 유저 검색 & 추가 */}
-			<Flex gap="2" mb="2">
+			<Flex className="items-center gap-2">
 				<input
 					type="text"
 					placeholder="유저 이름 검색"
@@ -105,8 +104,6 @@ export default function GroupMembersEditor({ group }) {
 				/>
 				<Button onClick={handleSearch}>검색</Button>
 			</Flex>
-
-
 			<Box style={{ maxHeight: "200px", overflowY: "auto" }}>
 				{searchResults.map((user) => (
 					<Flex
@@ -127,12 +124,7 @@ export default function GroupMembersEditor({ group }) {
 				))}
 			</Box>
 
-
-			{/* 현재 그룹 멤버 목록 */}
-
-
-			<Text size="4" weight="bold">멤버 목록</Text>
-
+			<Text size="3" className="font-semibold">[멤버 목록]</Text>
 			<Box mb="4">
 				{members.map((m) => (
 					<Flex
