@@ -141,7 +141,7 @@ const Header = () => {
 						<Separator className="my-2" />
 						{user && ((user.role === "staff" || user.role === "admin") && user.employee_type === "internal") && (
 							<DropdownMenu.Item>
-								<Link href="/group">
+								<Link href="/group" onClick={() => setMenuOpen(false)}>
 									<Text size="2" color="red" style={{ display: "block", padding: "0.5rem 0" }}>
 										그룹 관리
 									</Text>
@@ -150,7 +150,7 @@ const Header = () => {
 						)}
 						{user && (user.role === "admin" && user.employee_type === "internal") && (
 							<DropdownMenu.Item>
-								<Link href="/admin">
+								<Link href="/admin" onClick={() => setMenuOpen(false)}>
 									<Text size="2" color="red" style={{ display: "block", padding: "0.5rem 0" }}>
 										관리자
 									</Text>
