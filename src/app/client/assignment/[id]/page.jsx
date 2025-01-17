@@ -22,7 +22,7 @@ import { Button } from "@radix-ui/themes";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
 const AssignmentPage = () => {
-	useRoleRedirect(["staff", "admin", "client"], "/");
+	useRoleRedirect(["staff", "admin", "client"], [], "/");
 	const { id: assignmentId } = useParams();
 	const { user } = useUser();
 	const [assignment, setAssignment] = useState(null);
@@ -176,19 +176,23 @@ const AssignmentPage = () => {
 				</div>
 				{isAdmin && assignment && (
 					<div className="flex gap-2 flex-wrap">
-						<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>
-							담당자 배정
-						</Button>
+						{user?.employee_type === "internal" &&
+							<Button variant="soft" onClick={() => setAssigneeModalOpen(true)}>
+								담당자 배정
+							</Button>
+						}
 						<Button variant="soft" onClick={() => setEditModalOpen(true)}>
 							의뢰 수정
 						</Button>
-						<Button
-							variant="soft"
-							color="red"
-							onClick={handleDeleteAssignment}
-						>
-							의뢰 삭제
-						</Button>
+						{user?.employee_type === "internal" &&
+							<Button
+								variant="soft"
+								color="red"
+								onClick={handleDeleteAssignment}
+							>
+								의뢰 삭제
+							</Button>
+						}
 						{assignment?.status === "ongoing" && (
 							<Button
 								variant="soft"

@@ -12,7 +12,7 @@ import useRoleRedirect from "@/hooks/userRoleRedirect";
 const PAGE_SIZE = 12;
 
 const ClientManagementPage = () => {
-	useRoleRedirect(["staff", "admin"], "/");
+	useRoleRedirect(["staff", "admin"], ["internal"], "/");
 
 	const [clients, setClients] = useState([]);
 	const [filteredClients, setFilteredClients] = useState([]);

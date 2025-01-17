@@ -4,7 +4,12 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/utils/supabase";
-import { MoonIcon, SunIcon, HamburgerMenuIcon, Cross2Icon } from "@radix-ui/react-icons";
+import {
+	MoonIcon,
+	SunIcon,
+	HamburgerMenuIcon,
+	Cross2Icon,
+} from "@radix-ui/react-icons";
 import { Flex, Button, Text, Box, Separator } from "@radix-ui/themes";
 import { useTheme } from "next-themes";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -20,14 +25,14 @@ const Header = () => {
 	const router = useRouter();
 
 	useEffect(() => {
-		setTheme("dark")
-	}, [])
+		setTheme("dark");
+	}, []);
 
 	const NAV_LIST = [
-		{ title: "의뢰 관리", path: `/clients`, roles: ["admin", "staff"] },
-		{ title: "일정 관리", path: "/todos", roles: [] },
-		{ title: "나의 의뢰", path: "/my-assignments", roles: ["client"] },
-		{ title: "공지사항", path: "/news", roles: ["admin", "staff", "client"] },
+		{ title: "의뢰 관리", path: `/clients`, roles: ["admin", "staff"], employeeTypes: ['internal'] },
+		{ title: "담당 의뢰", path: `/staff`, roles: ["admin", "staff"], employeeTypes: [] },
+		{ title: "나의 의뢰", path: "/my-assignments", roles: ["client"], employeeTypes: [] },
+		{ title: "공지사항", path: "/news", roles: ["admin", "staff", "client"], employeeTypes: [] },
 	];
 
 	const handleLogout = async () => {
@@ -51,7 +56,12 @@ const Header = () => {
 					<Text className="font-bold text-xl md:text-2xl">LawHub</Text>
 				</Link>
 				<Flex className="hidden md:flex gap-4 items-center">
-					{NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map((nav) => (
+					{NAV_LIST.filter(
+						(nav) =>
+							nav.roles.includes(user?.role) &&
+							(nav.employeeTypes.length === 0 ||
+								nav.employeeTypes.includes(user?.employee_type))
+					).map((nav) => (
 						<Link href={nav.path} key={nav.path}>
 							<Button
 								variant="ghost"
@@ -66,25 +76,16 @@ const Header = () => {
 							</Button>
 						</Link>
 					))}
-					{user && user.role !== "client" && (
-						<Link href="/group">
-							<Button variant="ghost" color="red" style={{
-								display: "flex",
-								alignItems: "center",
-								cursor: "pointer",
-							}}
-							>
-								그룹 관리
-							</Button>
-						</Link>
-					)}
-					{user && user.role === "admin" && (
+					{user && (user.role === "admin" && user.employee_type === "internal") && (
 						<Link href="/admin">
-							<Button variant="ghost" color="red" style={{
-								display: "flex",
-								alignItems: "center",
-								cursor: "pointer",
-							}}
+							<Button
+								variant="ghost"
+								color="red"
+								style={{
+									display: "flex",
+									alignItems: "center",
+									cursor: "pointer",
+								}}
 							>
 								관리자
 							</Button>
@@ -104,25 +105,24 @@ const Header = () => {
 						sideOffset={5}
 						style={{ minWidth: "200px" }}
 					>
-						{NAV_LIST.filter((nav) => nav.roles.includes(user?.role)).map((nav) => (
+						{NAV_LIST.filter(
+							(nav) =>
+								nav.roles.includes(user?.role) &&
+								(nav.employeeTypes.length === 0 ||
+									nav.employeeTypes.includes(user?.employee_type))
+						).map((nav) => (
 							<DropdownMenu.Item key={nav.path}>
 								<Link href={nav.path}>
-									<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
+									<Text
+										size="2"
+										style={{ display: "block", padding: "0.5rem 0" }}
+									>
 										{nav.title}
 									</Text>
 								</Link>
 							</DropdownMenu.Item>
 						))}
 						<Separator className="my-2" />
-						{user && user.role !== "client" && (
-							<DropdownMenu.Item>
-								<Link href="/group">
-									<Text size="2" style={{ display: "block", padding: "0.5rem 0" }}>
-										그룹 관리
-									</Text>
-								</Link>
-							</DropdownMenu.Item>
-						)}
 						{user && user.role === "admin" && (
 							<DropdownMenu.Item>
 								<Link href="/admin">
@@ -134,8 +134,6 @@ const Header = () => {
 						)}
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
-
-
 			</Flex>
 
 			{/* Right Actions */}
@@ -146,7 +144,11 @@ const Header = () => {
 					color="gray"
 					onClick={toggleTheme}
 				>
-					{theme === "light" ? <MoonIcon width={20} height={20} /> : <SunIcon width={20} height={20} />}
+					{theme === "light" ? (
+						<MoonIcon width={20} height={20} />
+					) : (
+						<SunIcon width={20} height={20} />
+					)}
 				</Button>
 				{user && <NotificationDropdown user={user} />}
 				{user ? (
