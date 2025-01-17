@@ -1,11 +1,20 @@
+// TaskForm.jsx
 "use client";
 
 import React, { useEffect } from "react";
-import { supabase } from "@/utils/supabase";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Box, Flex, Text, Button, TextArea } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import * as RadioGroup from "@radix-ui/react-radio-group";  // <-- 핵심
 import { useForm } from "react-hook-form";
+import { supabase } from "@/utils/supabase";
+
+import {
+	Box,
+	Flex,
+	Text,
+	Button,
+	TextArea,
+} from "@radix-ui/themes"; // <-- 여기엔 Radio가 없음
+import { Cross2Icon } from "@radix-ui/react-icons";
 
 export default function TaskForm({
 	open,
@@ -14,54 +23,75 @@ export default function TaskForm({
 	taskData,
 	onSuccess,
 	user,
+	assignees = [],
 }) {
 	const {
 		register,
 		handleSubmit,
 		setValue,
+		watch,
+		formState: { errors },
 	} = useForm({
 		defaultValues: {
 			title: "",
 			content: "",
-			status: "ongoing", // 기본
+			status: "ongoing",
+			type: "task", // 'task' or 'request'
+			receiver_id: null,
 		},
 	});
+
+	const currentType = watch("type");
 
 	useEffect(() => {
 		if (taskData) {
 			setValue("title", taskData.title || "");
 			setValue("content", taskData.content || "");
 			setValue("status", taskData.status || "ongoing");
+			setValue("type", taskData.type || "task");
+			setValue("receiver_id", taskData.receiver_id || null);
 		}
-	}, [taskData]);
+	}, [taskData, setValue]);
 
 	const onSubmit = async (formValues) => {
 		try {
+			// Payload 구성
 			const payload = {
 				assignment_id: assignmentId,
-				title: formValues.title || "",
-				content: formValues.content || "",
-				status: formValues.status || "ongoing",
-				created_by: taskData?.id ? taskData.created_by : user.id, // 새 업무면 user.id, 기존이면 유지
+				title: (formValues.title || "").trim(),
+				content: (formValues.content || "").trim(),
+				status: formValues.status,
+				type: formValues.type,
+				requester_id:
+					formValues.type === "request"
+						? taskData?.requester_id || user.id
+						: null,
+				receiver_id:
+					formValues.type === "request"
+						? formValues.receiver_id
+						: null,
+				created_by: taskData?.id ? taskData.created_by : user.id,
 			};
 
+			// Insert/Update
 			if (taskData?.id) {
-				// update
 				const { error } = await supabase
 					.from("assignment_tasks")
 					.update(payload)
 					.eq("id", taskData.id);
 				if (error) throw error;
 			} else {
-				// insert
-				const { error } = await supabase.from("assignment_tasks").insert(payload);
+				const { error } = await supabase
+					.from("assignment_tasks")
+					.insert(payload);
 				if (error) throw error;
 			}
+
 			alert("저장되었습니다.");
-			if (onSuccess) onSuccess();
+			onSuccess();
 		} catch (err) {
-			console.error("Error saving task:", err);
-			alert("업무 저장 중 오류가 발생했습니다.");
+			console.error("업무/요청 저장 오류:", err);
+			alert("업무/요청 저장 중 오류가 발생했습니다.");
 		}
 	};
 
@@ -96,6 +126,7 @@ export default function TaskForm({
 
 				<form onSubmit={handleSubmit(onSubmit)}>
 					<Flex direction="column" gap="3">
+						{/* 제목 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								제목
@@ -105,8 +136,14 @@ export default function TaskForm({
 								placeholder="업무 제목"
 								className="w-full p-2 border border-gray-6 rounded"
 							/>
+							{errors.title && (
+								<Text color="red" size="2">
+									제목을 입력해주세요.
+								</Text>
+							)}
 						</Box>
 
+						{/* 내용 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								내용
@@ -118,6 +155,80 @@ export default function TaskForm({
 							/>
 						</Box>
 
+						{/* 유형 */}
+						<Box>
+							<Text size="2" color="gray" className="mb-1">
+								유형
+							</Text>
+							<select
+								{...register("type")}
+								className="w-full p-1 border border-gray-6 rounded"
+							>
+								<option value="task">일반 업무</option>
+								<option value="request">요청</option>
+							</select>
+						</Box>
+
+						{/* 요청일 때 수신자 RadioGroup */}
+						{currentType === "request" && (
+							<Box>
+								<Text size="2" color="gray" className="mb-1">
+									수신자 (담당자 중 선택)
+								</Text>
+								{assignees.length === 0 ? (
+									<Text>담당자가 없습니다.</Text>
+								) : (
+									<RadioGroup.Root
+										value={watch("receiver_id") || ""}
+										onValueChange={(val) => setValue("receiver_id", val)}
+									>
+										{assignees.map((item) => (
+											<Flex
+												key={item.user_id}
+												align="center"
+												gap="2"
+												style={{
+													backgroundColor: "var(--gray-2)",
+													borderRadius: 4,
+													padding: "8px",
+													marginBottom: "4px",
+												}}
+											>
+												<RadioGroup.Item
+													value={item.user_id}
+													id={`radio-${item.user_id}`}
+													style={{
+														width: 20,
+														height: 20,
+														backgroundColor: "white",
+														borderRadius: "100%",
+														border: "1px solid var(--gray-6)",
+														display: "flex",
+														alignItems: "center",
+														justifyContent: "center",
+													}}
+												>
+													<RadioGroup.Indicator
+														style={{
+															display: "block",
+															width: 10,
+															height: 10,
+															borderRadius: "100%",
+															backgroundColor: "var(--blue-9)",
+														}}
+													/>
+												</RadioGroup.Item>
+												<label htmlFor={`radio-${item.user_id}`}>
+													{item.users?.name} ({item.users?.position || "직위 없음"})
+												</label>
+											</Flex>
+										))}
+									</RadioGroup.Root>
+								)}
+							</Box>
+						)}
+
+						{/* 상태 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								상태
@@ -127,10 +238,11 @@ export default function TaskForm({
 								className="w-full p-1 border border-gray-6 rounded"
 							>
 								<option value="ongoing">진행중</option>
-								<option value="closed">종결</option>
+								<option value="closed">완료</option>
 							</select>
 						</Box>
 
+						{/* 액션 버튼 */}
 						<Flex justify="end" gap="2">
 							<Button
 								variant="soft"

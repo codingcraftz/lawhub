@@ -60,7 +60,7 @@ const EnforcementList = ({ assignmentId, user }) => {
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
 				<Text as="h2" className="font-semibold text-lg">
-					강제집행 목록
+					회수 활동 목록
 				</Text>
 				{isAdmin && (
 					<Button onClick={openCreate}>
@@ -70,7 +70,7 @@ const EnforcementList = ({ assignmentId, user }) => {
 			</Flex>
 
 			{enforcements?.length === 0 ? (
-				<Text>등록된 강제집행이 없습니다.</Text>
+				<Text>등록된 회수활동이 없습니다.</Text>
 			) : (
 				<ul className="space-y-3">
 					{enforcements.map((item) => (

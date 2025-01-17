@@ -224,7 +224,7 @@ const AssignmentPage = () => {
 				<EnforcementList assignmentId={assignmentId} user={user} />
 				<FileList assignmentId={assignmentId} user={user} />
 				<Inquiry assignmentId={assignmentId} user={user} />
-				<AssignmentTasks assignmentId={assignmentId} user={user} />
+				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentAssignees={assignment?.assignment_assignees || []} />
 			</div>
 			{assignment && (
 				<AssignmentEditModal
