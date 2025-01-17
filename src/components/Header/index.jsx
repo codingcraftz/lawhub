@@ -128,7 +128,7 @@ const Header = () => {
 									nav.employeeTypes.includes(user?.employee_type))
 						).map((nav) => (
 							<DropdownMenu.Item key={nav.path}>
-								<Link href={nav.path}>
+								<Link href={nav.path} onClick={() => setMenuOpen(false)}>
 									<Text
 										size="2"
 										style={{ display: "block", padding: "0.5rem 0" }}
@@ -155,7 +155,7 @@ const Header = () => {
 			{/* Right Actions */}
 			<Flex align="center" gap="4">
 				<Button
-					className="focus:outline-none hidden md:block"
+					className="focus:outline-none"
 					variant="ghost"
 					color="gray"
 					onClick={toggleTheme}
