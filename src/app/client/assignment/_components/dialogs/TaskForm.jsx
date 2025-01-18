@@ -1,19 +1,12 @@
-// TaskForm.jsx
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import * as RadioGroup from "@radix-ui/react-radio-group";  // <-- 핵심
-import { useForm } from "react-hook-form";
+import * as RadioGroup from "@radix-ui/react-radio-group";
 import { supabase } from "@/utils/supabase";
+import { useForm } from "react-hook-form";
 
-import {
-	Box,
-	Flex,
-	Text,
-	Button,
-	TextArea,
-} from "@radix-ui/themes"; // <-- 여기엔 Radio가 없음
+import { Box, Flex, Text, Button, TextArea } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
 export default function TaskForm({
@@ -23,8 +16,9 @@ export default function TaskForm({
 	taskData,
 	onSuccess,
 	user,
-	assignees = [],
+	assignmentAssignees = [],
 }) {
+	const [allStaff, setAllStaff] = useState([]);
 	const {
 		register,
 		handleSubmit,
@@ -36,10 +30,11 @@ export default function TaskForm({
 			title: "",
 			content: "",
 			status: "ongoing",
-			type: "task", // 'task' or 'request'
+			type: "task", // 일반 업무 or 요청
 			receiver_id: null,
 		},
 	});
+	console.log(assignmentAssignees)
 
 	const currentType = watch("type");
 
@@ -53,27 +48,40 @@ export default function TaskForm({
 		}
 	}, [taskData, setValue]);
 
+	useEffect(() => {
+		if (user?.role === "admin") {
+			fetchAllStaff();
+		}
+	}, [user]);
+
+	// Admin: 모든 직원 정보 가져오기
+	const fetchAllStaff = async () => {
+		try {
+			const { data, error } = await supabase
+				.from("users")
+				.select("id, name, position, employee_type, role")
+				.or("role.eq.staff,role.eq.admin");
+
+			if (error) throw error;
+			setAllStaff(data || []);
+		} catch (err) {
+			console.error("직원 목록 가져오기 오류:", err);
+		}
+	};
+
 	const onSubmit = async (formValues) => {
 		try {
-			// Payload 구성
 			const payload = {
 				assignment_id: assignmentId,
-				title: (formValues.title || "").trim(),
-				content: (formValues.content || "").trim(),
+				title: formValues.title.trim(),
+				content: formValues.content.trim(),
 				status: formValues.status,
 				type: formValues.type,
-				requester_id:
-					formValues.type === "request"
-						? taskData?.requester_id || user.id
-						: null,
-				receiver_id:
-					formValues.type === "request"
-						? formValues.receiver_id
-						: null,
+				requester_id: formValues.type === "request" ? taskData?.requester_id || user.id : null,
+				receiver_id: formValues.type === "request" ? formValues.receiver_id : null,
 				created_by: taskData?.id ? taskData.created_by : user.id,
 			};
 
-			// Insert/Update
 			if (taskData?.id) {
 				const { error } = await supabase
 					.from("assignment_tasks")
@@ -81,9 +89,7 @@ export default function TaskForm({
 					.eq("id", taskData.id);
 				if (error) throw error;
 			} else {
-				const { error } = await supabase
-					.from("assignment_tasks")
-					.insert(payload);
+				const { error } = await supabase.from("assignment_tasks").insert(payload);
 				if (error) throw error;
 			}
 
@@ -94,6 +100,19 @@ export default function TaskForm({
 			alert("업무/요청 저장 중 오류가 발생했습니다.");
 		}
 	};
+
+	const assigneesToShow = (user?.role === "admin"
+		? allStaff.map((staff) => ({
+			id: staff.id,
+			name: staff.name,
+			position: staff.position,
+		}))
+		: assignmentAssignees.map((assignee) => ({
+			id: assignee.user_id,
+			name: assignee.users?.name,
+			position: assignee.users?.position,
+		}))) || [];
+
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -126,35 +145,26 @@ export default function TaskForm({
 
 				<form onSubmit={handleSubmit(onSubmit)}>
 					<Flex direction="column" gap="3">
-						{/* 상태 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								상태
 							</Text>
-							<select
-								{...register("status")}
-							>
+							<select {...register("status")} className="w-full p-2 border border-gray-6 rounded">
 								<option value="ongoing">진행</option>
 								<option value="closed">완료</option>
 							</select>
 						</Box>
 
-						{/* 유형 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								유형
 							</Text>
-							<select
-								{...register("type")}
-							>
+							<select {...register("type")} className="w-full p-2 border border-gray-6 rounded">
 								<option value="task">일반</option>
 								<option value="request">요청</option>
 							</select>
 						</Box>
 
-
-
-						{/* 제목 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								제목
@@ -171,7 +181,6 @@ export default function TaskForm({
 							)}
 						</Box>
 
-						{/* 내용 */}
 						<Box>
 							<Text size="2" color="gray" className="mb-1">
 								내용
@@ -183,57 +192,34 @@ export default function TaskForm({
 							/>
 						</Box>
 
-						{/* 요청일 때 수신자 RadioGroup */}
 						{currentType === "request" && (
 							<Box>
 								<Text size="2" color="gray" className="mb-1">
-									수신자 (담당자 중 선택)
+									수신자
 								</Text>
-								{assignees.length === 0 ? (
-									<Text>담당자가 없습니다.</Text>
+								{assigneesToShow.length === 0 ? (
+									<Text as="p">담당자가 없습니다.</Text>
 								) : (
 									<RadioGroup.Root
 										value={watch("receiver_id") || ""}
 										onValueChange={(val) => setValue("receiver_id", val)}
 									>
-										{assignees.map((item) => (
+										{assigneesToShow.map((assignee) => (
 											<Flex
-												key={item.user_id}
+												key={assignee.id}
 												align="center"
 												gap="2"
-												style={{
-													backgroundColor: "var(--gray-2)",
-													borderRadius: 4,
-													padding: "8px",
-													marginBottom: "4px",
-												}}
+												className="mb-2 bg-gray-3 p-2 rounded"
 											>
 												<RadioGroup.Item
-													value={item.user_id}
-													id={`radio-${item.user_id}`}
-													style={{
-														width: 20,
-														height: 20,
-														backgroundColor: "white",
-														borderRadius: "100%",
-														border: "1px solid var(--gray-6)",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-													}}
+													value={assignee.id}
+													id={`radio-${assignee.id}`}
+													className="w-4 h-4 rounded-full border border-gray-6 flex items-center justify-center"
 												>
-													<RadioGroup.Indicator
-														style={{
-															display: "block",
-															width: 10,
-															height: 10,
-															borderRadius: "100%",
-															backgroundColor: "var(--blue-9)",
-														}}
-													/>
+													<RadioGroup.Indicator className="w-2 h-2 bg-blue-9 rounded-full" />
 												</RadioGroup.Item>
-												<label htmlFor={`radio-${item.user_id}`}>
-													{item.users?.name} ({item.users?.position || "직위 없음"})
+												<label htmlFor={`radio-${assignee.id}`}>
+													{assignee?.name} ({assignee?.position || "직위 없음"})
 												</label>
 											</Flex>
 										))}
@@ -242,8 +228,6 @@ export default function TaskForm({
 							</Box>
 						)}
 
-
-						{/* 액션 버튼 */}
 						<Flex justify="end" gap="2">
 							<Button
 								variant="soft"
