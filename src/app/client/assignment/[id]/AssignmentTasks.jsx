@@ -13,7 +13,6 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [currentTask, setCurrentTask] = useState(null);
 	const [showAll, setShowAll] = useState(false);
-
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
 	const fetchTasks = async () => {
@@ -255,7 +254,7 @@ const AssignmentTasks = ({ assignmentId, user, assignmentAssignees }) => {
 					taskData={currentTask}
 					onSuccess={handleFormSuccess}
 					user={user}
-					assignees={assignmentAssignees}
+					assignmentAssignees={assignmentAssignees}
 				/>
 			)}
 		</section>
