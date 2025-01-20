@@ -31,6 +31,7 @@ const Header = () => {
 	const NAV_LIST = [
 		{ title: "의뢰 관리", path: `/clients`, roles: ["admin", "staff"], employeeTypes: ['internal'] },
 		{ title: "담당 의뢰", path: `/staff`, roles: ["admin", "staff"], employeeTypes: [] },
+		{ title: "업무 관리", path: `/tasks`, roles: ["admin", "staff"], employeeTypes: [] },
 		{ title: "나의 의뢰", path: "/my-assignments", roles: ["client"], employeeTypes: [] },
 		{ title: "공지사항", path: "/news", roles: ["admin", "staff", "client"], employeeTypes: [] },
 	];
