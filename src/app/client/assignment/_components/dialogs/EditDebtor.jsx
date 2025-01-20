@@ -7,18 +7,18 @@ import * as Dialog from "@radix-ui/react-dialog";
 
 const EditDebtorDialog = ({ open, onOpenChange, debtors, onSave }) => {
 	const [selectedDebtors, setSelectedDebtors] = useState(debtors);
-
-	// 예: 채무자 정보를 편집할 때(체크박스, 텍스트 수정 등) 로직 추가 가능
-	// (현재는 단순히 state로만 보존)
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleSaveChanges = async () => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			onSave(selectedDebtors);
 			onOpenChange(false);
 		} catch (err) {
 			console.error("Error saving debtor changes:", err);
 			alert("채무자 저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -60,8 +60,8 @@ const EditDebtorDialog = ({ open, onOpenChange, debtors, onSave }) => {
 					<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 						닫기
 					</Button>
-					<Button variant="solid" color="blue" onClick={handleSaveChanges}>
-						저장
+					<Button variant="solid" color="blue" onClick={handleSaveChanges} disabled={isSubmitting}>
+						{isSubmitting ? "저장 중..." : "저장"}
 					</Button>
 				</Flex>
 			</Dialog.Content>

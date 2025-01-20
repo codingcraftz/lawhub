@@ -8,15 +8,14 @@ import * as Dialog from "@radix-ui/react-dialog";
 const EditCreditInfo = ({
 	open,
 	onOpenChange,
-	debtor,
 	onSave,
 	initialCreditInfo,
+	isSubmitting,
 }) => {
 	const [creditInfo, setCreditInfo] = useState([]);
 
 	useEffect(() => {
 		if (open) {
-			// owned 데이터를 key-value 배열로 변환
 			setCreditInfo(Object.entries(initialCreditInfo || {}));
 		}
 	}, [open, initialCreditInfo]);
@@ -116,8 +115,8 @@ const EditCreditInfo = ({
 					<Button variant="soft" color="gray" type="button" onClick={() => onOpenChange(false)}>
 						닫기
 					</Button>
-					<Button variant="solid" color="blue" type="submit" onClick={handleSave}>
-						저장
+					<Button variant="solid" color="blue" type="submit" onClick={handleSave} disabled={isSubmitting} >
+						{isSubmitting ? "저장 중..." : "저장"}
 					</Button>
 				</Flex>
 			</Dialog.Content>

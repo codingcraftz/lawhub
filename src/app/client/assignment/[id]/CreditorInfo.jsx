@@ -9,6 +9,7 @@ const CreditorInfo = ({ assignmentId, user }) => {
 	const [creditors, setCreditors] = useState([]);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [currentCreditor, setCurrentCreditor] = useState(null);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
@@ -30,26 +31,33 @@ const CreditorInfo = ({ assignmentId, user }) => {
 	}, [assignmentId]);
 
 	const handleSaveCreditor = async (creditorData) => {
-		let response;
-		if (currentCreditor) {
-			response = await supabase
-				.from("assignment_creditors")
-				.update(creditorData)
-				.eq("id", currentCreditor.id);
-		} else {
-			response = await supabase
-				.from("assignment_creditors")
-				.insert({ ...creditorData, assignment_id: assignmentId });
-		}
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 
-		if (response.error) {
-			console.error("Failed to save creditor:", response.error);
-			alert("채권자 등록/수정 중 오류가 발생했습니다.");
-		} else {
+		try {
+			let response;
+			if (currentCreditor) {
+				response = await supabase
+					.from("assignment_creditors")
+					.update(creditorData)
+					.eq("id", currentCreditor.id);
+			} else {
+				response = await supabase
+					.from("assignment_creditors")
+					.insert({ ...creditorData, assignment_id: assignmentId });
+			}
+
+			if (response.error) {
+				throw response.error;
+			}
 			setIsFormOpen(false);
 			setCurrentCreditor(null);
 			fetchCreditors();
+		} catch (error) {
+			console.error("채권자 등록/수정 오류 발생:", error)
 		}
+		finally { setIsSubmitting(false); }
+
 	};
 
 	const handleDeleteCreditor = async (creditorId) => {
@@ -120,6 +128,7 @@ const CreditorInfo = ({ assignmentId, user }) => {
 
 			{isFormOpen && (
 				<CreditorForm
+					isSubmitting={isSubmitting}
 					initialData={currentCreditor}
 					onOpenChange={setIsFormOpen}
 					onSubmit={handleSaveCreditor}

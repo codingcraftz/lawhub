@@ -14,6 +14,7 @@ export default function CaseTimelineForm({
 	onSuccess,
 }) {
 	const [textValue, setTextValue] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (timelineData) {
@@ -29,6 +30,9 @@ export default function CaseTimelineForm({
 			alert("내용을 입력해주세요.");
 			return;
 		}
+
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 
 		try {
 			if (timelineData?.id) {
@@ -51,7 +55,7 @@ export default function CaseTimelineForm({
 		} catch (err) {
 			console.error("Error saving enforcement timeline:", err);
 			alert("타임라인 저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -106,8 +110,8 @@ export default function CaseTimelineForm({
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
-						<Button variant="solid" type="submit">
-							저장
+						<Button variant="solid" type="submit" disabled={isSubmitting}>
+							{isSubmitting ? "저장 중..." : "저장"}
 						</Button>
 					</Flex>
 				</form>

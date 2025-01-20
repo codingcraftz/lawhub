@@ -73,8 +73,6 @@ const StaffAssignmentsPage = () => {
 		if (user) fetchAssignments();
 	}, [user]);
 
-	console.log(assignments)
-
 	return (
 		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
 			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">

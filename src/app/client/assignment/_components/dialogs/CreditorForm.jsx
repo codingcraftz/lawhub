@@ -7,7 +7,8 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import InputMask from "react-input-mask";
 import { supabase } from "@/utils/supabase";
 
-export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
+export default function CreditorForm({ initialData, onOpenChange, onSubmit, isSubmitting }) {
+
 	const [formData, setFormData] = useState({
 		name: "",
 		birth_date: "",
@@ -257,8 +258,8 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 							<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit">
-								{initialData ? "수정" : "추가"}
+							<Button variant="solid" type="submit" disabled={isSubmitting}>
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					}

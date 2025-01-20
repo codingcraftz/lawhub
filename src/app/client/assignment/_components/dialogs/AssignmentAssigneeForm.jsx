@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text, Checkbox } from "@radix-ui/themes";
 
-export default function AssignmentAssigneeDialog({
+export default function AssignmentAssigneeForm({
 	open,
 	onOpenChange,
 	assignmentId,
@@ -15,6 +15,7 @@ export default function AssignmentAssigneeDialog({
 	const [internalStaff, setInternalStaff] = useState([]);
 	const [externalStaff, setExternalStaff] = useState([]);
 	const [selectedAssignees, setSelectedAssignees] = useState([]);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		fetchStaff();
@@ -30,7 +31,6 @@ export default function AssignmentAssigneeDialog({
 
 	const fetchStaff = async () => {
 		try {
-			// Fetch internal staff
 			const { data: internalData, error: internalError } = await supabase
 				.from("users")
 				.select("id, name, position, employee_type")
@@ -38,13 +38,9 @@ export default function AssignmentAssigneeDialog({
 				.eq("employee_type", "internal");
 
 			if (internalError) throw internalError;
-
-			// Sort internal staff alphabetically by name
 			const sortedInternalStaff = (internalData || []).sort((a, b) =>
 				a.name.localeCompare(b.name)
 			);
-
-			// Fetch external staff
 			const { data: externalData, error: externalError } = await supabase
 				.from("users")
 				.select("id, name, position, employee_type")
@@ -52,13 +48,9 @@ export default function AssignmentAssigneeDialog({
 				.eq("employee_type", "external");
 
 			if (externalError) throw externalError;
-
-			// Sort external staff alphabetically by name
 			const sortedExternalStaff = (externalData || []).sort((a, b) =>
 				a.name.localeCompare(b.name)
 			);
-
-			// Set sorted staff lists
 			setInternalStaff(sortedInternalStaff);
 			setExternalStaff(sortedExternalStaff);
 		} catch (error) {
@@ -79,6 +71,8 @@ export default function AssignmentAssigneeDialog({
 	const isChecked = (id) => selectedAssignees.some((a) => a.id === id);
 
 	const handleSave = async () => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			const insertData = selectedAssignees.map((assignee) => ({
 				assignment_id: assignmentId,
@@ -102,6 +96,8 @@ export default function AssignmentAssigneeDialog({
 		} catch (error) {
 			console.error("담당자 업데이트 오류:", error);
 			alert("담당자 업데이트 중 오류가 발생했습니다.");
+		} finally {
+			setIsSubmitting(false); // <-- 로딩 상태 종료
 		}
 	};
 
@@ -221,13 +217,12 @@ export default function AssignmentAssigneeDialog({
 					)}
 				</Box>
 
-				{/* Action Buttons */}
 				<Flex justify="end" mt="4" gap="2">
 					<Button variant="soft" onClick={() => onOpenChange(false)}>
 						취소
 					</Button>
-					<Button variant="solid" onClick={handleSave}>
-						저장
+					<Button variant="solid" onClick={handleSave} disabled={isSubmitting} >
+						{isSubmitting ? "저장 중..." : "저장"}
 					</Button>
 				</Flex>
 			</Dialog.Content>

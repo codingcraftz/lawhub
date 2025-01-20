@@ -5,7 +5,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import InputMask from "react-input-mask";
 import { supabase } from "@/utils/supabase";
 
-export default function DebtorForm({ onOpenChange, onSubmit, initialData = null }) {
+export default function DebtorForm({ onOpenChange, onSubmit, initialData = null, isSubmitting }) {
 	const [formData, setFormData] = useState({
 		name: "",
 		birth_date: "",
@@ -18,7 +18,6 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 	const [userSearchResults, setUserSearchResults] = useState([]);
 	const [isSearching, setIsSearching] = useState(false);
 
-	// 수정 모드 초기 데이터 로드
 	useEffect(() => {
 		if (initialData) {
 			setFormData({
@@ -49,7 +48,6 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 		onSubmit(formData);
 	};
 
-	// 유저 검색
 	const handleUserSearch = async () => {
 		if (!userSearchTerm.trim()) return;
 		setIsSearching(true);
@@ -249,8 +247,8 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 							<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit">
-								{initialData ? "수정" : "추가"}
+							<Button variant="solid" type="submit" disabled={isSubmitting}>
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					}

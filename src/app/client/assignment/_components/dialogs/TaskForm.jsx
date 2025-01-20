@@ -19,6 +19,7 @@ export default function TaskForm({
 	assignmentAssignees = [],
 }) {
 	const [allStaff, setAllStaff] = useState([]);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 	const {
 		register,
 		handleSubmit,
@@ -34,7 +35,6 @@ export default function TaskForm({
 			receiver_id: null,
 		},
 	});
-	console.log(assignmentAssignees)
 
 	const currentType = watch("type");
 
@@ -54,7 +54,6 @@ export default function TaskForm({
 		}
 	}, [user]);
 
-	// Admin: 모든 직원 정보 가져오기
 	const fetchAllStaff = async () => {
 		try {
 			const { data, error } = await supabase
@@ -66,10 +65,12 @@ export default function TaskForm({
 			setAllStaff(data || []);
 		} catch (err) {
 			console.error("직원 목록 가져오기 오류:", err);
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	const onSubmit = async (formValues) => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			const payload = {
 				assignment_id: assignmentId,
@@ -237,8 +238,8 @@ export default function TaskForm({
 							>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit">
-								저장
+							<Button variant="solid" type="submit" disabled={isSubmitting}>
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					</Flex>

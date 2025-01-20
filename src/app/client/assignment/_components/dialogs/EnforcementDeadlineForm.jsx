@@ -6,9 +6,6 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
-/**
- * 회수활동 기일 등록/수정
- */
 export default function EnforcementDeadlineForm({
 	open,
 	onOpenChange,
@@ -21,6 +18,7 @@ export default function EnforcementDeadlineForm({
 		deadline_date: "",
 		location: "",
 	});
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (deadlineData) {
@@ -50,9 +48,10 @@ export default function EnforcementDeadlineForm({
 			return;
 		}
 
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			if (deadlineData?.id) {
-				// 수정
 				const { error } = await supabase
 					.from("enforcement_deadlines")
 					.update({
@@ -64,7 +63,6 @@ export default function EnforcementDeadlineForm({
 
 				if (error) throw error;
 			} else {
-				// 추가
 				const { error } = await supabase
 					.from("enforcement_deadlines")
 					.insert({
@@ -82,7 +80,7 @@ export default function EnforcementDeadlineForm({
 		} catch (err) {
 			console.error("Error saving enforcement deadline:", err);
 			alert("기일 저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -173,8 +171,8 @@ export default function EnforcementDeadlineForm({
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
-						<Button variant="solid" type="submit">
-							저장
+						<Button variant="solid" type="submit" disabled={isSubmitting}>
+							{isSubmitting ? "저장 중..." : "저장"}
 						</Button>
 					</Flex>
 				</form>

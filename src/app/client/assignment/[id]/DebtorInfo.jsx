@@ -14,6 +14,8 @@ const DebtorInfo = ({ assignmentId, user }) => {
 	const [selectedDebtor, setSelectedDebtor] = useState(null);
 	const [openCreditInfo, setOpenCreditInfo] = useState(false);
 	const [selectedDebtorCredit, setSelectedDebtorCredit] = useState({});
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
@@ -50,32 +52,34 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		fetchDebtors();
 	}, [assignmentId]);
 
-	// 등록/수정
 	const handleSaveDebtor = async (debtorData) => {
-		let response;
-		if (selectedDebtor) {
-			response = await supabase
-				.from("assignment_debtors")
-				.update(debtorData)
-				.eq("id", selectedDebtor.id);
-		} else {
-			response = await supabase
-				.from("assignment_debtors")
-				.insert({ ...debtorData, assignment_id: assignmentId });
-		}
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		try {
+			let response;
+			if (selectedDebtor) {
+				response = await supabase
+					.from("assignment_debtors")
+					.update(debtorData)
+					.eq("id", selectedDebtor.id);
+			} else {
+				response = await supabase
+					.from("assignment_debtors")
+					.insert({ ...debtorData, assignment_id: assignmentId });
+			}
 
-		if (response.error) {
-			console.error("Failed to save debtor:", response.error);
-			alert("채무자 등록/수정 중 오류가 발생했습니다.");
-			return;
-		}
+			if (response.error) {
+				throw response.error
+			}
 
-		setIsFormOpen(false);
-		setSelectedDebtor(null);
-		fetchDebtors();
+			setIsFormOpen(false);
+			setSelectedDebtor(null);
+			fetchDebtors();
+		} catch (error) {
+			console.error("채무자 등록/수정 오류:", error)
+		} finally { setIsSubmitting(false); }
 	};
 
-	// 삭제
 	const handleDeleteDebtor = async (debtorId) => {
 		const { error } = await supabase
 			.from("assignment_debtors")
@@ -90,9 +94,11 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		}
 	};
 
-	// 신용정보 수정
 	const handleEditCreditInfo = async (debtor) => {
 		setSelectedDebtor(debtor);
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+
 		const { data: cinfo, error } = await supabase
 			.from("debtor_credit_info")
 			.select("owned")
@@ -104,17 +110,24 @@ const DebtorInfo = ({ assignmentId, user }) => {
 	};
 
 	const handleSaveCreditInfo = async (updatedInfo) => {
-		const { error } = await supabase
-			.from("debtor_credit_info")
-			.upsert({
-				debtor_id: selectedDebtor.id,
-				owned: updatedInfo,
-			}, { onConflict: "debtor_id" });
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		try {
+			const { error } = await supabase
+				.from("debtor_credit_info")
+				.upsert({
+					debtor_id: selectedDebtor.id,
+					owned: updatedInfo,
+				}, { onConflict: "debtor_id" });
 
-		if (!error) {
+			if (error) {
+				throw error
+			}
 			setOpenCreditInfo(false);
 			fetchDebtors();
-		}
+		} catch (error) {
+			console.error("신용정보 저장중 오류:", error)
+		} finally { setIsSubmitting(false); }
 	};
 
 	const toggleExpand = (debtorId) => {
@@ -227,6 +240,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 
 			{isFormOpen && (
 				<DebtorForm
+					isSubmitting={isSubmitting}
 					initialData={selectedDebtor}
 					onOpenChange={setIsFormOpen}
 					onSubmit={handleSaveDebtor}
@@ -235,6 +249,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 
 			{openCreditInfo && (
 				<EditCreditInfo
+					isSubmitting={isSubmitting}
 					open={openCreditInfo}
 					onOpenChange={setOpenCreditInfo}
 					debtor={selectedDebtor}
