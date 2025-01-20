@@ -13,7 +13,6 @@ const BondDetails = ({ assignmentId, user }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
-	// fetch
 	const fetchBond = async () => {
 		const { data, error } = await supabase
 			.from("bonds")

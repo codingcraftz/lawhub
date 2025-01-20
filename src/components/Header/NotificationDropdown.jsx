@@ -36,8 +36,6 @@ const NotificationDropdown = ({ user }) => {
 					.eq("user_id", user.id)
 					.order("created_at", { ascending: false });
 
-			console.log(data);
-
 			if (error) {
 				console.error("알림을 가져오는 중 오류 발생:", error);
 			} else {

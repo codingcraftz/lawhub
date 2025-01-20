@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Box, Flex, Button, Text, Switch } from "@radix-ui/themes";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { supabase } from "@/utils/supabase";
@@ -9,6 +9,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
 const BondForm = ({ bondData, onSuccess, open, onOpenChange, assignmentId }) => {
+
+	const [isSubmitting, setIsSubmitting] = useState(false);
 	const {
 		control,
 		register,
@@ -60,10 +62,14 @@ const BondForm = ({ bondData, onSuccess, open, onOpenChange, assignmentId }) => 
 	};
 
 	const onSubmit = async (data) => {
+
 		if (!validateExpenses(data.expenses)) {
 			alert("비용 항목과 금액을 정확히 입력해주세요.");
 			return;
 		}
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+
 		try {
 			const bondPayload = {
 				assignment_id: assignmentId,
@@ -98,7 +104,7 @@ const BondForm = ({ bondData, onSuccess, open, onOpenChange, assignmentId }) => 
 		} catch (error) {
 			console.error("Error saving bond information:", error);
 			alert("저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false) };
 	};
 
 	return (
@@ -365,8 +371,8 @@ const BondForm = ({ bondData, onSuccess, open, onOpenChange, assignmentId }) => 
 							>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit" disabled={!isValid}>
-								저장
+							<Button variant="solid" type="submit" disabled={!isValid || isSubmitting}>
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					</Flex>

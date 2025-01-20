@@ -55,11 +55,11 @@ const CaseForm = ({
 
 	const [filteredCaseTypes, setFilteredCaseTypes] = useState([]);
 	const [filteredCourts, setFilteredCourts] = useState([]);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const categoryWatch = watch("category");
 	const cityWatch = watch("city");
 
-	// 초기값 설정
 	useEffect(() => {
 		if (caseData) {
 			const foundCourt = COURT_LIST.find((c) => c.name === caseData.court_name);
@@ -84,7 +84,6 @@ const CaseForm = ({
 		}
 	}, [categoryWatch]);
 
-	// 도시 변경 -> 법원 필터링
 	useEffect(() => {
 		if (!cityWatch) {
 			setFilteredCourts([]);
@@ -94,6 +93,8 @@ const CaseForm = ({
 	}, [cityWatch]);
 
 	const onSubmit = async (formValues) => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			const payload = {
 				status: formValues.status || null,
@@ -132,7 +133,8 @@ const CaseForm = ({
 		} catch (err) {
 			console.error(err);
 			alert("저장 실패");
-		}
+		} finally { setIsSubmitting(false); }
+
 	};
 
 	const handleDelete = async () => {
@@ -335,8 +337,8 @@ const CaseForm = ({
 								<Button variant="soft" color="gray" onClick={onClose}>
 									닫기
 								</Button>
-								<Button variant="solid" type="submit">
-									저장
+								<Button variant="solid" type="submit" disabled={isSubmitting}>
+									{isSubmitting ? "저장 중..." : "저장"}
 								</Button>
 							</Flex>
 						</Flex>

@@ -16,8 +16,8 @@ import AssignmentTasks from "./AssignmentTasks";
 import FileList from "./FileList";
 import ClientInfoModal from "../_components/ClientInfoModal";
 import GroupInfoModal from "../_components/GroupInfoModal";
-import AssignmentEditModal from "./AssignmentEditModal";
-import AssignmentAssigneeDialog from "../_components/dialogs/AssignmentAssigneeDialog";
+import AssignmentAssigneeForm from "../_components/dialogs/AssignmentAssigneeForm";
+import AssignmentEditForm from "../_components/dialogs/AssignmentEditFrom";
 import { Button } from "@radix-ui/themes";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
 
@@ -231,7 +231,7 @@ const AssignmentPage = () => {
 				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentAssignees={assignment?.assignment_assignees || []} />
 			</div>
 			{assignment && (
-				<AssignmentEditModal
+				<AssignmentEditForm
 					open={editModalOpen}
 					onOpenChange={setEditModalOpen}
 					assignment={assignment}
@@ -239,7 +239,7 @@ const AssignmentPage = () => {
 				/>
 			)}
 			{assignment && (
-				<AssignmentAssigneeDialog
+				<AssignmentAssigneeForm
 					open={assigneeModalOpen}
 					onOpenChange={setAssigneeModalOpen}
 					assignmentId={assignmentId}

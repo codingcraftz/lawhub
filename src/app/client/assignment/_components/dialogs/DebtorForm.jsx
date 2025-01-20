@@ -17,8 +17,8 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 	const [userSearchTerm, setUserSearchTerm] = useState("");
 	const [userSearchResults, setUserSearchResults] = useState([]);
 	const [isSearching, setIsSearching] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	// 수정 모드 초기 데이터 로드
 	useEffect(() => {
 		if (initialData) {
 			setFormData({
@@ -46,10 +46,12 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		onSubmit(formData);
+		setIsSubmitting(false);
 	};
 
-	// 유저 검색
 	const handleUserSearch = async () => {
 		if (!userSearchTerm.trim()) return;
 		setIsSearching(true);
@@ -249,8 +251,8 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 							<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit">
-								{initialData ? "수정" : "추가"}
+							<Button variant="solid" type="submit" disabled={isSubmitting}>
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					}

@@ -8,19 +8,23 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 
 const StatusForm = ({ open, caseId, currentStatus, onSuccess, onClose }) => {
 	const [status, setStatus] = useState(currentStatus || "");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleSubmit = async () => {
-		const { error } = await supabase
-			.from("cases")
-			.update({ status })
-			.eq("id", caseId);
-
-		if (!error) {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		try {
+			const { error } = await supabase
+				.from("cases")
+				.update({ status })
+				.eq("id", caseId);
 			onSuccess();
 			onClose();
-		} else {
-			alert("상태 업데이트 중 오류가 발생했습니다.");
+			if (error) throw error
+		} catch (error) {
+			console.error("상태 저장 오류:", error);
 		}
+		finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -74,8 +78,8 @@ const StatusForm = ({ open, caseId, currentStatus, onSuccess, onClose }) => {
 					<Button variant="soft" color="gray" onClick={onClose}>
 						닫기
 					</Button>
-					<Button variant="solid" onClick={handleSubmit}>
-						저장
+					<Button variant="solid" onClick={handleSubmit} disabled={isSubmitting}>
+						{isSubmitting ? "저장 중..." : "저장"}
 					</Button>
 				</div>
 			</Dialog.Content>

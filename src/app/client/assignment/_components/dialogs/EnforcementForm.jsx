@@ -1,17 +1,12 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { Button, Flex, Text } from "@radix-ui/themes";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useForm } from "react-hook-form";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
-/**
- * 회수활동 등록/수정 폼
- * - assignmentId 연결
- * - enforcementData 있으면 수정, 없으면 생성
- */
 export default function EnforcementForm({
 	open,
 	onOpenChange,
@@ -31,6 +26,8 @@ export default function EnforcementForm({
 			amount: 0,
 		},
 	});
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
 
 	useEffect(() => {
 		if (enforcementData) {
@@ -41,6 +38,8 @@ export default function EnforcementForm({
 	}, [enforcementData, setValue]);
 
 	const onSubmit = async (formData) => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			const payload = {
 				assignment_id: assignmentId,
@@ -50,7 +49,6 @@ export default function EnforcementForm({
 			};
 
 			if (enforcementData?.id) {
-				// 수정
 				const { error } = await supabase
 					.from("enforcements")
 					.update(payload)
@@ -58,7 +56,6 @@ export default function EnforcementForm({
 
 				if (error) throw error;
 			} else {
-				// 등록
 				const { error } = await supabase
 					.from("enforcements")
 					.insert(payload);
@@ -71,7 +68,7 @@ export default function EnforcementForm({
 		} catch (error) {
 			console.error("Enforcement save error:", error);
 			alert("강제집행 저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	const handleDelete = async () => {
@@ -177,7 +174,6 @@ export default function EnforcementForm({
 								placeholder="회수금액(원)"
 							/>
 						</div>
-
 						<Flex justify="end" gap="2" mt="2">
 							{enforcementData && (
 								<Button type="button" color="red" variant="soft" onClick={handleDelete}>
@@ -192,7 +188,7 @@ export default function EnforcementForm({
 								닫기
 							</Button>
 							<Button variant="solid" type="submit">
-								저장
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					</Flex>

@@ -8,6 +8,7 @@ import InputMask from "react-input-mask";
 import { supabase } from "@/utils/supabase";
 
 export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
+
 	const [formData, setFormData] = useState({
 		name: "",
 		birth_date: "",
@@ -19,6 +20,7 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const [userSearchTerm, setUserSearchTerm] = useState("");
 	const [userSearchResults, setUserSearchResults] = useState([]);
 	const [isSearching, setIsSearching] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (initialData) {
@@ -43,7 +45,11 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
+
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		onSubmit(formData);
+		setIsSubmitting(false);
 	};
 
 	const handleUserSearch = async () => {
@@ -257,8 +263,8 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 							<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit">
-								{initialData ? "수정" : "추가"}
+							<Button variant="solid" type="submit" disabled={isSubmitting}>
+								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>
 					}

@@ -5,9 +5,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
-import ClientGroupSearch from "./ClientGroupSearch"; // 검색 컴포넌트(개선된)
+import ClientGroupSearch from "../ClientGroupSearch";
 
-export default function AssignmentEditModal({
+export default function AssigmentEditFrom({
 	open,
 	onOpenChange,
 	assignment,
@@ -16,6 +16,7 @@ export default function AssignmentEditModal({
 	const [description, setDescription] = useState("");
 	const [assignedClients, setAssignedClients] = useState([]);
 	const [assignedGroups, setAssignedGroups] = useState([]);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (open && assignment) {
@@ -45,6 +46,8 @@ export default function AssignmentEditModal({
 	};
 
 	const handleSave = async () => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 		try {
 			const { error: updateError } = await supabase
 				.from("assignments")
@@ -128,7 +131,7 @@ export default function AssignmentEditModal({
 		} catch (err) {
 			console.error("Error updating assignment:", err);
 			alert("의뢰 수정 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false) };
 	};
 
 	return (
@@ -239,8 +242,8 @@ export default function AssignmentEditModal({
 							취소
 						</Button>
 					</Dialog.Close>
-					<Button variant="solid" color="blue" onClick={handleSave}>
-						저장
+					<Button variant="solid" color="blue" onClick={handleSave} disabled={isSubmitting}>
+						{isSubmitting ? "저장 중..." : "저장"}
 					</Button>
 				</Flex>
 			</Dialog.Content>

@@ -80,7 +80,6 @@ const Assignment = ({ clientId }) => {
 					return acc;
 				}, {});
 
-				console.log(groupNameMap)
 				// 그룹 이름 추가
 				const enrichedGroupAssignments = (groupData ?? []).map((assignment) => ({
 					...assignment,
@@ -116,8 +115,6 @@ const Assignment = ({ clientId }) => {
 	}, [clientId, fetchUser]);
 
 	if (!hasAssignments) return <div><p>등록된 의뢰가 없습니다.</p></div>
-	console.log(individualAssignments)
-	console.log(groupAssignments)
 	return (
 		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
 			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">

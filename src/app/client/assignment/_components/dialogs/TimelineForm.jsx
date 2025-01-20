@@ -14,6 +14,7 @@ export default function TimelineForm({
 	onSuccess,
 }) {
 	const [descriptionValue, setDescriptionValue] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (timelineData) {
@@ -25,7 +26,6 @@ export default function TimelineForm({
 
 	const handleSave = async (e) => {
 		e.preventDefault();
-
 		if (!descriptionValue.trim()) {
 			alert("진행 상황을 입력해주세요.");
 			return;
@@ -36,16 +36,17 @@ export default function TimelineForm({
 			return;
 		}
 
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+
 		try {
 			if (timelineData) {
-				// 수정
 				const { error } = await supabase
 					.from("assignment_timelines")
 					.update({ description: descriptionValue })
 					.eq("id", timelineData.id);
 				if (error) throw error;
 			} else {
-				// 추가
 				const { error } = await supabase
 					.from("assignment_timelines")
 					.insert({ assignment_id: assignmentId, description: descriptionValue });
@@ -58,7 +59,7 @@ export default function TimelineForm({
 		} catch (err) {
 			console.error("Error saving timeline:", err);
 			alert("저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -112,8 +113,8 @@ export default function TimelineForm({
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
-						<Button variant="solid" type="submit">
-							저장
+						<Button variant="solid" type="submit" disabled={isSubmitting}>
+							{isSubmitting ? "저장 중..." : "저장"}
 						</Button>
 					</Flex>
 				</form>

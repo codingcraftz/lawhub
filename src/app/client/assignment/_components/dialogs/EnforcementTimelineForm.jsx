@@ -6,9 +6,6 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
-/**
- * 회수활동 타임라인(진행 상황) 등록/수정
- */
 export default function EnforcementTimelineForm({
 	open,
 	onOpenChange,
@@ -17,6 +14,7 @@ export default function EnforcementTimelineForm({
 	onSuccess,
 }) {
 	const [textValue, setTextValue] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (timelineData) {
@@ -33,9 +31,11 @@ export default function EnforcementTimelineForm({
 			return;
 		}
 
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+
 		try {
 			if (timelineData?.id) {
-				// 수정
 				const { error } = await supabase
 					.from("enforcement_timelines")
 					.update({ text: textValue })
@@ -43,11 +43,9 @@ export default function EnforcementTimelineForm({
 
 				if (error) throw error;
 			} else {
-				// 등록
 				const { error } = await supabase
 					.from("enforcement_timelines")
 					.insert({ enforcement_id: enforcementId, text: textValue });
-
 				if (error) throw error;
 			}
 			alert("저장되었습니다.");
@@ -56,7 +54,7 @@ export default function EnforcementTimelineForm({
 		} catch (err) {
 			console.error("Error saving enforcement timeline:", err);
 			alert("타임라인 저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -111,8 +109,8 @@ export default function EnforcementTimelineForm({
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
-						<Button variant="solid" type="submit">
-							저장
+						<Button variant="solid" type="submit" disabled={isSubmitting}>
+							{isSubmitting ? "저장 중..." : "저장"}
 						</Button>
 					</Flex>
 				</form>

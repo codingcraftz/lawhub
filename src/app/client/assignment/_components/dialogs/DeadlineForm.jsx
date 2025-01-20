@@ -12,7 +12,7 @@ export default function DeadlineForm({
 	open,
 	onOpenChange,
 	caseId,
-	deadlineData, // null이면 추가, 있으면 수정
+	deadlineData,
 	onSuccess,
 }) {
 	const [formData, setFormData] = useState({
@@ -20,6 +20,7 @@ export default function DeadlineForm({
 		deadline_date: "",
 		location: "",
 	});
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (deadlineData) {
@@ -31,7 +32,6 @@ export default function DeadlineForm({
 				location: deadlineData.location || "",
 			});
 		} else {
-			// 새로 추가
 			setFormData({
 				type: "",
 				deadline_date: "",
@@ -53,9 +53,12 @@ export default function DeadlineForm({
 			alert("타입, 기일 날짜는 필수입니다.");
 			return;
 		}
+
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+
 		try {
 			if (deadlineData) {
-				// 수정
 				const { error } = await supabase
 					.from("case_deadlines")
 					.update({
@@ -66,7 +69,6 @@ export default function DeadlineForm({
 					.eq("id", deadlineData.id);
 				if (error) throw error;
 			} else {
-				// 추가
 				const { error } = await supabase
 					.from("case_deadlines")
 					.insert({
@@ -82,7 +84,7 @@ export default function DeadlineForm({
 		} catch (err) {
 			console.error("Error saving deadline:", err);
 			alert("저장 중 오류가 발생했습니다.");
-		}
+		} finally { setIsSubmitting(false); }
 	};
 
 	return (
@@ -165,13 +167,12 @@ export default function DeadlineForm({
 							placeholder="ex) 3호 법정"
 						/>
 					</Box>
-
 					<Flex justify="end" gap="2">
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
-						<Button variant="solid" type="submit">
-							저장
+						<Button variant="solid" type="submit" disabled={isSubmitting}>
+							{isSubmitting ? "저장 중..." : "저장"}
 						</Button>
 					</Flex>
 				</form>
