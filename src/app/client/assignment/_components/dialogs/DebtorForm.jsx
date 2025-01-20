@@ -5,7 +5,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import InputMask from "react-input-mask";
 import { supabase } from "@/utils/supabase";
 
-export default function DebtorForm({ onOpenChange, onSubmit, initialData = null }) {
+export default function DebtorForm({ onOpenChange, onSubmit, initialData = null, isSubmitting }) {
 	const [formData, setFormData] = useState({
 		name: "",
 		birth_date: "",
@@ -17,7 +17,6 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 	const [userSearchTerm, setUserSearchTerm] = useState("");
 	const [userSearchResults, setUserSearchResults] = useState([]);
 	const [isSearching, setIsSearching] = useState(false);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (initialData) {
@@ -46,10 +45,7 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null 
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
-		if (isSubmitting) return;
-		setIsSubmitting(true);
 		onSubmit(formData);
-		setIsSubmitting(false);
 	};
 
 	const handleUserSearch = async () => {

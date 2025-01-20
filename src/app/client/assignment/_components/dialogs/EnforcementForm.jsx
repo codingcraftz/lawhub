@@ -187,7 +187,7 @@ export default function EnforcementForm({
 							>
 								닫기
 							</Button>
-							<Button variant="solid" type="submit">
+							<Button variant="solid" type="submit" disabled={isSubmitting}>
 								{isSubmitting ? "저장 중..." : "저장"}
 							</Button>
 						</Flex>

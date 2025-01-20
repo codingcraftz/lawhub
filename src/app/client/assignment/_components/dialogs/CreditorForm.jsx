@@ -7,7 +7,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import InputMask from "react-input-mask";
 import { supabase } from "@/utils/supabase";
 
-export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
+export default function CreditorForm({ initialData, onOpenChange, onSubmit, isSubmitting }) {
 
 	const [formData, setFormData] = useState({
 		name: "",
@@ -20,7 +20,6 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const [userSearchTerm, setUserSearchTerm] = useState("");
 	const [userSearchResults, setUserSearchResults] = useState([]);
 	const [isSearching, setIsSearching] = useState(false);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (initialData) {
@@ -45,11 +44,7 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
-
-		if (isSubmitting) return;
-		setIsSubmitting(true);
 		onSubmit(formData);
-		setIsSubmitting(false);
 	};
 
 	const handleUserSearch = async () => {

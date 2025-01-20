@@ -10,9 +10,9 @@ const EditCreditInfo = ({
 	onOpenChange,
 	onSave,
 	initialCreditInfo,
+	isSubmitting,
 }) => {
 	const [creditInfo, setCreditInfo] = useState([]);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (open) {
@@ -42,10 +42,7 @@ const EditCreditInfo = ({
 		const updatedInfo = Object.fromEntries(
 			creditInfo.filter(([key, value]) => key && value)
 		);
-		if (isSubmitting) return;
-		setIsSubmitting(true);
 		onSave(updatedInfo);
-		setIsSubmitting(false);
 		onOpenChange(false);
 	};
 
