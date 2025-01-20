@@ -108,8 +108,7 @@ export default function TimelineForm({
 							placeholder="사건진행상황 입력 예) 지급명령중, 재판중"
 						/>
 					</Box>
-
-					<Flex justify="end" gap="2">
+					<Flex justify="end" gap="2" className="mt-4">
 						<Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
 							닫기
 						</Button>
