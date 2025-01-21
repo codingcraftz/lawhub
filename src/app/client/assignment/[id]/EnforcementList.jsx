@@ -67,7 +67,6 @@ export default function EnforcementList({ assignmentId, user }) {
 					.from("enforcement_deadlines")
 					.select("type, deadline_date, location")
 					.eq("enforcement_id", enf.id)
-					.gt("deadline_date", new Date().toISOString())
 					.order("deadline_date", { ascending: true })
 					.limit(1)
 					.maybeSingle();
@@ -78,7 +77,7 @@ export default function EnforcementList({ assignmentId, user }) {
 						? latestT.text
 						: "진행상황 없음",
 					nextDeadline: nextD
-						? `${nextD.type} (${new Date(nextD.deadline_date).toLocaleString("ko-KR")} @ ${nextD.location || "위치 없음"})`
+						? `${nextD.type} (${new Date(new Date(nextD.deadline_date).getTime() + - 9 * 60 * 60 * 1000).toLocaleDateString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })} @ ${nextD.location || "위치 없음"})`
 						: "예정된 기일 없음",
 				});
 			}

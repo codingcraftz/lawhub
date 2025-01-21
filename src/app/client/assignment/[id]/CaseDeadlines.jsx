@@ -99,8 +99,8 @@ export default function CaseDeadlines({ caseId, isAdmin, handleSuccess }) {
 							<div className="flex gap-1 items-center" >
 								<Text size="1" color="gray">
 									{dl.deadline_date
-										? new Date(dl.deadline_date).toLocaleString("ko-KR", {
-											year: "numeric",
+										? new Date(new Date(dl.deadline_date).getTime() - 9 * 60 * 60 * 1000).toLocaleString("ko-KR", {
+											year: "2-digit",
 											month: "2-digit",
 											day: "2-digit",
 											hour: "2-digit",

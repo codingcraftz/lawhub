@@ -46,16 +46,16 @@ export default function CaseList({ assignmentId, user }) {
 				.from("case_deadlines")
 				.select("type, deadline_date, location")
 				.eq("case_id", c.id)
-				.gt("deadline_date", new Date().toISOString())
 				.order("deadline_date", { ascending: true })
 				.limit(1)
 				.maybeSingle();
+			console.log(nextD)
 
 			updatedCases.push({
 				...c,
 				latestTimeline: latestT?.text || "진행상황 없음",
 				nextDeadline: nextD
-					? `${nextD.type} (${new Date(nextD.deadline_date).toLocaleDateString("ko-KR", { hour: "2-digit", minute: "2-digit" })} @ ${nextD.location || "위치 정보 없음"})`
+					? `${nextD.type} (${new Date(new Date(nextD.deadline_date).getTime() - 9 * 60 * 60 * 1000).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", })} @ ${nextD.location || "위치 정보 없음"})`
 					: "예정된 기일 없음",
 			});
 		}
