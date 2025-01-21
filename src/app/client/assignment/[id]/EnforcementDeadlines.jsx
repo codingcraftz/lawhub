@@ -98,7 +98,7 @@ export default function EnforcementDeadlines({ enforcementId, isAdmin, handleSuc
 							<Flex gap="2" align="center">
 								<Text size="1" color="gray">
 									{dl.deadline_date
-										? new Date(dl.deadline_date).toLocaleString("ko-KR")
+										? new Date(new Date(dl.deadline_date).getTime() + - 9 * 60 * 60 * 1000).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
 										: ""}
 								</Text>
 								{isAdmin && (

@@ -88,34 +88,37 @@ export default function EnforcementTimelines({ enforcementId, isAdmin, handleSuc
 							key={tl.id}
 							className="p-2 bg-gray-3 border border-gray-6 rounded flex justify-between items-center"
 						>
-							<Box>
+							<div className="flex justify-between items-center w-full">
 								<Text size="2" color="gray">
 									{tl.text}
 								</Text>
-								<Text size="1" color="gray">
-									{new Date(tl.created_at).toLocaleString("ko-KR")}
-								</Text>
-							</Box>
+								<div className="flex items-center gap-1">
+									<Text size="1" color="gray">
+										{new Date(tl.created_at).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", month: "2-digit", minute: "2-digit" })}
+									</Text>
 
-							{isAdmin && (
-								<Flex gap="2">
-									<Button
-										size="1"
-										variant="soft"
-										onClick={() => openEditForm(tl)}
-									>
-										수정
-									</Button>
-									<Button
-										size="1"
-										variant="soft"
-										color="red"
-										onClick={() => handleDelete(tl.id)}
-									>
-										삭제
-									</Button>
-								</Flex>
-							)}
+									{isAdmin && (
+										<Flex gap="2">
+											<Button
+												size="1"
+												variant="soft"
+												onClick={() => openEditForm(tl)}
+											>
+												수정
+											</Button>
+											<Button
+												size="1"
+												variant="soft"
+												color="red"
+												onClick={() => handleDelete(tl.id)}
+											>
+												삭제
+											</Button>
+										</Flex>
+									)}
+								</div>
+
+							</div>
 						</li>
 					))}
 				</ul>
