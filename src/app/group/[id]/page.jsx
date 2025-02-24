@@ -1,3 +1,5 @@
+// src/app/group/[id]/page.jsx
+
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";

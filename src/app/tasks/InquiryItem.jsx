@@ -2,31 +2,31 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import {
-	Flex,
-	Box,
-	Text,
-	Badge,
-	Button
-} from "@radix-ui/themes";
+import { Box, Flex, Text, Badge, Button } from "@radix-ui/themes";
 import {
 	ArrowTopRightIcon,
-	CheckIcon,
 	EyeOpenIcon,
-	EyeClosedIcon
-} from "@radix-ui/react-icons"; // Radix UI 아이콘
-import TaskComments from "@/app/client/assignment/[id]/TaskComments";
+	EyeClosedIcon,
+	CheckIcon,
+} from "@radix-ui/react-icons";
+import InquiryComments from "./InquiryComments";
 
-// 단일 업무 카드를 표시
-const TaskItem = ({ task, user, onComplete, onToggleExpand, expanded }) => {
+export default function InquiryItem({
+	inquiry,
+	user,
+	expanded,
+	onToggleExpand,
+	onCloseInquiry,
+}) {
 	const router = useRouter();
 
-	// 권한/상태 관련
-	const isAdmin = user?.role === "staff" || user?.role === "admin";
-	const isReceiver = task.receiver_id === user?.id;
-	const isOngoing = task.status === "ongoing";
+	// 권한 확인: 예시로 "admin"이거나, inquiry.user_id === 내 id 면 '완료' 버튼 노출
+	// (또는 staff 역할이면서 assignment_assignees에 등록되어 있다면 열어둘 수도 있음)
+	const isAdmin = user?.role === "admin";
+	const isOwner = user?.id === inquiry.user_id;
+	const canClose = inquiry.status === "ongoing" && (isAdmin || isOwner);
 
-	// (1) 상태 배지
+	// 상태 배지
 	const StatusBadge = ({ status }) => {
 		switch (status) {
 			case "ongoing":
@@ -38,95 +38,92 @@ const TaskItem = ({ task, user, onComplete, onToggleExpand, expanded }) => {
 		}
 	};
 
-	// (2) 의뢰인/그룹 이름 정리
+	// 의뢰(assignment) 정보
 	const getAssignmentNames = (assignment) => {
 		const { assignment_clients = [], assignment_groups = [] } = assignment || {};
 		if (assignment_groups.length > 0) {
-			const groupNames = assignment_groups.map((g) => g.group?.name).filter(Boolean);
+			const groupNames = assignment_groups
+				.map((g) => g.group?.name)
+				.filter(Boolean);
 			return groupNames.length
 				? `그룹: ${groupNames.join(", ")}`
 				: "그룹: (이름 없음)";
 		} else {
-			const clientNames = assignment_clients.map((c) => c.client?.name).filter(Boolean);
+			const clientNames = assignment_clients
+				.map((c) => c.client?.name)
+				.filter(Boolean);
 			return clientNames.length
 				? `의뢰인: ${clientNames.join(", ")}`
 				: "의뢰인: (이름 없음)";
 		}
 	};
 
-	const assignmentNames = getAssignmentNames(task.assignment);
-	const assignmentDesc = task.assignment?.description;
+	const assignmentNames = getAssignmentNames(inquiry.assignment);
+	const assignmentDesc = inquiry.assignment?.description;
 
 	return (
 		<Box
-			key={task.id}
+			key={inquiry.id}
 			className={`
-        relative mb-4 p-4 rounded-lg border border-gray-6 
-        shadow 
-        hover:shadow-lg 
-        transition-shadow
-        ${task.status === "closed" ? "opacity-80" : ""}
+        relative mb-4 p-4 rounded-lg border border-gray-6
+        shadow hover:shadow-lg transition-shadow
+        ${inquiry.status === "closed" ? "opacity-80" : ""}
       `}
 		>
-			{/* 상단 라인: 상태, 사건설명(있다면), 업무제목 */}
+			{/* 상단 라인 */}
 			<Flex justify="between" align="start" className="flex-wrap gap-3">
 				<Box className="flex-1">
-					{/* 첫 줄: 상태 배지 + 사건 설명 */}
+					{/* 상태 배지 + 사건설명 */}
 					<Flex align="center" gap="2" className="mb-2 flex-wrap">
-						<StatusBadge status={task.status} />
+						<StatusBadge status={inquiry.status} />
 						<Text size="4" weight="bold">
 							{assignmentDesc || "사건 설명 없음"}
 						</Text>
 					</Flex>
 
-					{/* 업무 제목 */}
+					{/* 문의 제목 */}
 					<Text size="3" weight="medium" className="mb-1 text-gray-12">
-						{task.title}
+						{inquiry.title}
 					</Text>
-					{/* 의뢰인/그룹 */}
+					{/* 의뢰인/그룹 정보 */}
 					<Text as="p" size="2" color="gray" className="mb-1">
 						{assignmentNames}
 					</Text>
+					{/* 작성자 정보 */}
 					<Flex justify="between">
 						<Text size="2" color="gray" className="mb-1">
-							요청자: {task.requester?.name || "-"} / 수신자:{" "}
-							{task.receiver?.name || "-"}
+							작성자: {inquiry.user?.name || "-"}
 						</Text>
 					</Flex>
 				</Box>
 
-				{/* 오른쪽 상단 행동 버튼들 (사건 이동, 완료 처리) */}
+				{/* 우측 버튼들 */}
 				<Flex direction="column" gap="2" align="end">
+					{/* 의뢰 페이지로 이동 */}
 					<Button
 						variant="soft"
 						size="2"
-						onClick={() =>
-							router.push(`/client/assignment/${task.assignment_id}`)
-						}
+						onClick={() => router.push(`/client/assignment/${inquiry.assignment_id}`)}
 					>
 						<ArrowTopRightIcon className="mr-1" />
 						의뢰 페이지
 					</Button>
 
-					{/* 진행 중 + 권한 → "완료" 버튼 */}
-					{isOngoing && (isAdmin || isReceiver) && (
+					{/* 완료 처리 버튼 */}
+					{canClose && (
 						<Button
 							variant="soft"
 							color="green"
 							size="2"
-							onClick={() => onComplete(task.id)}
+							onClick={() => onCloseInquiry(inquiry.id)}
 						>
 							<CheckIcon className="mr-1" />
 							완료
 						</Button>
 					)}
 
-					<Button
-						className="mt-auto"
-						variant="ghost"
-						size="2"
-						onClick={() => onToggleExpand(task.id)}
-					>
+					{/* 펼침/닫힘 토글 버튼 */}
+					<Button variant="ghost" size="2" onClick={() => onToggleExpand(inquiry.id)}>
 						{expanded ? (
 							<>
 								<EyeClosedIcon className="mr-1" />
@@ -142,36 +139,38 @@ const TaskItem = ({ task, user, onComplete, onToggleExpand, expanded }) => {
 				</Flex>
 			</Flex>
 
-			{/* 펼침 영역 */}
+			{/* 펼쳐진 경우, 세부 영역 */}
 			{expanded && (
 				<Box
 					className="
-            mt-4 pt-4 border-t border-gray-6 
-            bg-gray-1/50 
-            rounded-sm
+            mt-4 pt-4 border-t border-gray-6
+            bg-gray-1/50 rounded-sm
           "
 				>
 					{/* 생성일 */}
 					<Text size="2" color="gray" className="mb-2">
 						생성일:{" "}
-						{new Date(task.created_at).toLocaleDateString("ko-KR", {
+						{new Date(inquiry.created_at).toLocaleDateString("ko-KR", {
 							hour: "2-digit",
 							minute: "2-digit",
 						})}
 					</Text>
 
-					{/* 업무 내용 */}
+					{/* 문의 내용 / 추가 정보 */}
 					<Text size="3" className="mb-3 whitespace-pre-wrap text-gray-12">
-						<strong>업무 내용:</strong> {task.content || "내용 없음"}
+						<strong>문의 내용:</strong> {inquiry.inquiry || "내용 없음"}
 					</Text>
+					{inquiry.details && (
+						<Text size="3" className="mb-3 whitespace-pre-wrap text-gray-12">
+							<strong>추가 정보:</strong> {inquiry.details}
+						</Text>
+					)}
 
 					{/* 댓글 섹션 */}
-					<TaskComments taskId={task.id} user={user} />
+					<InquiryComments inquiryId={inquiry.id} user={user} />
 				</Box>
 			)}
 		</Box>
 	);
-};
-
-export default TaskItem;
+}
 

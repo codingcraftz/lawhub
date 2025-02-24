@@ -21,7 +21,6 @@ export const UserProvider = ({ children }) => {
 		} = await supabase.auth.getUser();
 
 		if (authUser) {
-			// If user is logged in, fetch the user profile from the database
 			const { data: profile, error } = await supabase
 				.from("users")
 				.select("*")
@@ -32,7 +31,6 @@ export const UserProvider = ({ children }) => {
 				router.push("/login");
 				console.error("Error fetching profile:", error);
 			} else {
-				// If profile exists, set it in the context
 				setUser({ ...profile });
 			}
 		} else {

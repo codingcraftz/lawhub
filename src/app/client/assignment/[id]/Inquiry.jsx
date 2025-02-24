@@ -1,203 +1,274 @@
+// src/app/client/assignment/[id]/Inquiry.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { Button, Flex, Text, Box, TextArea } from "@radix-ui/themes";
+import { Box, Flex, Text, Button, Badge } from "@radix-ui/themes";
 import { motion } from "framer-motion";
+import InquiryForm from "../_components/dialogs/InquiryForm";       // Dialog 폼
+import InquiryComments from "./InquiryComments";
 
 const Inquiry = ({ assignmentId, user }) => {
 	const [inquiries, setInquiries] = useState([]);
-	const [newInquiry, setNewInquiry] = useState("");
-	const [isExpanded, setIsExpanded] = useState(false);
-	const [editingInquiryId, setEditingInquiryId] = useState(null);
-	const [editingContent, setEditingContent] = useState("");
-	const [isFormVisible, setIsFormVisible] = useState(false);
-	const [loading, setLoading] = useState(false);
+	const [expandedInquiryId, setExpandedInquiryId] = useState(null);
+	const [isFormOpen, setIsFormOpen] = useState(false);
+	const [currentInquiry, setCurrentInquiry] = useState(null);
+	const [showAll, setShowAll] = useState(false); // 더보기/접기 토글
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
 
+	// DB에서 문의 목록 가져오기
 	const fetchInquiries = async () => {
-		setLoading(true);
 		const { data, error } = await supabase
 			.from("assignment_inquiries")
-			.select("*, user:users(name)")
+			.select(`
+        id,
+        title,
+        inquiry,
+        status,
+        created_at,
+        user: user_id(id, name)
+      `)
 			.eq("assignment_id", assignmentId)
 			.order("created_at", { ascending: true });
 
 		if (error) {
-			console.error("Failed to fetch inquiries:", error);
-		} else {
-			setInquiries(data);
+			console.error("문의 목록 가져오기 오류:", error);
+			return;
 		}
-		setLoading(false);
+
+		// 진행중 먼저
+		const sorted = (data || []).sort((a, b) => {
+			if (a.status === "ongoing" && b.status === "closed") return -1;
+			if (a.status === "closed" && b.status === "ongoing") return 1;
+			return new Date(a.created_at) - new Date(b.created_at);
+		});
+
+		setInquiries(sorted);
 	};
 
 	useEffect(() => {
 		fetchInquiries();
 	}, [assignmentId]);
 
-	const handleAddInquiry = async () => {
-		if (!newInquiry.trim()) return alert("문의 내용을 입력해주세요.");
-
-		const { error } = await supabase.from("assignment_inquiries").insert({
-			assignment_id: assignmentId,
-			inquiry: newInquiry,
-			user_id: user?.id,
-		});
-
-		if (error) {
-			console.error("Error adding inquiry:", error);
-			alert("문의 등록 중 오류가 발생했습니다.");
-		} else {
-			setNewInquiry("");
-			setIsFormVisible(false);
-			fetchInquiries();
-		}
+	// 새 문의 등록 (Dialog 열기)
+	const openCreateForm = () => {
+		setCurrentInquiry(null);
+		setIsFormOpen(true);
 	};
 
-	const handleEditInquiry = async () => {
-		if (!editingContent.trim()) return alert("수정할 내용을 입력해주세요.");
-
-		const { error } = await supabase
-			.from("assignment_inquiries")
-			.update({ inquiry: editingContent })
-			.eq("id", editingInquiryId);
-
-		if (error) {
-			console.error("Error editing inquiry:", error);
-			alert("문의 수정 중 오류가 발생했습니다.");
-		} else {
-			setEditingInquiryId(null);
-			setEditingContent("");
-			fetchInquiries();
-		}
+	// 문의 수정 (Dialog 열기)
+	const openEditForm = (inquiry) => {
+		setCurrentInquiry(inquiry);
+		setIsFormOpen(true);
 	};
 
+	// Dialog 저장 완료 콜백
+	const handleFormSuccess = () => {
+		fetchInquiries();
+		setIsFormOpen(false);
+		setCurrentInquiry(null);
+	};
+
+	// 문의 삭제
 	const handleDeleteInquiry = async (id) => {
 		if (!window.confirm("정말 삭제하시겠습니까?")) return;
-
 		const { error } = await supabase
 			.from("assignment_inquiries")
 			.delete()
 			.eq("id", id);
 
 		if (error) {
-			console.error("Error deleting inquiry:", error);
+			console.error("문의 삭제 오류:", error);
 			alert("문의 삭제 중 오류가 발생했습니다.");
 		} else {
 			fetchInquiries();
 		}
 	};
 
-	const toggleExpand = () => {
-		setIsExpanded(!isExpanded);
+	// 문의 상태 토글 (ongoing <-> closed)
+	const toggleStatus = async (inquiry) => {
+		const newStatus = inquiry.status === "ongoing" ? "closed" : "ongoing";
+		const { error } = await supabase
+			.from("assignment_inquiries")
+			.update({ status: newStatus })
+			.eq("id", inquiry.id);
+
+		if (error) {
+			console.error("상태 변경 오류:", error);
+			alert("문의 상태 변경 중 오류가 발생했습니다.");
+		} else {
+			fetchInquiries();
+		}
 	};
 
-	const renderInquiries = () => {
-		if (inquiries.length === 0) return null;
-
-		const inquiriesToShow = isExpanded
-			? inquiries
-			: [inquiries[inquiries.length - 1]];
-
-		return inquiriesToShow.map((inquiry) => (
-			<Box
-				key={inquiry.id}
-				className="p-3 bg-gray-3 border border-gray-6 rounded shadow-sm space-y-2 mb-4"
-			>
-				<Flex justify="between" align="center">
-					<Text size="2" weight="bold">
-						{inquiry.user?.name}
-					</Text>
-					<Text size="1" color="gray">
-						{new Date(inquiry.created_at).toLocaleString("ko-KR")}
-					</Text>
-				</Flex>
-
-				{editingInquiryId === inquiry.id ? (
-					<>
-						<TextArea
-							value={editingContent}
-							onChange={(e) => setEditingContent(e.target.value)}
-							className="border border-gray-6 p-2 rounded w-full"
-						/>
-						<Flex justify="end" gap="2">
-							<Button
-								variant="soft"
-								onClick={() => setEditingInquiryId(null)}
-							>
-								닫기
-							</Button>
-							<Button onClick={handleEditInquiry}>저장</Button>
-						</Flex>
-					</>
-				) : (
-					<Text>{inquiry.inquiry}</Text>
-				)}
-
-				{(editingInquiryId !== inquiry.id && inquiry.user_id === user?.id) && (
-					<Flex gap="2" className="justify-end">
-						<Button
-							variant="ghost"
-							size="1"
-							onClick={() => {
-								setEditingInquiryId(inquiry.id);
-								setEditingContent(inquiry.inquiry);
-							}}
-						>
-							수정
-						</Button>
-						<Button variant="ghost" size="1" onClick={() => handleDeleteInquiry(inquiry.id)}>
-							삭제
-						</Button>
-					</Flex>
-				)}
-			</Box>
-		));
+	// 문의 펼치기/접기
+	const toggleExpand = (id) => {
+		setExpandedInquiryId((prev) => (prev === id ? null : id));
 	};
+
+	// 상태 뱃지
+	const StatusBadge = ({ status }) => {
+		if (status === "ongoing") {
+			return <Badge color="green">진행</Badge>;
+		}
+		if (status === "closed") {
+			return <Badge color="red">완료</Badge>;
+		}
+		return null;
+	};
+
+	// 진행중인 문의 수
+	const ongoingCount = inquiries.filter((inq) => inq.status === "ongoing").length;
+	// 더보기/접기 적용된 목록
+	const visibleInquiries = showAll ? inquiries : inquiries.slice(0, 3);
 
 	return (
-		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
-			<Flex justify="between" align="center" className="mb-4">
-				<Text as="h2" className="font-semibold text-lg">
-					문의 사항
+		<section className="flex flex-col mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
+			{/* 헤더 */}
+			<Flex justify="between" align="center" className="mb-3 flex-wrap gap-2">
+				<Text className="text-lg font-semibold flex-1">
+					문의 목록{" "}
+					<span className="text-md text-gray-10">({ongoingCount}개 진행중)</span>
 				</Text>
-				<Button color={isFormVisible && "gray"} onClick={() => setIsFormVisible(!isFormVisible)}>
-					{isFormVisible ? "닫기" : "등록"}
-				</Button>
+				{isAdmin && (
+					<Button variant="soft" onClick={openCreateForm}>
+						등록
+					</Button>
+				)}
 			</Flex>
 
-			{isFormVisible && (
-				<motion.div
-					initial={{ height: 0, opacity: 0 }}
-					animate={{ height: "auto", opacity: 1 }}
-					transition={{ duration: 0.3 }}
-					className="mb-4"
-				>
-					<TextArea
-						placeholder="문의 내용을 입력하세요"
-						value={newInquiry}
-						onChange={(e) => setNewInquiry(e.target.value)}
-						className="mb-2 border border-gray-6 rounded p-2 w-full"
-					/>
-					<Flex justify="end">
-						<Button onClick={handleAddInquiry}>등록</Button>
-					</Flex>
-				</motion.div>
+			{/* 목록 */}
+			{inquiries.length === 0 ? (
+				<Text>등록된 문의가 없습니다.</Text>
+			) : (
+				<ul className="space-y-3">
+					{visibleInquiries.map((inquiry) => {
+						const isExpanded = expandedInquiryId === inquiry.id;
+						const isOwner = inquiry.user?.id === user.id;
+
+						return (
+							<li
+								key={inquiry.id}
+								className={`bg-gray-3 border border-gray-6 p-3 rounded ${inquiry.status === "closed" ? "opacity-80" : ""
+									}`}
+							>
+								{/* 상단 영역: (제목, 상태 뱃지, 작성자/날짜 등) */}
+								<Flex justify="between" align="start" className="flex-wrap gap-2">
+									<Box className="flex-1">
+										{/* 제목 + 상태 */}
+										<Flex align="center" gap="2" className="mb-1 flex-wrap">
+											<StatusBadge status={inquiry.status} />
+											<Text className="font-medium text-sm md:text-base">
+												{inquiry.title || "제목 없음"}
+											</Text>
+										</Flex>
+										{/* 작성자: OOO (날짜) */}
+										<Text size="2" color="gray" className="text-xs md:text-sm">
+											작성자: {inquiry.user?.name || "알 수 없음"} (
+											{new Date(inquiry.created_at).toLocaleDateString("ko-KR", {
+												year: "numeric",
+												month: "2-digit",
+												day: "2-digit",
+												hour: "2-digit",
+												minute: "2-digit",
+											})}
+											)
+										</Text>
+									</Box>
+
+									{/* 우측 버튼들 */}
+									<Flex className="items-center gap-2">
+										{/* 수정/삭제: 관리자이면서 본인일 때 */}
+										{isAdmin && isOwner && (
+											<>
+												<Button
+													variant="soft"
+													size="1"
+													onClick={() => openEditForm(inquiry)}
+												>
+													수정
+												</Button>
+												<Button
+													variant="soft"
+													size="1"
+													color="red"
+													onClick={() => handleDeleteInquiry(inquiry.id)}
+												>
+													삭제
+												</Button>
+											</>
+										)}
+
+										{/* 완료하기 / 진행중으로: 관리자만 */}
+										{isAdmin && (
+											<Button
+												variant="soft"
+												size="1"
+												onClick={() => toggleStatus(inquiry)}
+											>
+												{inquiry.status === "ongoing" ? "완료하기" : "진행중으로"}
+											</Button>
+										)}
+
+										<Button
+											variant="ghost"
+											size="1"
+											onClick={() => toggleExpand(inquiry.id)}
+										>
+											{isExpanded ? "닫기" : "상세보기"}
+										</Button>
+									</Flex>
+								</Flex>
+
+								{/* 펼쳐지는 상세 */}
+								<motion.div
+									initial={{ height: 0, opacity: 0 }}
+									animate={{
+										height: isExpanded ? "auto" : 0,
+										opacity: isExpanded ? 1 : 0,
+									}}
+									transition={{ duration: 0.3 }}
+									className="overflow-hidden"
+								>
+									{isExpanded && (
+										<Box className="mt-4 bg-gray-2 p-3 border border-gray-6 rounded">
+											<Text className="mb-4">
+												{inquiry.inquiry || "문의 내용이 없습니다."}
+											</Text>
+											{/* 댓글 컴포넌트 */}
+											<InquiryComments inquiryId={inquiry.id} user={user} />
+										</Box>
+									)}
+								</motion.div>
+							</li>
+						);
+					})}
+				</ul>
 			)}
 
-			{loading ? (
-				<Text>로딩 중...</Text>
-			) : inquiries.length === 0 ? (
-				<Text>등록된 문의 사항이 없습니다.</Text>
-			) : (
-				<>
-					{renderInquiries()}
-					{inquiries.length > 1 && (
-						<Button className="ml-auto w-full" variant="ghost" onClick={toggleExpand}>
-							{isExpanded ? "접기" : "더 보기"}
-						</Button>
-					)}
-				</>
+			{/* 더보기 / 접기 */}
+			{inquiries.length > 3 && (
+				<Button
+					className="mt-4"
+					variant="ghost"
+					size="1"
+					onClick={() => setShowAll((prev) => !prev)}
+				>
+					{showAll ? "접기" : "더보기"}
+				</Button>
+			)}
+
+			{/* 폼 다이얼로그 (등록/수정) */}
+			{isFormOpen && (
+				<InquiryForm
+					open={isFormOpen}
+					onOpenChange={setIsFormOpen}
+					assignmentId={assignmentId}
+					inquiryData={currentInquiry}
+					user={user}
+					onSuccess={handleFormSuccess}
+				/>
 			)}
 		</section>
 	);

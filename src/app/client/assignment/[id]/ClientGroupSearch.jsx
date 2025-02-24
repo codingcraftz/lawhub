@@ -1,3 +1,5 @@
+// src/app/client/assignment/[id]/ClientGroupSearch.jsx
+
 "use client";
 
 import React, { useState } from "react";

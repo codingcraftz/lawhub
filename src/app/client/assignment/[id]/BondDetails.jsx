@@ -1,3 +1,5 @@
+// src/app/client/assignment/[id]/BondDetails.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";

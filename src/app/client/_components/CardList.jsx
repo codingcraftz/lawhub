@@ -1,3 +1,5 @@
+// src/app/client/_components/CardList.jsx
+
 "use client";
 
 import React from "react";
