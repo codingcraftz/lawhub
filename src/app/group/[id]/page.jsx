@@ -1,5 +1,3 @@
-// src/app/group/[id]/page.jsx
-
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -10,6 +8,8 @@ import Link from "next/link";
 import CardList from "@/app/client/_components/CardList";
 import DebtorCard from "@/app/client/_components/DebtorCard";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
+import AssignmentSummary from "./summary/AssignmentSummary";
+import { Switch, Text, Flex } from "@radix-ui/themes";
 
 const GroupCasePage = () => {
 	useRoleRedirect(["staff", "admin", "client"], [], "/");
@@ -17,6 +17,7 @@ const GroupCasePage = () => {
 	const { id: groupId } = useParams();
 	const [groupName, setGroupName] = useState("");
 	const [assignments, setAssignments] = useState([]);
+	const [isDetailedView, setIsDetailedView] = useState(false);
 
 	// 1) 의뢰 목록 불러오기
 	const fetchAssignments = async () => {
@@ -85,32 +86,44 @@ const GroupCasePage = () => {
 						className="w-8 h-8 cursor-pointer"
 						onClick={() => router.back()}
 					/>
-					<h1 className="text-2xl font-bold">
-						{groupName} 의뢰 목록
-					</h1>
+					<h1 className="text-2xl font-bold">{groupName} 의뢰 목록</h1>
 				</div>
+
+				{/* 스위치 버튼 */}
+				<Flex align="center" gap="2">
+					<Text size="2">{isDetailedView ? "카드 보기" : "간략히 보기"}</Text>
+					<Switch
+						checked={isDetailedView}
+						onCheckedChange={(checked) => setIsDetailedView(checked)}
+					/>
+				</Flex>
 			</header>
 
 			<main>
-				<CardList>
-					{assignments.map((assignment) => (
-						<Link
-							key={assignment.id}
-							href={`/client/assignment/${assignment.id}`}
-						>
-							<DebtorCard
-								name={groupName}
-								type={groupName}
-								clientType={assignment.assignment_groups[0].type}
-								description={assignment.description}
-								createdAt={assignment.created_at}
-								debtors={assignment.assignment_debtors?.map((debtor) => debtor?.name)}
-								creditors={assignment.assignment_creditors?.map((creditor) => creditor?.name)}
-								status={assignment.status}  // status 전달 -> DebtorCard에서 완결 처리
-							/>
-						</Link>
-					))}
-				</CardList>
+				{/* 토글 상태에 따라 다른 컴포넌트 렌더링 */}
+				{isDetailedView ? (
+					<AssignmentSummary />
+				) : (
+					<CardList>
+						{assignments.map((assignment) => (
+							<Link
+								key={assignment.id}
+								href={`/client/assignment/${assignment.id}`}
+							>
+								<DebtorCard
+									name={groupName}
+									type={groupName}
+									clientType={assignment.assignment_groups[0].type}
+									description={assignment.description}
+									createdAt={assignment.created_at}
+									debtors={assignment.assignment_debtors?.map((debtor) => debtor?.name)}
+									creditors={assignment.assignment_creditors?.map((creditor) => creditor?.name)}
+									status={assignment.status} // status 전달 -> DebtorCard에서 처리
+								/>
+							</Link>
+						))}
+					</CardList>
+				)}
 			</main>
 		</div>
 	);

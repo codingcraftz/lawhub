@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { Box, Flex, Button, Text, Card } from "@radix-ui/themes";
+import { Box, Flex, Button, Text, Card, Switch } from "@radix-ui/themes";
 import GroupForm from "./GroupForm";
 import GroupMembersEditor from "./GroupMembersEditor";
 
@@ -138,37 +138,44 @@ function GroupDetails({ selectedGroup, fetchGroups }) {
 	return (
 		<>
 			<Flex justify="between" align="center" mb="2">
-				{isEditing ? (
-					<div className="flex gap-2 items-center">
-						<input
-							value={newName}
-							onChange={(e) => setNewName(e.target.value)}
-							style={{
-								padding: "0.6rem",
-								border: "1px solid var(--gray-6)",
-								borderRadius: "var(--radius-2)",
-								flex: 1,
-							}}
-						/>
-						<Button onClick={handleSave}>저장</Button>
-						<Button
-							variant="outline"
-							onClick={() => setIsEditing(false)}
-						>
-							취소
-						</Button>
-					</div>
-				) : (
-					<div className="flex gap-2 items-center">
-						<Text className="text-lg font-bold">{selectedGroup.name}</Text>
-						<Button onClick={() => setIsEditing(true)}>수정</Button>
-						<Button variant="soft" color="red" onClick={handleDelete}>
-							삭제
-						</Button>
-					</div>
-				)}
+				{/* 그룹 이름 + 스위치 (토글 수정) */}
+				<Flex align="center" gap="2">
+					<Text className="text-lg font-bold">{selectedGroup.name}</Text>
+					<Switch
+						checked={isEditing}
+						onCheckedChange={(checked) => setIsEditing(checked)}
+					/>
+				</Flex>
 			</Flex>
-			<Box>
+
+			{/* 수정 모드 활성화 시 입력창 표시 */}
+			{isEditing ? (
+				<Flex gap="2" align="center" mt="2">
+					<input
+						value={newName}
+						onChange={(e) => setNewName(e.target.value)}
+						style={{
+							padding: "0.6rem",
+							border: "1px solid var(--gray-6)",
+							borderRadius: "var(--radius-2)",
+							flex: 1,
+						}}
+					/>
+					<Button onClick={handleSave}>저장</Button>
+					<Button
+						variant="outline"
+						onClick={() => setIsEditing(false)}
+					>
+						취소
+					</Button>
+				</Flex>
+			) : (
+				<Button variant="soft" color="red" onClick={handleDelete}>
+					삭제
+				</Button>
+			)}
+
+			<Box mt="4">
 				<GroupMembersEditor group={selectedGroup} />
 			</Box>
 		</>

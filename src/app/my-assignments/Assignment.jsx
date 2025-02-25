@@ -1,5 +1,3 @@
-// src/app/my-assignments/Assignment.jsx
-
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -8,17 +6,21 @@ import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import DebtorCard from "../client/_components/DebtorCard";
 import CardList from "../client/_components/CardList";
+import AssignmentSummary from "./AssignmentSummary"; // ✅ 간략히 보기 추가
 import { useRouter } from "next/navigation";
+import { Flex, Text, Switch } from "@radix-ui/themes";
 
 const Assignment = ({ clientId }) => {
 	const [clientName, setClientName] = useState("");
 	const [individualAssignments, setIndividualAssignments] = useState([]);
 	const [groupAssignments, setGroupAssignments] = useState([]);
+	const [isSummaryView, setIsSummaryView] = useState(false); // ✅ 스위치 상태 추가
 	const router = useRouter();
-	const hasAssignments = individualAssignments.length > 0 || groupAssignments.length > 0
+	const hasAssignments = individualAssignments.length > 0 || groupAssignments.length > 0;
 
 	const fetchAssignments = async () => {
 		try {
+			// 1️⃣ 그룹 ID 조회
 			const { data: myGroups, error: groupError } = await supabase
 				.from("group_members")
 				.select("group_id")
@@ -30,65 +32,48 @@ const Assignment = ({ clientId }) => {
 			}
 			const groupIds = (myGroups ?? []).map((g) => g.group_id);
 
+			// 2️⃣ 개인 의뢰 조회
 			const { data: directAssignments, error: directError } = await supabase
 				.from("assignments")
 				.select(`
-        id,
-        description,
-        created_at,
-				status,
-        assignment_debtors ( name ),
-        assignment_creditors ( name ),
-        assignment_clients!inner ( client_id )
-      `)
+					id,
+					description,
+					created_at,
+					status,
+					assignment_debtors ( name ),
+					assignment_creditors ( name ),
+					assignment_clients!inner ( client_id, users(name) )
+				`)
 				.eq("assignment_clients.client_id", clientId);
 
 			if (directError) {
 				console.error("Error fetching direct assignments:", directError);
 			}
+
+			// ✅ 개인 의뢰 결과 저장
 			setIndividualAssignments(directAssignments ?? []);
 
-			// 그룹 assignments 조회
+			// 3️⃣ 그룹 의뢰 조회
 			if (groupIds.length > 0) {
-				const { data: groupData, error: groupAssignError } = await supabase
+				const { data: groupAssignmentsData, error: groupAssignError } = await supabase
 					.from("assignments")
 					.select(`
-          id,
-          description,
-          created_at,
-          assignment_debtors ( name ),
-          assignment_creditors ( name ),
-          assignment_groups!inner ( group_id )
-        `)
+						id,
+						description,
+						created_at,
+						status,
+						assignment_debtors ( name ),
+						assignment_creditors ( name ),
+						assignment_groups!inner ( group_id, groups(name) )
+					`)
 					.in("assignment_groups.group_id", groupIds);
 
 				if (groupAssignError) {
 					console.error("Error fetching group assignments:", groupAssignError);
 				}
 
-				// 그룹 이름 조회
-				const { data: groupNames, error: groupNameError } = await supabase
-					.from("groups")
-					.select("id, name")
-					.in("id", groupIds);
-
-				if (groupNameError) {
-					console.error("Error fetching group names:", groupNameError);
-				}
-
-				// 그룹 이름 매핑
-				const groupNameMap = (groupNames ?? []).reduce((acc, group) => {
-					acc[group.id] = group.name;
-					return acc;
-				}, {});
-
-				// 그룹 이름 추가
-				const enrichedGroupAssignments = (groupData ?? []).map((assignment) => ({
-					...assignment,
-					group_name: groupNameMap[assignment.assignment_groups[0].group_id] || "알 수 없는 그룹",
-				}));
-
-				setGroupAssignments(enrichedGroupAssignments);
+				// ✅ 그룹 의뢰 결과 저장
+				setGroupAssignments(groupAssignmentsData ?? []);
 			}
 		} catch (err) {
 			console.error("Unexpected error:", err);
@@ -116,7 +101,8 @@ const Assignment = ({ clientId }) => {
 		fetchAssignments();
 	}, [clientId, fetchUser]);
 
-	if (!hasAssignments) return <div><p>등록된 의뢰가 없습니다.</p></div>
+	if (!hasAssignments) return <div><p>등록된 의뢰가 없습니다.</p></div>;
+
 	return (
 		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
 			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -127,49 +113,59 @@ const Assignment = ({ clientId }) => {
 					/>
 					<h1 className="text-2xl font-bold">{clientName}님의 사건 관리</h1>
 				</div>
+
+				{/* ✅ 스위치 추가 */}
+				<Flex align="center" gap="2">
+					<Text size="3">{isSummaryView ? "간략히 보기" : "카드 보기"}</Text>
+					<Switch
+						checked={isSummaryView}
+						onCheckedChange={(checked) => setIsSummaryView(checked)} />
+
+				</Flex>
+
 			</header>
 
 			<main>
-				<CardList>
-					{individualAssignments.map((assignment) => (
-						<Link
-							key={assignment.id}
-							href={`/client/assignment/${assignment.id}`}
-						>
-							<DebtorCard
-								type="개인"
-								status={assignment.status}
-								name={assignment.assignment_clients[0].name}
-								description={assignment.description}
-								createdAt={assignment.created_at}
-								debtors={assignment.assignment_debtors?.map((debtor) => debtor.name)}
-								creditors={assignment.assignment_creditors?.map((creditor) => creditor.name)}
-							/>
-						</Link>
-					))}
-					{groupAssignments.map((assignment) => (
-						<Link
-							key={assignment.id}
-							href={`/client/assignment/${assignment.id}`}
-						>
-							<DebtorCard
-								type="그룹"
-								status={assignment.status}
-								name={assignment.assignment_groups[0].name}
-								description={assignment.description}
-								createdAt={assignment.created_at}
-								debtors={assignment.assignment_debtors?.map((debtor) => debtor.name)}
-								creditors={assignment.assignment_creditors?.map((creditor) => creditor.name)}
-							/>
-						</Link>
-					))}
-				</CardList>
+				{/* ✅ 스위치 상태에 따라 카드 보기 / 간략히 보기 변경 */}
+				{isSummaryView ? (
+					<AssignmentSummary clientId={clientId} />
+				) : (
+					<CardList>
+						{/* ✅ 개인 의뢰 */}
+						{individualAssignments.map((assignment) => (
+							<Link key={assignment.id} href={`/client/assignment/${assignment.id}`}>
+								<DebtorCard
+									type="개인"
+									status={assignment.status}
+									name={assignment.assignment_clients[0]?.users?.name}
+									description={assignment.description}
+									createdAt={assignment.created_at}
+									debtors={assignment.assignment_debtors?.map((debtor) => debtor.name)}
+									creditors={assignment.assignment_creditors?.map((creditor) => creditor.name)}
+								/>
+							</Link>
+						))}
+
+						{/* ✅ 그룹 의뢰 */}
+						{groupAssignments.map((assignment) => (
+							<Link key={assignment.id} href={`/client/assignment/${assignment.id}`}>
+								<DebtorCard
+									type="그룹"
+									status={assignment.status}
+									name={assignment.assignment_groups[0]?.groups?.name}
+									description={assignment.description}
+									createdAt={assignment.created_at}
+									debtors={assignment.assignment_debtors?.map((debtor) => debtor.name)}
+									creditors={assignment.assignment_creditors?.map((creditor) => creditor.name)}
+								/>
+							</Link>
+						))}
+					</CardList>
+				)}
 			</main>
 		</div>
 	);
 };
 
 export default Assignment;
-
-
 
