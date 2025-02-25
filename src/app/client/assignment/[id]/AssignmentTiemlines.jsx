@@ -1,3 +1,5 @@
+// src/app/client/assignment/[id]/AssignmentTimelines.jsx
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -50,7 +52,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
 				<Text as="h2" className="font-semibold text-lg">
-					사건 진행 상황
+					채권 회수 현황
 				</Text>
 				{isAdmin && (
 					<Button

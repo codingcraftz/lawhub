@@ -8,12 +8,15 @@ import DebtorCard from "../_components/DebtorCard";
 import Link from "next/link";
 import CardList from "../_components/CardList";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
+import AssignmentSummary from "./summary/AssignmentSummary";
+import { Flex, Switch, Text } from "@radix-ui/themes";
 
 const ClientCasePage = () => {
 	const router = useRouter();
 	const { id: clientId } = useParams();
 	const [clientName, setClientName] = useState("");
 	const [assignments, setAssignments] = useState([]);
+	const [isDetailedView, setIsDetailedView] = useState(false);
 	useRoleRedirect(["staff", "admin", "client"], [], "/");
 
 	const fetchAssignments = async () => {
@@ -82,24 +85,38 @@ const ClientCasePage = () => {
 					/>
 					<h1 className="text-2xl font-bold">{clientName}님의 의뢰 목록</h1>
 				</div>
+
+				{/* 스위치로 토글 */}
+				<Flex align="center" gap="2">
+					<Text size="3">{isDetailedView ? "카드 보기" : "간략히 보기"}</Text>
+					<Switch
+						checked={isDetailedView}
+						onCheckedChange={(checked) => setIsDetailedView(checked)}
+					/>
+				</Flex>
 			</header>
 
 			<main>
-				<CardList>
-					{assignments.map((assignment) => (
-						<Link key={assignment.id} href={`/client/assignment/${assignment.id}`}>
-							<DebtorCard
-								description={assignment.description}
-								name={clientName}
-								createdAt={assignment.created_at}
-								status={assignment.status}
-								assignees={assignment.assignment_assignees.map((d) => d?.users?.name)}
-								debtors={assignment.assignment_debtors?.map((d) => d?.name)}
-								creditors={assignment.assignment_creditors?.map((c) => c?.name)}
-							/>
-						</Link>
-					))}
-				</CardList>
+				{/* 스위치 상태에 따라 다른 컴포넌트 렌더링 */}
+				{isDetailedView ? (
+					<AssignmentSummary />
+				) : (
+					<CardList>
+						{assignments.map((assignment) => (
+							<Link key={assignment.id} href={`/client/assignment/${assignment.id}`}>
+								<DebtorCard
+									description={assignment.description}
+									name={clientName}
+									createdAt={assignment.created_at}
+									status={assignment.status}
+									assignees={assignment.assignment_assignees.map((d) => d?.users?.name)}
+									debtors={assignment.assignment_debtors?.map((d) => d?.name)}
+									creditors={assignment.assignment_creditors?.map((c) => c?.name)}
+								/>
+							</Link>
+						))}
+					</CardList>
+				)}
 			</main>
 		</div>
 	);

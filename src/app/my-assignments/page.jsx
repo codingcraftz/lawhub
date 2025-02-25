@@ -1,3 +1,5 @@
+// src/app/my-assignments/page.jsx
+
 "use client";
 
 import Assignment from "./Assignment";

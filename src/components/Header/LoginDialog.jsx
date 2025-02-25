@@ -108,7 +108,7 @@ const LoginDialog = () => {
 				options: {
 					scopes:
 						"profile_nickname profile_image account_email name gender birthday birthyear phone_number",
-					redirectTo: `${window.location.origin}/`, // 리디렉션 URL 설정
+					redirectTo: `${window.location.origin}/`,
 				},
 			});
 
