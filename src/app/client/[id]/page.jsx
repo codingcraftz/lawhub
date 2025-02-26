@@ -4,57 +4,21 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
-import DebtorCard from "../_components/DebtorCard";
-import Link from "next/link";
-import CardList from "../_components/CardList";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
-import AssignmentSummary from "./summary/AssignmentSummary";
-import { Flex, Switch, Text } from "@radix-ui/themes";
+import { Box, Text } from "@radix-ui/themes";
+import AssignmentsOverview from "@/components/Assignment/AssignmentsOverview";
+import FilterBar from "@/components/Assignment/FilterBar";
+import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
 
 const ClientCasePage = () => {
 	const router = useRouter();
 	const { id: clientId } = useParams();
 	const [clientName, setClientName] = useState("");
 	const [assignments, setAssignments] = useState([]);
-	const [isDetailedView, setIsDetailedView] = useState(false);
+	const [filteredAssignments, setFilteredAssignments] = useState([]);
 	useRoleRedirect(["staff", "admin", "client"], [], "/");
 
-	const fetchAssignments = async () => {
-		try {
-			const { data, error } = await supabase
-				.from("assignments")
-				.select(`
-          id,
-          description,
-          created_at,
-          status,
-          assignment_debtors!left (name),
-          assignment_creditors!left (name),
-					assignment_assignees!left (user_id, users(name)),
-          assignment_clients!inner (client_id, type)
-        `)
-				.eq("assignment_clients.client_id", clientId);
-
-			if (error) {
-				console.error("Error fetching assignments:", error);
-				return;
-			}
-
-			const sorted = (data || []).sort((a, b) => {
-				const orderA = a.status === "ongoing" ? 0 : 1;
-				const orderB = b.status === "ongoing" ? 0 : 1;
-				if (orderA !== orderB) {
-					return orderA - orderB;
-				}
-				return new Date(a.created_at) - new Date(b.created_at);
-			});
-
-			setAssignments(sorted);
-		} catch (err) {
-			console.error("Unexpected error:", err);
-		}
-	};
-
+	// 의뢰인 이름 불러오기
 	const fetchUser = useCallback(async () => {
 		if (!clientId) return;
 		const { data: clientData, error } = await supabase
@@ -70,55 +34,65 @@ const ClientCasePage = () => {
 		}
 	}, [clientId]);
 
+	// 의뢰 목록 불러오기
+	const fetchAssignments = async () => {
+		if (!clientId) return;
+
+		const { data, error } = await supabase
+			.from("assignments")
+			.select(`
+				id,
+				description,
+				status,
+				created_at,
+				civil_litigation_status,
+				asset_declaration_status,
+				creditor_attachment_status,
+				assignment_creditors ( name ),
+				assignment_clients!inner(client_id, users(name)),
+				assignment_debtors ( id, name, phone_number ),
+				assignment_timelines ( description ),
+				bonds (
+					id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
+					interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
+				),
+				cases ( id, court_name, case_year, case_type, case_number, case_subject, status ),
+				enforcements ( id, status, amount, type )
+			`)
+			.eq("assignment_clients.client_id", clientId);
+
+		if (error) {
+			console.error("Error fetching assignments:", error);
+			return;
+		}
+
+		setAssignments(data);
+		setFilteredAssignments(data);
+	};
+
 	useEffect(() => {
-		fetchAssignments();
 		fetchUser();
+		fetchAssignments();
 	}, [clientId]);
 
 	return (
-		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
+		<Box className="w-full py-4 px-4 sm:px-6 md:px-12">
 			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
 				<div className="flex items-center gap-2">
-					<ArrowLeftIcon
-						className="w-8 h-8 cursor-pointer"
-						onClick={() => router.back()}
-					/>
+					<ArrowLeftIcon className="w-8 h-8 cursor-pointer" onClick={() => router.back()} />
 					<h1 className="text-2xl font-bold">{clientName}님의 의뢰 목록</h1>
 				</div>
-
-				{/* 스위치로 토글 */}
-				<Flex align="center" gap="2">
-					<Text size="3">{isDetailedView ? "카드 보기" : "간략히 보기"}</Text>
-					<Switch
-						checked={isDetailedView}
-						onCheckedChange={(checked) => setIsDetailedView(checked)}
-					/>
-				</Flex>
 			</header>
 
-			<main>
-				{/* 스위치 상태에 따라 다른 컴포넌트 렌더링 */}
-				{isDetailedView ? (
-					<AssignmentSummary />
-				) : (
-					<CardList>
-						{assignments.map((assignment) => (
-							<Link key={assignment.id} href={`/client/assignment/${assignment.id}`}>
-								<DebtorCard
-									description={assignment.description}
-									name={clientName}
-									createdAt={assignment.created_at}
-									status={assignment.status}
-									assignees={assignment.assignment_assignees.map((d) => d?.users?.name)}
-									debtors={assignment.assignment_debtors?.map((d) => d?.name)}
-									creditors={assignment.assignment_creditors?.map((c) => c?.name)}
-								/>
-							</Link>
-						))}
-					</CardList>
-				)}
-			</main>
-		</div>
+			{/* (1) 의뢰 개요 */}
+			<AssignmentsOverview assignments={assignments} />
+
+			{/* (2) 필터 바 */}
+			<FilterBar assignments={assignments} setFilteredAssignments={setFilteredAssignments} />
+
+			{/* (3) 의뢰 테이블 */}
+			<AssignmentsTable assignments={filteredAssignments} isAdmin={true} />
+		</Box>
 	);
 };
 

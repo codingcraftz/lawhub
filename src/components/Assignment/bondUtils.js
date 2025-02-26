@@ -1,4 +1,3 @@
-// src/app/client/assignment/[id]/utils/bondUtils.js
 
 // 날짜 포맷
 export function formatDate(dateString) {
@@ -39,4 +38,5 @@ export function calculateBondTotal(bond) {
 
 	return principal + interest1 + interest2 + totalExpenses;
 }
+
 

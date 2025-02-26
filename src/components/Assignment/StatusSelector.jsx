@@ -36,7 +36,7 @@ export default function StatusSelector({ assignmentId, field, currentStatus, isA
 
 	// 일반 사용자: 현재 상태만 텍스트로 표시
 	if (!isAdmin) {
-		return <Text className="text-center">{selectedStatus || "상태없음"}</Text>;
+		return <Text className="text-center w-full">{selectedStatus || "상태없음"}</Text>;
 	}
 
 	// 관리자 UI: 상태 선택 버튼 제공
@@ -74,4 +74,6 @@ export default function StatusSelector({ assignmentId, field, currentStatus, isA
 		</Flex>
 	);
 }
+
+
 
