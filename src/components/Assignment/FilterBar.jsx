@@ -53,13 +53,13 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 				placeholder="채권자, 채무자, 내용 검색..."
 				value={searchText}
 				onChange={(e) => setSearchText(e.target.value)}
-				className="border border-gray-8 px-3 py-2 rounded-md w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				className="border border-gray-300 px-3 py-2 rounded-md w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
 			/>
 
 			{/* ⬇️ 상태 선택 드롭다운 */}
 			<Select.Root value={statusFilter} onValueChange={setStatusFilter}>
 				<Select.Trigger
-					className="inline-flex h-[40px] items-center justify-center gap-2 rounded-md px-4 text-[14px] shadow-sm border border-gray-8 focus:ring-2 focus:ring-blue-500 hover:bg-gray-5"
+					className="inline-flex h-[40px] items-center justify-center gap-2 rounded-md px-4 text-[14px] shadow-sm border border-gray-300 focus:ring-2 focus:ring-blue-500 hover:bg-gray-100"
 					aria-label="Status"
 				>
 					<Select.Value />
@@ -69,8 +69,8 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 				</Select.Trigger>
 
 				<Select.Portal>
-					<Select.Content className="overflow-hidden rounded-md bg-gray-5 shadow-md border border-gray-8">
-						<Select.Viewport className="p-2" >
+					<Select.Content className="overflow-hidden rounded-md bg-white shadow-md border border-gray-300">
+						<Select.Viewport className="p-2">
 							<SelectItem value="all">전체</SelectItem>
 							<SelectItem value="ongoing">진행중</SelectItem>
 							<SelectItem value="closed">완료</SelectItem>
@@ -96,7 +96,7 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 const SelectItem = React.forwardRef(({ children, ...props }, forwardedRef) => {
 	return (
 		<Select.Item
-			className="relative flex h-[36px] select-none items-center rounded-md px-3 text-[14px] leading-none hover:opacity-80 focus:bg-blue-1"
+			className="relative flex h-[36px] select-none items-center rounded-md px-3 text-[14px] leading-none hover:bg-gray-100 focus:bg-blue-100"
 			{...props}
 			ref={forwardedRef}
 		>
@@ -107,4 +107,7 @@ const SelectItem = React.forwardRef(({ children, ...props }, forwardedRef) => {
 		</Select.Item>
 	);
 });
+
+// ✅ 해결: forwardRef를 사용할 때 displayName을 설정하여 ESLint 경고 해결
+SelectItem.displayName = "SelectItem";
 
