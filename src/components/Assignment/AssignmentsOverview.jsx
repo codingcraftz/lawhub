@@ -10,14 +10,10 @@ import {
 	Legend,
 } from "chart.js";
 
-// 도넛 차트 안에 % 표시를 위해 plugin 추가 (chart.js v4)
 import ChartDataLabels from "chartjs-plugin-datalabels";
 
 import { calculateBondTotal } from "./bondUtils";
 
-/* 
-	ArcElement, Tooltip, Legend, (추가) ChartDataLabels
-*/
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
 export default function AssignmentsOverview({ assignments }) {
