@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { useParams } from "next/navigation";
 import { Box, Text } from "@radix-ui/themes";
-import AssignmentsTable from "./AssignmentsTable";
+import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
 import { useUser } from "@/hooks/useUser";
 
 

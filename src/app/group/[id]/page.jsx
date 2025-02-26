@@ -4,12 +4,11 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { supabase } from "@/utils/supabase";
-import Link from "next/link";
-import CardList from "@/app/client/_components/CardList";
-import DebtorCard from "@/app/client/_components/DebtorCard";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
-import AssignmentSummary from "./summary/AssignmentSummary";
-import { Switch, Text, Flex } from "@radix-ui/themes";
+import { Box, Text } from "@radix-ui/themes";
+import AssignmentsOverview from "@/components/Assignment/AssignmentsOverview";
+import FilterBar from "@/components/Assignment/FilterBar";
+import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
 
 const GroupCasePage = () => {
 	useRoleRedirect(["staff", "admin", "client"], [], "/");
@@ -17,47 +16,9 @@ const GroupCasePage = () => {
 	const { id: groupId } = useParams();
 	const [groupName, setGroupName] = useState("");
 	const [assignments, setAssignments] = useState([]);
-	const [isDetailedView, setIsDetailedView] = useState(false);
+	const [filteredAssignments, setFilteredAssignments] = useState([]);
 
-	// 1) 의뢰 목록 불러오기
-	const fetchAssignments = async () => {
-		try {
-			const { data, error } = await supabase
-				.from("assignments")
-				.select(`
-          id,
-          description,
-          created_at,
-          status,
-          assignment_debtors!left (name),
-          assignment_creditors!left (name),
-          assignment_groups!inner (group_id, type)
-        `)
-				.eq("assignment_groups.group_id", groupId);
-
-			if (error) {
-				console.error("Error fetching assignments:", error);
-				return;
-			}
-
-			// (A) ongoing → closed 순으로 정렬
-			const sorted = (data || []).sort((a, b) => {
-				const aStatus = a.status === "ongoing" ? 0 : 1;
-				const bStatus = b.status === "ongoing" ? 0 : 1;
-				if (aStatus !== bStatus) {
-					return aStatus - bStatus;
-				}
-				// ongoing끼리는 created_at 기준 오름차 정렬
-				return new Date(a.created_at) - new Date(b.created_at);
-			});
-
-			setAssignments(sorted);
-		} catch (err) {
-			console.error("Unexpected error:", err);
-		}
-	};
-
-	// 2) 그룹 이름 불러오기
+	// 그룹 이름 불러오기
 	const fetchGroup = useCallback(async () => {
 		if (!groupId) return;
 		const { data: groupData, error } = await supabase
@@ -73,59 +34,64 @@ const GroupCasePage = () => {
 		}
 	}, [groupId]);
 
+	// 의뢰 목록 불러오기
+	const fetchAssignments = async () => {
+		if (!groupId) return;
+
+		const { data, error } = await supabase
+			.from("assignments")
+			.select(`
+				id,
+				description,
+				status,
+				created_at,
+				civil_litigation_status,
+				asset_declaration_status,
+				creditor_attachment_status,
+				assignment_creditors ( name ),
+				assignment_groups!inner(group_id, groups(name)),
+				assignment_debtors ( id, name, phone_number ),
+				assignment_timelines ( description ),
+				bonds (
+					id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
+					interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
+				),
+				enforcements ( id, status, amount, type )
+			`)
+			.eq("assignment_groups.group_id", groupId);
+
+		if (error) {
+			console.error("Error fetching assignments:", error);
+			return;
+		}
+
+		setAssignments(data);
+		setFilteredAssignments(data);
+	};
+
 	useEffect(() => {
-		fetchAssignments();
 		fetchGroup();
+		fetchAssignments();
 	}, [groupId]);
 
 	return (
-		<div className="py-4 w-full px-4 sm:px-6 md:px-12">
+		<Box className="w-full py-4 px-4 sm:px-6 md:px-12">
 			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
 				<div className="flex items-center gap-2">
-					<ArrowLeftIcon
-						className="w-8 h-8 cursor-pointer"
-						onClick={() => router.back()}
-					/>
+					<ArrowLeftIcon className="w-8 h-8 cursor-pointer" onClick={() => router.back()} />
 					<h1 className="text-2xl font-bold">{groupName} 의뢰 목록</h1>
 				</div>
-
-				{/* 스위치 버튼 */}
-				<Flex align="center" gap="2">
-					<Text size="2">{isDetailedView ? "카드 보기" : "간략히 보기"}</Text>
-					<Switch
-						checked={isDetailedView}
-						onCheckedChange={(checked) => setIsDetailedView(checked)}
-					/>
-				</Flex>
 			</header>
 
-			<main>
-				{/* 토글 상태에 따라 다른 컴포넌트 렌더링 */}
-				{isDetailedView ? (
-					<AssignmentSummary />
-				) : (
-					<CardList>
-						{assignments.map((assignment) => (
-							<Link
-								key={assignment.id}
-								href={`/client/assignment/${assignment.id}`}
-							>
-								<DebtorCard
-									name={groupName}
-									type={groupName}
-									clientType={assignment.assignment_groups[0].type}
-									description={assignment.description}
-									createdAt={assignment.created_at}
-									debtors={assignment.assignment_debtors?.map((debtor) => debtor?.name)}
-									creditors={assignment.assignment_creditors?.map((creditor) => creditor?.name)}
-									status={assignment.status} // status 전달 -> DebtorCard에서 처리
-								/>
-							</Link>
-						))}
-					</CardList>
-				)}
-			</main>
-		</div>
+			{/* (1) 의뢰 개요 */}
+			<AssignmentsOverview assignments={assignments} />
+
+			{/* (2) 필터 바 */}
+			<FilterBar assignments={assignments} setFilteredAssignments={setFilteredAssignments} />
+
+			{/* (3) 의뢰 테이블 */}
+			<AssignmentsTable assignments={filteredAssignments} isAdmin={true} />
+		</Box>
 	);
 };
 

@@ -32,6 +32,9 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 		}));
 	};
 
+	const [currentPage, setCurrentPage] = useState(1);
+
+
 	return (
 		<Table.Root>
 			<Table.Header>

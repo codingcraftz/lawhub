@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/utils/supabase";
 import { Box, Text } from "@radix-ui/themes";
-import AssignmentsTable from "@/app/group/[id]/summary/AssignmentsTable";
 import { useUser } from "@/hooks/useUser";
+import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
+import AssignmentsOverview from "@/components/Assignment/AssignmentsOverview";
+import FilterBar from "@/components/Assignment/FilterBar";
 
 export default function AssignmentSummary({ clientId }) {
 	const [assignments, setAssignments] = useState([]);
+	const [filteredAssignments, setFilteredAssignments] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const { user } = useUser();
 	const isAdmin = user?.role === "admin" || user?.role === "staff";
@@ -26,23 +29,24 @@ export default function AssignmentSummary({ clientId }) {
 			const { data: personalAssignments, error: personalError } = await supabase
 				.from("assignments")
 				.select(`
-					id,
-					description,
-					status,
-					created_at,
-					civil_litigation_status,
-					asset_declaration_status,
-					creditor_attachment_status,
-					assignment_clients!inner(client_id, users(name)),
-					assignment_debtors ( id, name, phone_number ),
-					assignment_timelines ( description ),
-					bonds (
-						id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
-						interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
-					),
-					cases ( id, court_name, case_year, case_type, case_number, case_subject, status ),
-					enforcements ( id, status, amount, type )
-				`)
+          id,
+          description,
+          status,
+          created_at,
+          civil_litigation_status,
+          asset_declaration_status,
+          creditor_attachment_status,
+					assignment_creditors ( name ),
+          assignment_clients!inner(client_id, users(name)),
+          assignment_debtors ( id, name, phone_number ),
+          assignment_timelines ( description ),
+          bonds (
+            id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
+            interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
+          ),
+          cases ( id, court_name, case_year, case_type, case_number, case_subject, status ),
+          enforcements ( id, status, amount, type )
+        `)
 				.eq("assignment_clients.client_id", clientId);
 
 			if (personalError) throw personalError;
@@ -62,22 +66,23 @@ export default function AssignmentSummary({ clientId }) {
 				const { data: groupAssignments, error: groupError } = await supabase
 					.from("assignments")
 					.select(`
-						id,
-						description,
-						status,
-						created_at,
-						civil_litigation_status,
-						asset_declaration_status,
-						creditor_attachment_status,
-						assignment_groups!inner(group_id, groups(name)),
-						assignment_debtors ( id, name, phone_number ),
-						assignment_timelines ( description ),
-						bonds (
-							id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
-							interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
-						),
-						enforcements ( id, status, amount, type )
-					`)
+            id,
+            description,
+            status,
+            created_at,
+            civil_litigation_status,
+            asset_declaration_status,
+            creditor_attachment_status,
+						assignment_creditors ( name ),
+            assignment_groups!inner(group_id, groups(name)),
+            assignment_debtors ( id, name, phone_number ),
+            assignment_timelines ( description ),
+            bonds (
+              id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
+              interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
+            ),
+            enforcements ( id, status, amount, type )
+          `)
 					.in("assignment_groups.group_id", groupIds);
 
 				if (groupError) throw groupError;
@@ -97,7 +102,9 @@ export default function AssignmentSummary({ clientId }) {
 				name: assignment.assignment_clients?.users?.name || "알 수 없는 사용자",
 			}));
 
-			setAssignments([...formattedPersonalAssignments, ...formattedGroupAssignments]);
+			const all = [...formattedPersonalAssignments, ...formattedGroupAssignments];
+			setAssignments(all);
+			setFilteredAssignments(all); // 초기에는 전체
 		} catch (error) {
 			console.error("의뢰 정보 불러오기 오류:", error);
 		}
@@ -111,7 +118,14 @@ export default function AssignmentSummary({ clientId }) {
 
 	return (
 		<Box className="w-full py-4">
-			<AssignmentsTable assignments={assignments} isAdmin={isAdmin} />
+			{/* (1) 의뢰 요약 섹션 */}
+			<AssignmentsOverview assignments={assignments} />
+
+			{/* (2) 검색/필터 바 */}
+			<FilterBar assignments={assignments} setFilteredAssignments={setFilteredAssignments} />
+
+			{/* (3) 테이블 */}
+			<AssignmentsTable assignments={filteredAssignments} isAdmin={isAdmin} />
 		</Box>
 	);
 }
