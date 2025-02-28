@@ -44,8 +44,16 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit, isSu
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
-		onSubmit(formData);
+
+		// birth_date가 비어있으면 null로 설정
+		const sanitizedData = {
+			...formData,
+			birth_date: formData.birth_date.trim() ? formData.birth_date : null,
+		};
+
+		onSubmit(sanitizedData);
 	};
+
 
 	const handleUserSearch = async () => {
 		if (!userSearchTerm.trim()) return;

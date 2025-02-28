@@ -46,20 +46,25 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 	};
 
 	return (
-		<Flex gap="3" align="center" className="my-4">
+		<Flex
+			// 모바일에서는 세로 배치, sm(640px)부터는 가로 배치
+			className="my-4 flex flex-col sm:flex-row gap-3 w-full"
+			wrap="wrap"
+			align="start"
+		>
 			{/* 🔍 검색 입력창 (채권자, 채무자, 내용 검색) */}
 			<input
 				type="text"
 				placeholder="채권자, 채무자, 내용 검색..."
 				value={searchText}
 				onChange={(e) => setSearchText(e.target.value)}
-				className="border border-gray-300 px-3 py-2 rounded-md w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				className="border border-gray-300 px-3 py-2 rounded-md w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
 			/>
 
 			{/* ⬇️ 상태 선택 드롭다운 */}
 			<Select.Root value={statusFilter} onValueChange={setStatusFilter}>
 				<Select.Trigger
-					className="inline-flex h-[40px] items-center justify-center gap-2 rounded-md px-4 text-[14px] shadow-sm border border-gray-300 focus:ring-2 focus:ring-blue-500 hover:bg-gray-100"
+					className="inline-flex h-[40px] items-center justify-center gap-2 rounded-md px-4 text-[14px] shadow-sm border border-gray-300 focus:ring-2 focus:ring-blue-500 hover:bg-gray-100 w-full sm:w-auto"
 					aria-label="Status"
 				>
 					<Select.Value />
@@ -82,7 +87,7 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 			{/* ✅ 필터 적용 버튼 */}
 			<Button
 				onClick={handleFilter}
-				className="bg-blue-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-blue-600"
+				className="bg-blue-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-blue-600 w-full sm:w-auto"
 			>
 				필터 적용
 			</Button>
@@ -108,6 +113,5 @@ const SelectItem = React.forwardRef(({ children, ...props }, forwardedRef) => {
 	);
 });
 
-// ✅ 해결: forwardRef를 사용할 때 displayName을 설정하여 ESLint 경고 해결
 SelectItem.displayName = "SelectItem";
 

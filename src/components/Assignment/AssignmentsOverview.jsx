@@ -9,10 +9,8 @@ import {
 	Tooltip,
 	Legend,
 } from "chart.js";
-
 import ChartDataLabels from "chartjs-plugin-datalabels";
-
-import { calculateBondTotal } from "./bondUtils";
+// import { calculateBondTotal } from "./bondUtils";
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
@@ -60,16 +58,14 @@ export default function AssignmentsOverview({ assignments }) {
 		responsive: true,
 		cutout: "60%",
 		plugins: {
-			// 범례 위치
 			legend: {
 				position: "top",
 				labels: {
 					font: {
-						size: 14, // 범례 폰트 크기
+						size: 14,
 					},
 				},
 			},
-			// 데이터 라벨(퍼센트) 표시 (chartjs-plugin-datalabels)
 			datalabels: {
 				color: "#fff",
 				font: {
@@ -90,8 +86,18 @@ export default function AssignmentsOverview({ assignments }) {
 	return (
 		<Flex direction="column" gap="6" className="w-full">
 			{/* 1) 카드 형태 요약 정보 */}
-			<Flex gap="4" wrap="wrap" align="center" justify="center" className="mb-6">
-				<Card variant="surface" className="p-4 min-w-[200px] flex-1 max-w-[250px] text-center">
+			<Flex
+				gap="4"
+				wrap="wrap"          // 화면이 좁아지면 자동 줄바꿈
+				align="start"        // 모바일에서 왼쪽 정렬 (원하면 center로 유지 가능)
+				justify="start"
+				className="mb-6"
+			>
+				<Card
+					variant="surface"
+					// 모바일에서는 전체 폭을 차지하고, sm 해상도부터는 오토로 전환
+					className="w-full sm:w-auto p-4 min-w-[200px] text-center"
+				>
 					<Text as="p" size="3" className="text-gray-11 mb-1">
 						총 의뢰 건수
 					</Text>
@@ -100,7 +106,10 @@ export default function AssignmentsOverview({ assignments }) {
 					</Text>
 				</Card>
 
-				<Card variant="surface" className="p-4 min-w-[200px] flex-1 max-w-[250px] text-center">
+				<Card
+					variant="surface"
+					className="w-full sm:w-auto p-4 min-w-[200px] text-center"
+				>
 					<Text as="p" size="3" className="text-gray-11 mb-1">
 						총 수임 원금
 					</Text>
@@ -109,7 +118,10 @@ export default function AssignmentsOverview({ assignments }) {
 					</Text>
 				</Card>
 
-				<Card variant="surface" className="p-4 min-w-[200px] flex-1 max-w-[250px] text-center">
+				<Card
+					variant="surface"
+					className="w-full sm:w-auto p-4 min-w-[200px] text-center"
+				>
 					<Text as="p" size="3" className="text-gray-11 mb-1">
 						총 회수 금액
 					</Text>
@@ -118,7 +130,10 @@ export default function AssignmentsOverview({ assignments }) {
 					</Text>
 				</Card>
 
-				<Card variant="surface" className="p-4 min-w-[200px] flex-1 max-w-[250px] text-center">
+				<Card
+					variant="surface"
+					className="w-full sm:w-auto p-4 min-w-[200px] text-center"
+				>
 					<Text as="p" size="3" className="text-gray-11 mb-1">
 						평균 회수율
 					</Text>
