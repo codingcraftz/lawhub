@@ -38,15 +38,23 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null,
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const handleChangeRaw = (name, value) => {
-		setFormData((prev) => ({ ...prev, [name]: value }));
-	};
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (!validate()) return;
-		onSubmit(formData);
+
+		const sanitizedData = {
+			...formData,
+			birth_date: formData.birth_date.trim() ? formData.birth_date : null,
+		};
+
+		onSubmit(sanitizedData);
 	};
+
+	const handleChangeRaw = (name, value) => {
+		setFormData((prev) => ({ ...prev, [name]: value }));
+	};
+
 
 	const handleUserSearch = async () => {
 		if (!userSearchTerm.trim()) return;
@@ -80,6 +88,8 @@ export default function DebtorForm({ onOpenChange, onSubmit, initialData = null,
 		});
 		setIsSearchMode(false); // 검색 모드 종료
 	};
+
+	console.log("debtorform")
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
