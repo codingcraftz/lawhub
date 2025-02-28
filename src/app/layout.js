@@ -10,6 +10,7 @@ import { Nanum_Gothic } from "next/font/google";
 import "react-datepicker/dist/react-datepicker.css";
 import Footer from "@/components/Footer";
 import ChatBotWidget from "@/components/ChatBotWidget"
+import FeedbackWidget from "@/components/FeedbackWidget"
 
 const nanumGothic = Nanum_Gothic({
 	subsets: ["latin"],
@@ -84,7 +85,8 @@ export default function RootLayout({ children }) {
 								{children}
 							</div>
 							<Footer />
-							<ChatBotWidget />
+							<FeedbackWidget />
+							{/* <ChatBotWidget /> */}
 						</Theme>
 					</ThemeProvider>
 				</UserProvider>
