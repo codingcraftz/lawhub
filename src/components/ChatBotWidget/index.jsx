@@ -21,6 +21,8 @@ export default function ChatBotWidget() {
 
 	// 사용자 정보
 	const { user } = useUser();
+	if (user.role ==="admin") return null;
+
 	// 아바타 경로
 	const BOT_AVATAR = "";
 	const USER_AVATAR = user?.profile_image || "";
