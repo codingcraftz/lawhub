@@ -4,6 +4,17 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/utils/supabase"; // 이미 설정된 supabase client 가져오기
 import { useUser } from "@/hooks/useUser";
+import DatePicker from "react-datepicker";
+import { ko } from "date-fns/locale";
+import "react-datepicker/dist/react-datepicker.css";
+
+// 질문 유형 정의
+const QUESTION_TYPES = {
+  TEXT: "text",
+  DATE: "date",
+  DATE_RANGE: "date_range",
+  NUMBER: "number",
+};
 
 // 질문 시나리오 정의
 const scenarios = {
@@ -11,56 +22,81 @@ const scenarios = {
   loan: [
     { 
       id: "frequency", 
-      question: "채무자에게 돈을 빌려준 횟수는 어떻게 되시나요?\n(예: 한번에 모두 빌려줬다면 '한번', 여러 차례에 걸쳐 빌려줬다면 '여러번')" 
+      type: QUESTION_TYPES.TEXT,
+      question: "채무자에게 돈을 빌려준 횟수는 어떻게 되시나요?\n(예: '한번', '5회', '여러번')" 
     },
     { 
-      id: "amount", 
+      id: "amount",
+      type: QUESTION_TYPES.NUMBER,
       question: "빌려주신 총 금액이 얼마인가요?\n(숫자만 입력해 주세요. 예: 1000000)" 
     },
     { 
-      id: "dueDate", 
-      question: "언제까지 돈을 갚기로 했나요?\n(예: 2024-01-01 형식으로 입력해 주세요)" 
+      id: "dueDate",
+      type: QUESTION_TYPES.DATE,
+      question: "언제까지 돈을 갚기로 했나요?\n달력에서 날짜를 선택해 주세요." 
     },
   ],
   // --- 물품대금 ---
   goods: [
     { 
-      id: "frequency", 
-      question: "물품 거래는 몇 번에 걸쳐 이루어졌나요?\n(한번에 모든 물품을 거래했다면 '한번', 여러 차례에 걸쳐 거래했다면 '여러번')" 
+      id: "frequency",
+      type: QUESTION_TYPES.TEXT,
+      question: "물품 거래는 몇 번에 걸쳐 이루어졌나요?\n(예: '한번', '5회', '여러번')" 
     },
     { 
-      id: "itemName", 
+      id: "itemName",
+      type: QUESTION_TYPES.TEXT,
       question: "어떤 물품을 거래하셨나요?\n(예: 건축자재, 가구, 전자제품 등 구체적으로 적어주세요)" 
     },
     { 
-      id: "amount", 
+      id: "amount",
+      type: QUESTION_TYPES.NUMBER,
       question: "물품 대금은 총 얼마인가요?\n(부가가치세 제외한 금액을 숫자만 입력해 주세요. 예: 1000000)" 
     },
     { 
-      id: "dueDate", 
-      question: "대금 지급 약속일이 언제인가요?\n(예: 2024-01-01 형식으로 입력해 주세요)" 
+      id: "dueDate",
+      type: QUESTION_TYPES.DATE,
+      question: "대금 지급 약속일이 언제인가요?\n달력에서 날짜를 선택해 주세요." 
     },
   ],
   // --- 공사대금 ---
   construction: [
     { 
-      id: "period", 
-      question: "공사 기간은 언제부터 언제까지였나요?\n(예: 2024-01-01~2024-02-01 형식으로 입력해 주세요)" 
+      id: "period",
+      type: QUESTION_TYPES.DATE_RANGE,
+      question: "공사 기간을 선택해 주세요.\n시작일과 종료일을 달력에서 선택해 주세요." 
     },
     { 
-      id: "location", 
+      id: "location",
+      type: QUESTION_TYPES.TEXT,
       question: "공사 현장은 어디인가요?\n(시군구까지만 입력해 주세요. 예: 서울시 강남구)" 
     },
     { 
-      id: "amount", 
+      id: "amount",
+      type: QUESTION_TYPES.NUMBER,
       question: "공사 대금은 총 얼마인가요?\n(부가가치세 제외한 금액을 숫자만 입력해 주세요. 예: 1000000)" 
     },
     { 
-      id: "dueDate", 
-      question: "대금 지급 약속일이 언제인가요?\n(예: 2024-01-01 형식으로 입력해 주세요)" 
+      id: "dueDate",
+      type: QUESTION_TYPES.DATE,
+      question: "대금 지급 약속일이 언제인가요?\n달력에서 날짜를 선택해 주세요." 
     },
   ],
 };
+
+// DatePicker 커스텀 입력 컴포넌트
+const CustomDateInput = React.forwardRef(({ value, onClick, placeholder }, ref) => (
+  <button
+    type="button"
+    className="w-full text-left px-4 py-2 bg-gray-3 text-gray-12 placeholder-gray-11 rounded-lg border border-gray-6 focus:outline-none focus:ring-2 focus:ring-blue-8"
+    onClick={onClick}
+    ref={ref}
+  >
+    {value || placeholder}
+  </button>
+));
+
+CustomDateInput.displayName = "CustomDateInput";
 
 export default function Chatbot() {
   const { user } = useUser();
@@ -244,6 +280,91 @@ export default function Chatbot() {
     setUserInput("");
   };
 
+  // 날짜 범위 선택을 위한 상태
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [startDate, endDate] = dateRange;
+
+  // 현재 질문 타입 확인
+  const getCurrentQuestionType = () => {
+    if (!caseType || !scenarios[caseType][questionIndex]) return null;
+    return scenarios[caseType][questionIndex].type;
+  };
+
+  // 날짜 선택 핸들러
+  const handleDateSelect = (date) => {
+    const formattedDate = date.toISOString().split('T')[0];
+    handleUserInput(formattedDate);
+  };
+
+  // 날짜 범위 선택 핸들러
+  const handleDateRangeSelect = (update) => {
+    setDateRange(update);
+    if (update[0] && update[1]) {
+      const formattedRange = update.map(date => 
+        date.toISOString().split('T')[0]
+      ).join('~');
+      handleUserInput(formattedRange);
+    }
+  };
+
+  // 입력 컴포넌트 렌더링
+  const renderInput = () => {
+    const questionType = getCurrentQuestionType();
+
+    switch (questionType) {
+      case QUESTION_TYPES.DATE:
+        return (
+          <DatePicker
+            selected={null}
+            onChange={handleDateSelect}
+            dateFormat="yyyy-MM-dd"
+            locale={ko}
+            placeholderText="날짜를 선택하세요"
+            customInput={<CustomDateInput />}
+          />
+        );
+      case QUESTION_TYPES.DATE_RANGE:
+        return (
+          <DatePicker
+            selectsRange={true}
+            startDate={startDate}
+            endDate={endDate}
+            onChange={handleDateRangeSelect}
+            dateFormat="yyyy-MM-dd"
+            locale={ko}
+            placeholderText="기간을 선택하세요"
+            customInput={<CustomDateInput />}
+          />
+        );
+      case QUESTION_TYPES.NUMBER:
+        return (
+          <input
+            type="number"
+            className="flex-1 px-4 py-2 bg-gray-3 text-gray-12 placeholder-gray-11 rounded-lg border border-gray-6 focus:outline-none focus:ring-2 focus:ring-blue-8"
+            placeholder="숫자를 입력해 주세요..."
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSendMessage();
+            }}
+          />
+        );
+      default:
+        return (
+          <input
+            type="text"
+            className="flex-1 px-4 py-2 bg-gray-3 text-gray-12 placeholder-gray-11 rounded-lg border border-gray-6 focus:outline-none focus:ring-2 focus:ring-blue-8"
+            placeholder="답변을 입력해 주세요..."
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSendMessage();
+            }}
+          />
+        );
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto h-[calc(100vh-6rem)] flex flex-col bg-gray-2 border border-gray-6 rounded-lg overflow-hidden">
       {/* 헤더 */}
@@ -314,16 +435,7 @@ export default function Chatbot() {
       {caseType && (
         <div className="p-4 bg-gray-2 border-t border-gray-6">
           <div className="flex gap-2">
-            <input
-              type="text"
-              className="flex-1 px-4 py-2 bg-gray-3 text-gray-12 placeholder-gray-11 rounded-lg border border-gray-6 focus:outline-none focus:ring-2 focus:ring-blue-8"
-              placeholder="답변을 입력해 주세요..."
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSendMessage();
-              }}
-            />
+            {renderInput()}
             <button
               className="px-4 py-2 bg-blue-9 hover:bg-blue-10 text-gray-1 rounded-lg transition-colors"
               onClick={handleSendMessage}
