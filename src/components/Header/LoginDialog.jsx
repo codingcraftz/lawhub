@@ -122,9 +122,10 @@ const LoginDialog = ({ open: propOpen, onOpenChange: propOnOpenChange }) => {
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: "kakao",
 				options: {
-					scopes:
-						"profile_nickname profile_image account_email name gender birthday birthyear phone_number",
-					redirectTo: `${window.location.origin}/`,
+					scopes: "profile_nickname profile_image account_email name gender birthday birthyear phone_number",
+					redirectTo: process.env.NEXT_PUBLIC_SITE_URL 
+						? `${process.env.NEXT_PUBLIC_SITE_URL}/`
+						: `${window.location.origin}/`,
 				},
 			});
 

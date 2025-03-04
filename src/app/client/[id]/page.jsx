@@ -56,7 +56,7 @@ const ClientCasePage = () => {
 					id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
 					interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
 				),
-				cases ( id, court_name, case_year, case_type, case_number, case_subject, status ),
+				cases ( id, court_name, case_number, case_subject, status ),
 				enforcements ( id, status, amount, type )
 			`)
 			.eq("assignment_clients.client_id", clientId);

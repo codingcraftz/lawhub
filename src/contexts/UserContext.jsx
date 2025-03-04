@@ -14,13 +14,33 @@ export const UserProvider = ({ children }) => {
 	const [modalMessage, setModalMessage] = useState("");
 	const router = useRouter();
 
+	// 디버깅을 위한 로컬 스토리지 로깅 함수
+	const logDebugInfo = (step, data) => {
+		try {
+			const debugLog = JSON.parse(localStorage.getItem('auth_debug_log') || '[]');
+			debugLog.push({
+				timestamp: new Date().toISOString(),
+				step,
+				data,
+				url: window.location.href
+			});
+			localStorage.setItem('auth_debug_log', JSON.stringify(debugLog));
+		} catch (e) {
+			// 로깅 실패 시 무시
+		}
+	};
+
 	// Fetch user profile and store it in state
 	const fetchUser = useCallback(async () => {
+		logDebugInfo('fetch_user_start', {});
+		
 		const {
 			data: { user: authUser },
 		} = await supabase.auth.getUser();
 
 		if (authUser) {
+			logDebugInfo('auth_user_found', { id: authUser.id });
+			
 			const { data: profile, error } = await supabase
 				.from("users")
 				.select("*")
@@ -28,13 +48,18 @@ export const UserProvider = ({ children }) => {
 				.single();
 
 			if (error) {
+				logDebugInfo('profile_fetch_error', { error: error.message });
 				router.push("/login");
 				console.error("Error fetching profile:", error);
 			} else {
+				logDebugInfo('profile_fetch_success', { 
+					hasProfile: !!profile,
+					role: profile?.role 
+				});
 				setUser({ ...profile });
 			}
 		} else {
-			// No user logged in, set the user state to null
+			logDebugInfo('no_auth_user', {});
 			setUser(null);
 		}
 	}, []);
@@ -43,7 +68,12 @@ export const UserProvider = ({ children }) => {
 		fetchUser();
 
 		// Set up an auth listener to handle session changes
-		const { data: listener } = supabase.auth.onAuthStateChange(() => {
+		const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+			logDebugInfo('auth_state_change', { 
+				event, 
+				hasSession: !!session,
+				sessionUser: session?.user?.id 
+			});
 			fetchUser();
 		});
 
