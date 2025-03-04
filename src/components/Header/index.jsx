@@ -181,7 +181,22 @@ const Header = () => {
 				{user ? (
 					<Hero user={user} onLogout={handleLogout} />
 				) : (
-					<LoginDialog />
+					<>
+						<LoginDialog open={false} onOpenChange={() => {}} />
+						<Button
+							variant="solid"
+							color="blue"
+							onClick={() => {
+								const loginDialog = document.querySelector('[role="dialog"]');
+								if (!loginDialog) {
+									const event = new CustomEvent('openLoginDialog');
+									window.dispatchEvent(event);
+								}
+							}}
+						>
+							로그인
+						</Button>
+					</>
 				)}
 			</Flex>
 		</Box>

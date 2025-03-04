@@ -7,7 +7,23 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase";
 import { Box } from "@radix-ui/themes";
 
-const LoginDialog = () => {
+const LoginDialog = ({ open: propOpen, onOpenChange: propOnOpenChange }) => {
+	const [open, setOpen] = React.useState(propOpen || false);
+
+	useEffect(() => {
+		const handleOpenDialog = () => setOpen(true);
+		window.addEventListener('openLoginDialog', handleOpenDialog);
+		
+		return () => {
+			window.removeEventListener('openLoginDialog', handleOpenDialog);
+		};
+	}, []);
+
+	const handleOpenChange = (newOpen) => {
+		setOpen(newOpen);
+		propOnOpenChange?.(newOpen);
+	};
+
 	const fetchKakaoProfile = async (kakaoAccessToken) => {
 		const res = await fetch("https://kapi.kakao.com/v2/user/me", {
 			headers: {
@@ -122,21 +138,16 @@ const LoginDialog = () => {
 	};
 
 	return (
-		<Dialog.Root>
-			<Dialog.Trigger asChild>
-				<button className="inline-flex h-[35px] items-center justify-center rounded bg-mauve-6 px-[15px] font-medium leading-none hover:bg-mauve-8 focus:outline-none">
-					로그인
-				</button>
-			</Dialog.Trigger>
+		<Dialog.Root open={open} onOpenChange={handleOpenChange}>
 			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 bg-black opacity-75 data-[state=open]:animate-overlayShow" />
+				<Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm data-[state=open]:animate-overlayShow" />
 				<Dialog.Content className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] w-96 max-w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none data-[state=open]:animate-contentShow">
 					<Dialog.Title className="m-0 text-4xl font-bold text-blackA-12 text-center py-6">
 						LawHub
 					</Dialog.Title>
 					<Box className="flex flex-col gap-5">
 						<p className="text-center font-semibold py-2 text-lg flex-1">
-							<span className="text-blue-11">로그인</span>이 필요한 서비입니다
+							<span className="text-blue-11">로그인</span>이 필요한 서비스입니다
 						</p>
 						<button
 							onClick={handleKakaoLogin}
@@ -170,4 +181,3 @@ const LoginDialog = () => {
 };
 
 export default LoginDialog;
-

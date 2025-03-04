@@ -1,5 +1,6 @@
 "use client";
-import React, { useRef, useEffect, useState } from "react";
+
+import React, { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Text } from "@react-three/drei";
@@ -9,11 +10,7 @@ const LogoText = () => {
   const textRef = useRef();
   const materialRef = useRef();
   const { theme } = useTheme();
-  const [isDarkMode, setIsDarkMode] = useState(theme === "dark");
-
-  useEffect(() => {
-    setIsDarkMode(theme === "dark");
-  }, [theme]);
+  const isDarkMode = theme === "dark";
 
   useFrame((_, delta) => {
     if (materialRef.current) {
