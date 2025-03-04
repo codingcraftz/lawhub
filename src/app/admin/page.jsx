@@ -13,6 +13,7 @@ import ClientManagementTab from "./ClientManagementTab";
 import InquiryManagementTab from "./InquiryManagementTab";
 import RequestManagementTab from "./RequestManagementTab";
 import useRoleRedirect from "@/hooks/userRoleRedirect";
+import ChatbotManager from "./ChatbotManagement";
 
 export default function AdminPage() {
 	const [users, setUsers] = useState([]);
@@ -140,6 +141,21 @@ export default function AdminPage() {
 					>
 						의뢰 내역
 					</TabsTrigger>
+										<TabsTrigger
+						value="chatbotManagement"
+						className="
+              px-4 py-2 
+              hover:bg-gray-3 
+              text-sm 
+              transition-colors 
+              [data-state='active']:border-b-2 
+              [data-state='active']:border-blue-9 
+              [data-state='active']:text-blue-11 
+              [data-state='active']:font-semibold
+            "
+					>
+						챗봇관리
+					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="staffManagement" className="animate-fadeIn w-full">
@@ -162,6 +178,10 @@ export default function AdminPage() {
 					<RequestManagementTab
 						requests={requests}
 						onRefresh={fetchAllData}
+					/>
+				</TabsContent>
+								<TabsContent value="chatbotManagement" className="animate-fadeIn w-full">
+					<ChatbotManager
 					/>
 				</TabsContent>
 			</Tabs>
