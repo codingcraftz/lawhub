@@ -10,12 +10,11 @@ export default function ChatBotWidget() {
 	
 	// 모든 state 선언을 컴포넌트 최상단에 배치
 	const [isOpen, setIsOpen] = useState(false);
-	const [messages, setMessages] = useState([
-		{ sender: "bot", text: "안녕하세요, LawHub입니다. 무엇을 도와드릴까요?" },
-	]);
+	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState("");
 	const [showInquiryForm, setShowInquiryForm] = useState(false);
 	const [showRequestForm, setShowRequestForm] = useState(false);
+	const [currentScenario, setCurrentScenario] = useState(null);
 	const [botTyping, setBotTyping] = useState(false);
 	const [inquiryData, setInquiryData] = useState({
 		name: "",
@@ -35,14 +34,67 @@ export default function ChatBotWidget() {
 	const typingDelay = 1000;
 	const BOT_AVATAR = "";
 	const USER_AVATAR = user?.profile_image || "";
-	const macroQnA = [
-		{ 
-			question: "진행 절차가 어떻게 되나요?", 
-			answer: "아래 의뢰하기 버튼을 눌러 사건 내용을 남겨주시면, 빠른 시일 내에 자세한 상담을 도와드리겠습니다." 
-		},
-	];
 
-	// useEffect를 최상단에 배치
+	// 초기 시나리오 로드
+	useEffect(() => {
+		const loadInitialScenario = async () => {
+			// 먼저 활성화된 모든 시나리오 조회
+			const { data: scenarios, error } = await supabase
+				.from('chatbot_scenarios')
+				.select(`
+					*,
+					chatbot_messages (*)
+				`)
+				.eq('is_active', true);
+
+			if (error) {
+				console.error("시나리오 로드 실패:", error);
+				return;
+			}
+
+			console.log("로드된 시나리오:", scenarios); // 디버깅
+
+			if (scenarios && scenarios.length > 0) {
+				const activeScenario = scenarios[0]; // 첫 번째 활성 시나리오 사용
+				setCurrentScenario(activeScenario);
+				
+				// 초기 메시지 찾기
+				const initialMessages = activeScenario.chatbot_messages.filter(
+					msg => msg.message_type === 'initial'
+				);
+
+				console.log("초기 메시지:", initialMessages); // 디버깅
+
+				if (initialMessages.length > 0) {
+					setMessages([{ 
+						sender: "bot", 
+						text: initialMessages[0].response_text 
+					}]);
+				}
+
+				// 버튼 메시지가 있다면 함께 표시
+				const buttonMessages = activeScenario.chatbot_messages.filter(
+					msg => msg.message_type === 'button'
+				);
+
+				console.log("버튼 메시지:", buttonMessages); // 디버깅
+
+				if (buttonMessages.length > 0) {
+					setTimeout(() => {
+						setMessages(prev => [...prev, {
+							sender: "bot",
+							text: buttonMessages[0].response_text,
+							buttons: buttonMessages[0].button_options
+						}]);
+					}, 500);
+				}
+			}
+		};
+
+		loadInitialScenario();
+	}, []);
+
+	// 사용자 정보 로드
 	useEffect(() => {
 		if (user) {
 			setInquiryData({
@@ -58,32 +110,77 @@ export default function ChatBotWidget() {
 				caseDetail: "",
 				want: "",
 			});
-		} else {
-			setInquiryData({ name: "", phone: "", email: "", content: "" });
-			setRequestData({ name: "", phone: "", email: "", caseDetail: "", want: "" });
 		}
 	}, [user]);
 
 	// admin인 경우 early return
-	if (user?.role === "admin") return null;
 
-	// 이벤트 핸들러 함수들
-	const addMessage = (sender, text) => {
-		setMessages((prev) => [...prev, { sender, text }]);
+	const findMatchingResponse = (userInput) => {
+		if (!currentScenario) return null;
+		
+		return currentScenario.chatbot_messages.find(msg => {
+			if (msg.message_type !== 'response') return false;
+			return msg.trigger_text.some(trigger => 
+				userInput.toLowerCase().includes(trigger.toLowerCase())
+			);
+		});
 	};
 
-	const handleMacroClick = (macro) => {
-		addMessage("user", macro.question);
-		setBotTyping(true);
-		setTimeout(() => {
-			addMessage("bot", macro.answer);
-			setBotTyping(false);
-		}, typingDelay);
+	const handleButtonClick = async (buttonValue) => {
+		// 사용자 선택 표시
+		const selectedButton = currentScenario.chatbot_messages
+			.find(msg => msg.message_type === 'button')
+			?.button_options.find(opt => opt.value === buttonValue);
+
+		if (selectedButton) {
+			addMessage("user", selectedButton.text);
+		}
+
+		// 해당 버튼에 대한 응답 찾기
+		const responseMessage = currentScenario.chatbot_messages.find(msg => 
+			msg.message_type === 'response' && 
+			msg.trigger_text.includes(buttonValue)
+		);
+
+		if (responseMessage) {
+			setBotTyping(true);
+			setTimeout(() => {
+				addMessage("bot", responseMessage.response_text);
+				setBotTyping(false);
+			}, typingDelay);
+		}
+	};
+
+	const addMessage = (sender, text) => {
+		setMessages(prev => [...prev, { sender, text }]);
 	};
 
 	const handleSend = () => {
 		if (!input.trim()) return;
+		
 		addMessage("user", input);
+		setBotTyping(true);
+
+		// 응답 메시지 찾기
+		const matchingResponse = findMatchingResponse(input);
+		
+		setTimeout(() => {
+			if (matchingResponse) {
+				addMessage("bot", matchingResponse.response_text);
+				
+				// 버튼 메시지가 있는 경우 추가
+				const buttonMessage = currentScenario.chatbot_messages.find(
+					msg => msg.message_type === 'button'
+				);
+				if (buttonMessage) {
+					addMessage("bot", buttonMessage.response_text);
+				}
+			} else {
+				addMessage("bot", "죄송합니다. 문의하기나 의뢰하기를 통해 상담을 진행해주세요.");
+			}
+			setBotTyping(false);
+		}, typingDelay);
+
 		setInput("");
 	};
 
@@ -142,6 +239,47 @@ export default function ChatBotWidget() {
 		setRequestData({ name: "", phone: "", email: "", caseDetail: "", want: "" });
 	};
 
+	const renderMessage = (msg, index) => {
+		const isBot = msg.sender === "bot";
+		const avatarUrl = isBot ? BOT_AVATAR : USER_AVATAR;
+
+		return (
+			<div key={index}>
+				<div className={`flex items-start animate-fadeIn ${isBot ? "flex-row" : "flex-row-reverse"}`}>
+					{avatarUrl ? (
+						<img src={avatarUrl} alt="avatar" className="w-12 h-12 rounded-full object-cover bg-gray-4" />
+					) : (
+						isBot ? 
+							<HiOutlineChatBubbleLeftRight className="w-10 h-10 text-gray-8 border border-gray-4 rounded-full p-2" /> 
+							: 
+							<HiOutlineUserCircle className="w-12 h-12 text-gray-8 border border-gray-4 rounded-full p-2" />
+					)}
+
+					<div className={`mx-2 px-3 py-2 rounded-2xl max-w-[70%] whitespace-pre-wrap animate-fadeIn ${
+						isBot ? "bg-gray-3 text-gray-12 rounded-tl-none" : "bg-blue-5 text-blue-12 rounded-tr-none"
+					}`}>
+						{msg.text}
+					</div>
+				</div>
+
+				{/* 버튼 옵션이 있는 경우 표시 */}
+				{isBot && msg.buttons && (
+					<div className="mt-2 space-y-2">
+						{msg.buttons.map((button, idx) => (
+							<button
+								key={idx}
+								onClick={() => handleButtonClick(button.value)}
+								className="w-full text-left px-3 py-2 bg-gray-4 hover:bg-gray-5 rounded-md"
+							>
+								{button.text}
+							</button>
+						))}
+					</div>
+				)}
+			</div>
+		);
+	};
+
 	return (
 		<div className="z-50">
 			{/* 우측 하단 아이콘 */}
@@ -172,36 +310,7 @@ export default function ChatBotWidget() {
 
 					{/* 메시지 영역 */}
 					<div className="flex-1 p-3 overflow-y-auto space-y-3">
-						{messages.map((msg, i) => {
-							const isBot = msg.sender === "bot";
-							const avatarUrl = isBot ? BOT_AVATAR : USER_AVATAR;
-
-							return (
-								<div
-									key={i}
-									className={`flex items-start animate-fadeIn ${isBot ? "flex-row" : "flex-row-reverse"}`}
-								>
-									{avatarUrl ? (
-										<img src={avatarUrl} alt="avatar" className="w-12 h-12 rounded-full object-cover bg-gray-4" />
-									) : (
-										isBot ? 
-											<HiOutlineChatBubbleLeftRight className="w-10 h-10 text-gray-8 border border-gray-4 rounded-full p-2" /> 
-											: 
-											<HiOutlineUserCircle className="w-12 h-12 text-gray-8 border border-gray-4 rounded-full p-2" />
-									)}
-
-									<div
-										className={`mx-2 px-3 py-2 rounded-2xl max-w-[70%] whitespace-pre-wrap animate-fadeIn ${
-											isBot
-												? "bg-gray-3 text-gray-12 rounded-tl-none"
-												: "bg-blue-5 text-blue-12 rounded-tr-none"
-										}`}
-									>
-										{msg.text}
-									</div>
-								</div>
-							);
-						})}
+						{messages.map((msg, i) => renderMessage(msg, i))}
 
 						{botTyping && (
 							<div className="flex flex-row items-center animate-fadeIn">
@@ -216,33 +325,21 @@ export default function ChatBotWidget() {
 							</div>
 						)}
 
-						{/* 매크로 + 문의/의뢰 버튼 */}
+						{/* 문의/의뢰 버튼 */}
 						{!showInquiryForm && !showRequestForm && (
-							<div className="mt-3 space-y-2">
-								{macroQnA.map((macro, idx) => (
-									<button
-										key={idx}
-										onClick={() => handleMacroClick(macro)}
-										className="text-left px-3 py-2 bg-gray-4 hover:bg-gray-5 rounded-md w-full"
-									>
-										{macro.question}
-									</button>
-								))}
-
-								<div className="flex space-x-2">
-									<button
-										className="flex-1 bg-blue-9 text-white px-3 py-2 rounded-md hover:bg-blue-10"
-										onClick={openInquiryForm}
-									>
-										문의하기
-									</button>
-									<button
-										className="flex-1 bg-green-9 text-white px-3 py-2 rounded-md hover:bg-green-10"
-										onClick={openRequestForm}
-									>
-										의뢰하기
-									</button>
-								</div>
+							<div className="flex space-x-2 mt-3">
+								<button
+									className="flex-1 bg-blue-9 text-white px-3 py-2 rounded-md hover:bg-blue-10"
+									onClick={openInquiryForm}
+								>
+									문의하기
+								</button>
+								<button
+									className="flex-1 bg-green-9 text-white px-3 py-2 rounded-md hover:bg-green-10"
+									onClick={openRequestForm}
+								>
+									의뢰하기
+								</button>
 							</div>
 						)}
 
