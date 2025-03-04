@@ -539,6 +539,7 @@ export default function ChatbotManagement() {
 
           return {
             ...scenario,
+            isActive: scenario.is_active,
             messages: messagesData.map(msg => ({
               ...msg,
               messageType: msg.message_type,
@@ -571,10 +572,13 @@ export default function ChatbotManagement() {
             title: data.title,
             description: data.description,
             is_active: data.isActive,
+            updated_at: new Date().toISOString(),
           })
           .eq('id', editingScenario.id);
 
         if (error) throw error;
+
+        setEditingScenario(null);
       } else {
         // 시나리오 추가
         const { error } = await supabase
@@ -584,6 +588,8 @@ export default function ChatbotManagement() {
             title: data.title,
             description: data.description,
             is_active: data.isActive,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           });
 
         if (error) throw error;
