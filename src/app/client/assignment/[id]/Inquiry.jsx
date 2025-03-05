@@ -145,7 +145,7 @@ const Inquiry = ({ assignmentId, user }) => {
 				<ul className="space-y-3">
 					{visibleInquiries.map((inquiry) => {
 						const isExpanded = expandedInquiryId === inquiry.id;
-						const isOwner = inquiry.user?.id === user.id;
+						const isOwner = inquiry.user?.id === user?.id;
 
 						return (
 							<li

@@ -43,25 +43,174 @@ export default function TimelineForm({
 
 		try {
 			if (timelineData) {
-				const { error } = await supabase
+				// 수정인 경우
+				const { error: timelineError } = await supabase
 					.from("assignment_timelines")
 					.update({ description: descriptionValue })
 					.eq("id", timelineData.id);
-				if (error) throw error;
+				if (timelineError) throw timelineError;
+
+				// 기존 알림 업데이트
+				const { error: updateError } = await supabase
+					.from("notifications")
+					.update({
+						title: timelineData.title,
+						description: descriptionValue.length > 50 
+							? descriptionValue.slice(0, 50) + "..." 
+							: descriptionValue,
+						is_read: false,
+						updated_at: new Date().toISOString()
+					})
+					.eq("assignment_id", assignmentId)
+					.eq("type", "timeline_update")
+					.eq("reference_id", timelineData.id);
+
+				if (updateError) throw updateError;
+
+				// 사건 정보 조회
+				const { data: assignmentData, error: assignmentError } = await supabase
+					.from("assignments")
+					.select(`
+						id,
+						assignment_creditors (id, name),
+						assignment_debtors (id, name)
+					`)
+					.eq("id", assignmentId)
+					.single();
+
+				if (assignmentError) throw assignmentError;
+
+				// 채권자와 채무자 이름 추출
+				const creditor = assignmentData.assignment_creditors?.[0]?.name || '정보 없음';
+				const debtor = assignmentData.assignment_debtors?.[0]?.name || '정보 없음';
+				const title = `채권자: ${creditor} / 채무자: ${debtor}`;
+
+				// 기존 알림이 있으면 업데이트
+				const { data: existingNotifications, error: notificationQueryError } = await supabase
+					.from("notifications")
+					.select("id")
+					.eq("assignment_id", assignmentId)
+					.eq("type", "timeline_update")
+					.eq("reference_id", timelineData.id);
+
+				if (notificationQueryError) throw notificationQueryError;
+
+				if (existingNotifications?.length > 0) {
+					const { error: updateError } = await supabase
+						.from("notifications")
+						.update({
+							title: title,
+							description: descriptionValue.length > 50 
+								? descriptionValue.slice(0, 50) + "..." 
+								: descriptionValue,
+							is_read: false,
+							updated_at: new Date().toISOString()
+						})
+						.eq("assignment_id", assignmentId)
+						.eq("type", "timeline_update")
+						.eq("reference_id", timelineData.id);
+
+					if (updateError) throw updateError;
+				}
+
 			} else {
-				const { error } = await supabase
+				// 새로운 타임라인 추가
+				const { data: newTimeline, error } = await supabase
 					.from("assignment_timelines")
-					.insert({ assignment_id: assignmentId, description: descriptionValue });
+					.insert({ 
+						assignment_id: assignmentId, 
+						description: descriptionValue 
+					})
+					.select()
+					.single();
+
 				if (error) throw error;
+
+				// 1. 담당자 목록 조회
+				const { data: assignees, error: assigneesError } = await supabase
+					.from("assignment_assignees")
+					.select(`
+						user_id,
+						users (
+							id,
+							role
+						)
+					`)
+					.eq("assignment_id", assignmentId);
+
+				if (assigneesError) throw assigneesError;
+
+				// 2. 모든 admin 사용자 조회
+				const { data: adminUsers, error: adminError } = await supabase
+					.from("users")
+					.select("id, role")
+					.eq("role", "admin");
+
+				if (adminError) throw adminError;
+
+				// 3. 알림을 받을 사용자 ID 수집 (Set으로 중복 제거)
+				let userIds = new Set();
+				
+				// 모든 admin 추가
+				adminUsers.forEach(user => userIds.add(user.id));
+				
+				// 담당자 중 staff인 경우만 추가 (admin은 이미 추가됨)
+				assignees.forEach(assignee => {
+					if (assignee.users.role === "staff") {
+						userIds.add(assignee.user_id);
+					}
+				});
+
+				// 사건 정보 조회
+				const { data: assignmentData, error: assignmentError } = await supabase
+					.from("assignments")
+					.select(`
+						id,
+						assignment_creditors (id, name),
+						assignment_debtors (id, name)
+					`)
+					.eq("id", assignmentId)
+					.single();
+
+				if (assignmentError) throw assignmentError;
+
+				const creditor = assignmentData.assignment_creditors?.[0]?.name || '정보 없음';
+				const debtor = assignmentData.assignment_debtors?.[0]?.name || '정보 없음';
+				const title = `채권자: ${creditor} / 채무자: ${debtor}`;
+
+				// 새 알림 생성
+				const notifications = Array.from(userIds).map(userId => ({
+					user_id: userId,
+					assignment_id: assignmentId,
+					type: "timeline_update",
+					reference_id: newTimeline.id,
+					title: title,
+					message: "사건 진행상황 알림",
+					description: descriptionValue.length > 50 
+						? descriptionValue.slice(0, 50) + "..." 
+						: descriptionValue,
+					is_read: false,
+					created_at: new Date().toISOString()
+				}));
+
+				if (notifications.length > 0) {
+					const { error: notificationError } = await supabase
+						.from("notifications")
+						.insert(notifications);
+
+					if (notificationError) throw notificationError;
+				}
 			}
 
 			alert("저장되었습니다.");
-			onOpenChange(false)
+			onOpenChange(false);
 			if (onSuccess) onSuccess();
 		} catch (err) {
 			console.error("Error saving timeline:", err);
 			alert("저장 중 오류가 발생했습니다.");
-		} finally { setIsSubmitting(false); }
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
