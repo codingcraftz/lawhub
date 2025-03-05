@@ -24,7 +24,15 @@ const DebtorInfo = ({ assignmentId, user }) => {
 	const fetchDebtors = async () => {
 		const { data: debtorsData, error: debtorsError } = await supabase
 			.from("assignment_debtors")
-			.select("id, name, birth_date, phone_number, address")
+			.select(`
+				id, 
+				name, 
+				registration_number,
+				phone_number, 
+				address,
+				workplace_name,
+				workplace_address
+			`)
 			.eq("assignment_id", assignmentId);
 
 		if (debtorsError) {
@@ -165,37 +173,38 @@ const DebtorInfo = ({ assignmentId, user }) => {
 						key={debtor.id}
 						className="mb-4 p-3 bg-gray-3 border border-gray-6 rounded"
 					>
-						<Flex justify="between" align="center" className="flex-col md:flex-row">
-							<div className="flex justify-between items-center gap-2 w-full">
-								<p className="flex flex-col md:flex-row items-center gap-2 flex-start">
-									<p className="font-semibold"> {`이름: ${debtor.name}`}</p>
-									{isAdmin && (
-										<Flex className="items-center gap-2">
-											<Button
-												variant="soft"
-												size="2"
-												onClick={() => {
-													setSelectedDebtor(debtor);
-													setIsFormOpen(true);
-												}}
-											>
-												수정
-											</Button>
-											<Button
-												variant="soft"
-												color="red"
-												size="2"
-												onClick={() => handleDeleteDebtor(debtor.id)}
-											>
-												삭제
-											</Button>
-										</Flex>
-									)}
-								</p>
-								<Button variant="ghost" onClick={() => toggleExpand(debtor.id)}>
+						<Flex justify="between" align="center">
+							<p className="font-semibold mr-auto">이름: {debtor.name}</p>
+							<Flex gap="2" className="items-center">
+								{isAdmin && (
+									<Flex className="items-center gap-2">
+										<Button
+											variant="soft"
+											size="2"
+											onClick={() => {
+												setSelectedDebtor(debtor);
+												setIsFormOpen(true);
+											}}
+										>
+											수정
+										</Button>
+										<Button
+											variant="soft"
+											color="red"
+											size="2"
+											onClick={() => handleDeleteDebtor(debtor.id)}
+										>
+											삭제
+										</Button>
+									</Flex>
+								)}
+								<Button 
+									variant="ghost" 
+									onClick={() => toggleExpand(debtor.id)}
+								>
 									{isExpanded[debtor.id] ? "닫기" : "신용 정보"}
 								</Button>
-							</div>
+							</Flex>
 						</Flex>
 
 						{isExpanded[debtor.id] && (
@@ -205,24 +214,45 @@ const DebtorInfo = ({ assignmentId, user }) => {
 								transition={{ duration: 0.3 }}
 								className="overflow-hidden mt-3"
 							>
-								{isAdmin &&
-									<div className="flex flex-end w-full mb-2">
-										<Button
-											className="ml-auto"
-											variant="soft"
-											size="2"
-											onClick={() => handleEditCreditInfo(debtor)}
-										>
-											신용정보 수정
-										</Button>
+								<Box className="mb-3 p-3 border border-gray-6 rounded">
+									<Text weight="bold" size="2" mb="2">인적사항</Text>
+									<div className="space-y-1">
+										{debtor.registration_number && (
+											<Text size="2" as="p">주민등록번호: {debtor.registration_number}</Text>
+										)}
+										{debtor.phone_number && (
+											<Text size="2" as="p">전화번호: {debtor.phone_number}</Text>
+										)}
+										{debtor.address && (
+											<Text size="2" as="p">주소: {debtor.address}</Text>
+										)}
+										{debtor.workplace_name && (
+											<Text size="2" as="p">직장: {debtor.workplace_name}</Text>
+										)}
+										{debtor.workplace_address && (
+											<Text size="2" as="p">직장주소: {debtor.workplace_address}</Text>
+										)}
 									</div>
-								}
-								<Box className="bg-gray-2 p-3 border border-gray-6 rounded">
+								</Box>
+
+								<Box className="p-3 border border-gray-6 rounded">
+									<Flex justify="between" align="center" mb="2">
+										<Text weight="bold" size="2">신용정보</Text>
+										{isAdmin && (
+											<Button
+												variant="soft"
+												size="2"
+												onClick={() => handleEditCreditInfo(debtor)}
+											>
+												신용정보 수정
+											</Button>
+										)}
+									</Flex>
 									{debtor.creditInfo ? (
-										<ul >
+										<ul className="space-y-1">
 											{Object.entries(debtor.creditInfo).map(([key, value]) => (
 												<li key={key}>
-													<Text>
+													<Text size="2">
 														{key}: {value}
 													</Text>
 												</li>
