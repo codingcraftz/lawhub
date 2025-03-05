@@ -58,13 +58,13 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 				placeholder="채권자, 채무자, 내용 검색..."
 				value={searchText}
 				onChange={(e) => setSearchText(e.target.value)}
-				className="border border-gray-300 px-3 py-2 rounded-md w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
+				className="border border-gray-3 px-3 py-2 rounded-md w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
 			/>
 
 			{/* ⬇️ 상태 선택 드롭다운 */}
 			<Select.Root value={statusFilter} onValueChange={setStatusFilter}>
 				<Select.Trigger
-					className="inline-flex h-[40px] items-center justify-center gap-2 rounded-md px-4 text-[14px] shadow-sm border border-gray-300 focus:ring-2 focus:ring-blue-500 hover:bg-gray-100 w-full sm:w-auto"
+					className="inline-flex h-[40px] items-center justify-center gap-2 rounded-md px-4 text-[14px] shadow-sm border border-gray-3 focus:ring-2 focus:ring-blue-5 hover:bg-gray-1 w-full sm:w-auto"
 					aria-label="Status"
 				>
 					<Select.Value />
@@ -74,7 +74,7 @@ export default function FilterBar({ assignments, setFilteredAssignments }) {
 				</Select.Trigger>
 
 				<Select.Portal>
-					<Select.Content className="overflow-hidden rounded-md bg-white shadow-md border border-gray-300">
+					<Select.Content className="overflow-hidden rounded-md shadow-md border border-gray-3">
 						<Select.Viewport className="p-2">
 							<SelectItem value="all">전체</SelectItem>
 							<SelectItem value="ongoing">진행중</SelectItem>

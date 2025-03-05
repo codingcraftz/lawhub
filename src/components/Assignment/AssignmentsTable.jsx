@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState, Fragment } from "react";
-import { Table, Button, Text, Popover } from "@radix-ui/themes";
+import { Table, Button, Text, Popover, Badge } from "@radix-ui/themes";
 import BondDetail from "./BondDetail";
 import EnforcementsDetail from "./EnforcementsDetail";
 import StatusSelector from "./StatusSelector";
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 8;
 
 // 다수의 채권자/채무자를 툴팁으로 보여주는 예시
 const NamesWithPopover = ({ names, label }) => {
@@ -46,9 +46,19 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 	const totalItems = assignments.length;
 	const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
+	// 진행 상태에 따라 assignments 정렬
+	const sortedAssignments = [...assignments].sort((a, b) => {
+		// ongoing이 먼저, closed가 나중에
+		if (a.status === 'ongoing' && b.status === 'closed') return -1;
+		if (a.status === 'closed' && b.status === 'ongoing') return 1;
+		// 같은 상태면 생성일 기준 내림차순
+		return new Date(b.created_at) - new Date(a.created_at);
+	});
+
+	// 페이지네이션 로직 수정
 	const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
 	const endIndex = startIndex + ITEMS_PER_PAGE;
-	const currentPageData = assignments.slice(startIndex, endIndex);
+	const currentPageData = sortedAssignments.slice(startIndex, endIndex);
 
 	return (
 		<>
@@ -56,6 +66,7 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 				<Table.Root className="min-w-[900px]">
 					<Table.Header>
 						<Table.Row>
+							<Table.ColumnHeaderCell className="text-center">상태</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">채권자</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">채무자</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">현황</Table.ColumnHeaderCell>
@@ -80,7 +91,20 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 
 							return (
 								<Fragment key={assignment.id}>
-									<Table.Row>
+									<Table.Row 
+										className={
+											assignment.status === 'closed' 
+												? 'bg-gray-3/50' // 완료된 사건은 배경색 다르게
+												: ''
+										}
+									>
+										{/* 상태 컬럼 추가 */}
+										<Table.Cell className="text-center whitespace-nowrap">
+											<Badge color={assignment.status === 'ongoing'?'green':'red'}>
+												{assignment.status === 'ongoing' ? '진행중' : '완료'}
+											</Badge>
+										</Table.Cell>
+
 										{/* 채권자 */}
 										<Table.Cell className="text-center whitespace-nowrap">
 											<NamesWithPopover
@@ -210,7 +234,12 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 				</Table.Root>
 			</div>
 
-			{/* 페이지네이션 */}
+			<div className="mt-4 text-sm text-gray-500">
+				총 {sortedAssignments.length}건 중 
+				진행중: {sortedAssignments.filter(a => a.status === 'ongoing').length}건, 
+				완료: {sortedAssignments.filter(a => a.status === 'closed').length}건
+			</div>
+
 			<Pagination
 				currentPage={currentPage}
 				totalPages={totalPages}

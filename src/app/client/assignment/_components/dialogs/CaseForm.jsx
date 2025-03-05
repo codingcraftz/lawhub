@@ -41,56 +41,30 @@ const CaseForm = ({
 	} = useForm({
 		defaultValues: {
 			status: "ongoing",
-			category: "",
-			city: "",
 			court_name: "",
-			case_year: "",
 			case_number: "",
-			case_type: "",
 			case_subject: "",
-			description: "",
+			category: "",
 			client_role: clientRoles[0],
+			description: "",
+			end_date: "",
 		},
 	});
 
-	const [filteredCaseTypes, setFilteredCaseTypes] = useState([]);
-	const [filteredCourts, setFilteredCourts] = useState([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-
-	const categoryWatch = watch("category");
-	const cityWatch = watch("city");
 
 	useEffect(() => {
 		if (caseData) {
-			const foundCourt = COURT_LIST.find((c) => c.name === caseData.court_name);
-			setValue("city", foundCourt?.city || "");
-			setValue("category", caseData.category || "");
 			setValue("status", caseData?.status || "");
 			setValue("court_name", caseData.court_name || "");
-			setValue("case_type", caseData.case_type || "");
-			setValue("case_year", caseData.case_year || "");
 			setValue("case_number", caseData.case_number || "");
 			setValue("case_subject", caseData.case_subject || "");
-			setValue("description", caseData.description || "");
+			setValue("category", caseData.category || "");
 			setValue("client_role", caseData.client_role || clientRoles[0]);
+			setValue("description", caseData.description || "");
+			setValue("end_date", caseData.end_date || "");
 		}
 	}, [caseData, setValue]);
-
-	useEffect(() => {
-		if (!categoryWatch) {
-			setFilteredCaseTypes([]);
-		} else {
-			setFilteredCaseTypes(CASE_TYPE_OPTIONS[categoryWatch] || []);
-		}
-	}, [categoryWatch]);
-
-	useEffect(() => {
-		if (!cityWatch) {
-			setFilteredCourts([]);
-		} else {
-			setFilteredCourts(COURT_LIST.filter((court) => court.city === cityWatch));
-		}
-	}, [cityWatch]);
 
 	const onSubmit = async (formValues) => {
 		if (isSubmitting) return;
@@ -98,15 +72,13 @@ const CaseForm = ({
 		try {
 			const payload = {
 				status: formValues.status || null,
-				category: formValues.category || null,
-				city: formValues.city || null,
 				court_name: formValues.court_name || null,
-				case_year: formValues.case_year || null,
 				case_number: formValues.case_number || null,
-				case_type: formValues.case_type || null,
 				case_subject: formValues.case_subject || null,
-				description: formValues.description || null,
+				category: formValues.category || null,
 				client_role: formValues.client_role || null,
+				description: formValues.description || null,
+				end_date: formValues.end_date || null,
 				assignment_id: assignmentId || null,
 			};
 
@@ -130,11 +102,13 @@ const CaseForm = ({
 				savedCase = data;
 			}
 			if (onSuccess) onSuccess(savedCase);
+			onOpenChange(false);
 		} catch (err) {
 			console.error(err);
 			alert("저장 실패");
-		} finally { setIsSubmitting(false); }
-
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	const handleDelete = async () => {
@@ -195,136 +169,85 @@ const CaseForm = ({
 
 				<Box className="py-2 text-md">
 					<form onSubmit={handleSubmit(onSubmit)}>
-
 						<Flex direction="column" gap="4">
-							<Flex gap="2">
-								<div className="flex flex-col flex-1" >
-									<Text size="2" color="gray" className="mb-1">
-										상태
-									</Text>
-									<select
-										{...register("status")}
-									>
-										<option value="ongoing">진행</option>
-										<option value="closed">완료</option>
-									</select>
-								</div>
-
-								<DynamicSelect
-									label="카테고리"
-									placeholder="카테고리를 선택하세요"
-									options={CASE_CATEGORIES.map((cat) => ({ label: cat, value: cat }))}
-									value={watch("category")}
-									onChange={(value) => setValue("category", value)}
-								/>
-							</Flex>
-
-							<Flex gap="2">
-								<DynamicSelect
-									label="도시"
-									placeholder="도시를 선택하세요"
-									options={COURT_CITIES.map((city) => ({ label: city, value: city }))}
-									value={watch("city")}
-									onChange={(value) => setValue("city", value)}
-								/>
-
-								<DynamicSelect
-									label="법원"
-									placeholder="법원을 선택하세요"
-									options={filteredCourts.map((court) => ({
-										label: court.name,
-										value: court.name,
-									}))}
-									value={watch("court_name")}
-									onChange={(value) => setValue("court_name", value)}
-								/>
-							</Flex>
-
-							<Flex gap="2">
-								<Box className="flex-1">
-									<Text size="2" color="gray" className="mb-1">
-										사건 연도
-									</Text>
-									<input
-										type="number"
-										{...register("case_year")}
-										placeholder="예) 2025"
-										className="
-                      w-full p-2 mt-1 
-                      border border-gray-6 
-                      rounded text-gray-12
-                      focus:outline-none focus:border-gray-8
-                    "
-									/>
-								</Box>
-								<DynamicSelect
-									label="사건 유형"
-									placeholder="사건 유형을 선택하세요"
-									options={filteredCaseTypes.map((type) => ({
-										label: type.name,
-										value: type.name,
-									}))}
-									value={watch("case_type")}
-									onChange={(value) => setValue("case_type", value)}
-								/>
-							</Flex>
-
-							<Flex gap="2">
-								<Box className="flex-1">
-									<Text size="2" color="gray" className="mb-1">
-										사건 번호
-									</Text>
-									<input
-										type="number"
-										{...register("case_number")}
-										placeholder="예) 1234"
-										className="
-                      w-full p-2 mt-1
-                      border border-gray-6
-                      rounded text-gray-12
-                      focus:outline-none focus:border-gray-8
-                    "
-									/>
-								</Box>
-								<Box className="flex-1">
-									<Text size="2" color="gray" className="mb-1">
-										사건 세부
-									</Text>
-									<input
-										type="text"
-										{...register("case_subject")}
-										placeholder="예) 손해배상(기)"
-										className="
-                      w-full p-2 mt-1
-                      border border-gray-6
-                      rounded text-gray-12
-                      focus:outline-none focus:border-gray-8
-                    "
-									/>
-								</Box>
-							</Flex>
-
-							<DynamicSelect
-								label="의뢰인 역할"
-								placeholder="역할을 선택하세요"
-								options={clientRoles.map((role) => ({ label: role, value: role }))}
-								value={watch("client_role")}
-								onChange={(value) => setValue("client_role", value)}
-							/>
+							<Box>
+								<Text size="2" color="gray" className="mb-1">상태</Text>
+								<select {...register("status")} className="w-full p-2 border border-gray-6 rounded">
+									<option value="ongoing">진행</option>
+									<option value="closed">완료</option>
+								</select>
+							</Box>
 
 							<Box>
-								<Text size="2" color="gray" className="mb-1">
-									소송 설명
-								</Text>
+								<Text size="2" color="gray" className="mb-1">법원</Text>
+								<input
+									type="text"
+									{...register("court_name")}
+									className="w-full p-2 border border-gray-6 rounded"
+									placeholder="예) 서울중앙지방법원"
+								/>
+							</Box>
+
+							<Box>
+								<Text size="2" color="gray" className="mb-1">사건 번호</Text>
+								<input
+									type="text"
+									{...register("case_number")}
+									className="w-full p-2 border border-gray-6 rounded"
+									placeholder="예) 2023가단12345"
+								/>
+							</Box>
+
+							<Box>
+								<Text size="2" color="gray" className="mb-1">사건 세부</Text>
+								<input
+									type="text"
+									{...register("case_subject")}
+									className="w-full p-2 border border-gray-6 rounded"
+									placeholder="예) 손해배상(기)"
+								/>
+							</Box>
+
+							<Box>
+								<Text size="2" color="gray" className="mb-1">카테고리</Text>
+								<select 
+									{...register("category")} 
+									className="w-full p-2 border border-gray-6 rounded"
+								>
+									<option value="">카테고리 선택</option>
+									{CASE_CATEGORIES.map((category) => (
+										<option key={category} value={category}>
+											{category}
+										</option>
+									))}
+								</select>
+							</Box>
+
+							<Box>
+								<Text size="2" color="gray" className="mb-1">의뢰인 역할</Text>
+								<select {...register("client_role")} className="w-full p-2 border border-gray-6 rounded">
+									{clientRoles.map((role) => (
+										<option key={role} value={role}>{role}</option>
+									))}
+								</select>
+							</Box>
+
+							<Box>
+								<Text size="2" color="gray" className="mb-1">종료일</Text>
+								<input
+									type="date"
+									{...register("end_date")}
+									className="w-full p-2 border border-gray-6 rounded"
+								/>
+							</Box>
+
+							<Box>
+								<Text size="2" color="gray" className="mb-1">설명</Text>
 								<textarea
 									{...register("description")}
-									className="
-                    w-full p-2 mt-1
-                    border border-gray-6
-                    rounded text-gray-12
-                    focus:outline-none focus:border-gray-8
-                  "
+									className="w-full p-2 border border-gray-6 rounded"
 									rows={4}
+									placeholder="사건에 대한 설명을 입력하세요"
 								/>
 							</Box>
 

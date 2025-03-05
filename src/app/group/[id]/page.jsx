@@ -51,7 +51,7 @@ const GroupCasePage = () => {
 				assignment_creditors ( name ),
 				assignment_groups!inner(group_id, groups(name)),
 				assignment_debtors ( id, name, phone_number ),
-				assignment_timelines ( description ),
+				  assignment_timelines!assignment_timelines_assignment_id_fkey ( description ),
 				bonds (
 					id, principal, interest_1_rate, interest_1_start_date, interest_1_end_date,
 					interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
