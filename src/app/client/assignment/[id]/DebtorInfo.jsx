@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import EditCreditInfo from "../_components/dialogs/EditCreditInfo";
 import DebtorForm from "../_components/dialogs/DebtorForm";
 
-const DebtorInfo = ({ assignmentId, user }) => {
+const DebtorInfo = ({ assignmentId, user , assignmentType}) => {
 	const [debtors, setDebtors] = useState([]);
 	const [isExpanded, setIsExpanded] = useState({});
 	const [isFormOpen, setIsFormOpen] = useState(false);
@@ -17,6 +17,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 	const [openCreditInfo, setOpenCreditInfo] = useState(false);
 	const [selectedDebtorCredit, setSelectedDebtorCredit] = useState({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const isSosong= assignmentType ==="소송"
 
 
 	const isAdmin = user?.role === "staff" || user?.role === "admin";
@@ -86,7 +87,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			setSelectedDebtor(null);
 			fetchDebtors();
 		} catch (error) {
-			console.error("채무자 등록/수정 오류:", error)
+			console.error("등록/수정 오류:", error)
 		} finally { setIsSubmitting(false); }
 	};
 
@@ -98,7 +99,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 
 		if (error) {
 			console.error("Failed to delete debtor:", error);
-			alert("채무자 삭제 중 오류가 발생했습니다.");
+			alert("삭제 중 오류가 발생했습니다.");
 		} else {
 			fetchDebtors();
 		}
@@ -151,7 +152,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
 				<Text as="h2" className="font-semibold text-lg">
-					채무자 정보
+					{isSosong?"피고 정보":"채무자 정보"}
 				</Text>
 				{isAdmin && (
 					<Button
@@ -166,7 +167,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 			</Flex>
 
 			{debtors.length === 0 ? (
-				<Text>등록된 채무자가 없습니다.</Text>
+				<Text>{isSosong?"등록된 피고가  없습니다.":"등록된 채무자가 없습니다."}</Text>
 			) : (
 				debtors.map((debtor) => (
 					<Box
@@ -235,7 +236,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 									</div>
 								</Box>
 
-								<Box className="p-3 border border-gray-6 rounded">
+{!isSosong &&  								<Box className="p-3 border border-gray-6 rounded">
 									<Flex justify="between" align="center" mb="2">
 										<Text weight="bold" size="2">신용정보</Text>
 										{isAdmin && (
@@ -263,7 +264,7 @@ const DebtorInfo = ({ assignmentId, user }) => {
 											등록된 신용 정보가 없습니다.
 										</Text>
 									)}
-								</Box>
+								</Box>}
 							</motion.div>
 						)}
 					</Box>

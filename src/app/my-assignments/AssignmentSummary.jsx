@@ -31,6 +31,8 @@ export default function AssignmentSummary({ clientId }) {
 				.select(`
           id,
           description,
+					type,
+					is_favorite,
           status,
           created_at,
           civil_litigation_status,

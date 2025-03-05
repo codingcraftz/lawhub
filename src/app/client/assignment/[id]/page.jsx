@@ -42,6 +42,8 @@ const AssignmentPage = () => {
 				.from("assignments")
 				.select(`
           id,
+					type,
+					is_favorite,
           description,
           created_at,
           status,
@@ -93,6 +95,7 @@ const AssignmentPage = () => {
 		}
 	};
 
+	console.log(assignment)
 	useEffect(() => {
 		fetchAssignments();
 	}, [assignmentId]);
@@ -221,13 +224,14 @@ const AssignmentPage = () => {
 				assignmentId={assignmentId}
 				user={user}
 				assignmentType={assignmentType}
+				isSosong ={assignment?.type ==="소송"}
 			/>
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-				<CreditorInfo assignmentId={assignmentId} user={user} />
-				<DebtorInfo assignmentId={assignmentId} user={user} />
-				<BondDetails assignmentId={assignmentId} user={user} />
+				<CreditorInfo assignmentId={assignmentId} user={user} assignmentType={assignment?.type}/>
+				<DebtorInfo assignmentId={assignmentId} user={user} assignmentType={assignment?.type}/>
+				{assignment?.type === "채권" && <BondDetails assignmentId={assignmentId} user={user} />}
 				<CaseList assignmentId={assignmentId} user={user} />
-				<EnforcementList assignmentId={assignmentId} user={user} />
+				{assignment?.type === "채권" && <EnforcementList assignmentId={assignmentId} user={user} />}
 				<FileList assignmentId={assignmentId} user={user} />
 				<Inquiry assignmentId={assignmentId} user={user} />
 				<AssignmentTasks assignmentId={assignmentId} user={user} assignmentAssignees={assignment?.assignment_assignees || []} />

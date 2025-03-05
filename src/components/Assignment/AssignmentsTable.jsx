@@ -2,11 +2,13 @@
 
 import React, { useState, Fragment } from "react";
 import { Table, Button, Text, Popover, Badge } from "@radix-ui/themes";
+import Link from "next/link";
 import BondDetail from "./BondDetail";
 import EnforcementsDetail from "./EnforcementsDetail";
-import StatusSelector from "./StatusSelector";
-import Link from "next/link";
 import Pagination from "@/components/Pagination";
+import CombinedProceduresStatus from "./CombinedProceduresStatus"; // 새로 만든 컴포넌트 임포트
+import FavoriteStar from "./FavoriteStar";
+import { useUser } from "@/hooks/useUser";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -28,7 +30,9 @@ const NamesWithPopover = ({ names, label }) => {
 				<Text className="font-semibold text-sm">{label} 목록</Text>
 				<ul className="mt-2 space-y-1">
 					{names.map((name, index) => (
-						<li key={index} className="text-sm">{name}</li>
+						<li key={index} className="text-sm">
+							{name}
+						</li>
 					))}
 				</ul>
 			</Popover.Content>
@@ -40,6 +44,7 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 	const [selectedBond, setSelectedBond] = useState(null);
 	const [selectedEnforcements, setSelectedEnforcements] = useState(null);
 	const [selectedStatus, setSelectedStatus] = useState(null);
+	const {user} = useUser()
 
 	// 페이지네이션
 	const [currentPage, setCurrentPage] = useState(1);
@@ -49,8 +54,8 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 	// 진행 상태에 따라 assignments 정렬
 	const sortedAssignments = [...assignments].sort((a, b) => {
 		// ongoing이 먼저, closed가 나중에
-		if (a.status === 'ongoing' && b.status === 'closed') return -1;
-		if (a.status === 'closed' && b.status === 'ongoing') return 1;
+		if (a.status === "ongoing" && b.status === "closed") return -1;
+		if (a.status === "closed" && b.status === "ongoing") return 1;
 		// 같은 상태면 생성일 기준 내림차순
 		return new Date(b.created_at) - new Date(a.created_at);
 	});
@@ -66,16 +71,19 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 				<Table.Root className="min-w-[900px]">
 					<Table.Header>
 						<Table.Row>
+							<Table.ColumnHeaderCell className="text-center">관심</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">상태</Table.ColumnHeaderCell>
+							<Table.ColumnHeaderCell className="text-center">분류</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">채권자</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">채무자</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">현황</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">수임 원금</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">회수 금액</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className="text-center">회수율</Table.ColumnHeaderCell>
-							<Table.ColumnHeaderCell className="text-center">민사 소송</Table.ColumnHeaderCell>
-							<Table.ColumnHeaderCell className="text-center">재산 명시</Table.ColumnHeaderCell>
-							<Table.ColumnHeaderCell className="text-center">채권 압류</Table.ColumnHeaderCell>
+
+							{/* 변경: 민사소송/재산명시/채권압류 3개 컬럼 제거하고, 하나로 통합 */}
+							<Table.ColumnHeaderCell className="text-center">절차 진행</Table.ColumnHeaderCell>
+
 							<Table.ColumnHeaderCell className="text-center">이동</Table.ColumnHeaderCell>
 						</Table.Row>
 					</Table.Header>
@@ -84,24 +92,42 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 						{currentPageData.map((assignment) => {
 							const bond = assignment.bonds?.[0];
 							const totalPrincipal = bond ? parseFloat(bond.principal ?? 0) : 0;
-							const closedEnforcements = assignment.enforcements?.filter((enf) => enf.status === "closed") || [];
-							const totalCollected = closedEnforcements.reduce((sum, enf) => sum + parseFloat(enf.amount ?? 0), 0);
+							const closedEnforcements =
+								assignment.enforcements?.filter((enf) => enf.status === "closed") || [];
+							const totalCollected = closedEnforcements.reduce(
+								(sum, enf) => sum + parseFloat(enf.amount ?? 0),
+								0
+							);
 							const collectionRate = totalPrincipal > 0 ? (totalCollected / totalPrincipal) * 100 : 0;
-							const statusText = assignment.assignment_timelines?.[0]?.description || "진행 상황 없음";
+							const statusText =
+								assignment.assignment_timelines?.[0]?.description || "진행 상황 없음";
 
 							return (
 								<Fragment key={assignment.id}>
-									<Table.Row 
+									<Table.Row
 										className={
-											assignment.status === 'closed' 
-												? 'bg-gray-3/50' // 완료된 사건은 배경색 다르게
-												: ''
+											assignment.status === "closed" 
+												? "bg-gray-3/50" // 완료된 사건은 배경색 다르게
+												: ""
 										}
 									>
-										{/* 상태 컬럼 추가 */}
 										<Table.Cell className="text-center whitespace-nowrap">
-											<Badge color={assignment.status === 'ongoing'?'green':'red'}>
-												{assignment.status === 'ongoing' ? '진행중' : '완료'}
+                      <FavoriteStar
+                        assignmentId={assignment.id}
+												userId={user?.id}    
+                      />
+                    </Table.Cell>
+										{/* 상태 컬럼 */}
+										<Table.Cell className="text-center whitespace-nowrap">
+											<Badge color={assignment.status === "ongoing" ? "green" : "red"}>
+												{assignment.status === "ongoing" ? "진행중" : "완료"}
+											</Badge>
+										</Table.Cell>
+
+										{/* 분류 컬럼 */}
+										<Table.Cell className="text-center whitespace-nowrap">
+											<Badge color={assignment.type === "소송" ? "indigo" : "orange"}>
+												{assignment.type === "소송" ? "소송" : "채권"}
 											</Badge>
 										</Table.Cell>
 
@@ -121,10 +147,10 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 											/>
 										</Table.Cell>
 
-										{/* 현황 */}
+										{/* 현황 (assignment_timelines 첫 기록) */}
 										<Table.Cell className="text-center whitespace-nowrap">
 											{statusText === "진행 상황 없음" ? (
-												<Text className="">{statusText}</Text>
+												<Text>{statusText}</Text>
 											) : (
 												<Popover.Root>
 													<Popover.Trigger asChild>
@@ -190,40 +216,24 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 											{Math.round(collectionRate)}%
 										</Table.Cell>
 
-										{/* 민사 소송 */}
+										{/* 절차 진행 (민사소송 / 재산명시 / 채권압류 통합) */}
 										<Table.Cell className="text-center whitespace-nowrap">
-											<StatusSelector
+											<CombinedProceduresStatus
 												assignmentId={assignment.id}
-												field="civil_litigation_status"
-												currentStatus={assignment.civil_litigation_status}
+												civil_litigation_status={assignment.civil_litigation_status}
+												asset_declaration_status={assignment.asset_declaration_status}
+												creditor_attachment_status={assignment.creditor_attachment_status}
+												isSosong={assignment.type ==="소송"}
 												isAdmin={isAdmin}
 											/>
 										</Table.Cell>
 
-										{/* 재산 명시 */}
-										<Table.Cell className="text-center whitespace-nowrap">
-											<StatusSelector
-												assignmentId={assignment.id}
-												field="asset_declaration_status"
-												currentStatus={assignment.asset_declaration_status}
-												isAdmin={isAdmin}
-											/>
-										</Table.Cell>
-
-										{/* 채권 압류 */}
-										<Table.Cell className="text-center whitespace-nowrap">
-											<StatusSelector
-												assignmentId={assignment.id}
-												field="creditor_attachment_status"
-												currentStatus={assignment.creditor_attachment_status}
-												isAdmin={isAdmin}
-											/>
-										</Table.Cell>
-
-										{/* 의뢰 이동 */}
+										{/* 이동 버튼 */}
 										<Table.Cell className="text-center whitespace-nowrap">
 											<Link href={`/client/assignment/${assignment.id}`}>
-												<Button variant="outline" size="2">이동</Button>
+												<Button variant="outline" size="2">
+													이동
+												</Button>
 											</Link>
 										</Table.Cell>
 									</Table.Row>
@@ -235,9 +245,9 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 			</div>
 
 			<div className="mt-4 text-sm text-gray-500">
-				총 {sortedAssignments.length}건 중 
-				진행중: {sortedAssignments.filter(a => a.status === 'ongoing').length}건, 
-				완료: {sortedAssignments.filter(a => a.status === 'closed').length}건
+				총 {sortedAssignments.length}건 중
+				&nbsp;진행중: {sortedAssignments.filter((a) => a.status === "ongoing").length}건,
+				&nbsp;완료: {sortedAssignments.filter((a) => a.status === "closed").length}건
 			</div>
 
 			<Pagination
@@ -249,4 +259,3 @@ export default function AssignmentsTable({ assignments, isAdmin }) {
 		</>
 	);
 }
-

@@ -12,412 +12,481 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-// 스텝 컴포넌트 (4단계)
+// 스텝 컴포넌트 (5단계)
+import Step1_ClientAndGroupSelection from "./Step1_ClientAndGroupSelection";
+import Step2_AssigneeRegistration from "./Step2_AssigneeRegistration";
 import Step2_CreditorRegistration from "./Step2_CreditorRegistration";
 import Step3_DebtorRegistration from "./Step3_DebtorRegistration";
 import Step4_AssignmentContent from "./Step4_AssignmentContent";
 import { useRouter } from "next/navigation";
-import Step1_ClientAndGroupSelection from "./Step1_ClientAndGroupSelection";
-import Step2_AssigneeRegistration from "./Step2_AssigneeRegistration";
 
 // 밸리데이션 스키마
 const assignmentSchema = yup.object().shape({
-	description: yup.string().required("의뢰 내용을 입력해주세요."),
+  description: yup.string().required("의뢰 내용을 입력해주세요."),
 });
 
 const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
-	const [step, setStep] = useState(1);
-	const [noClientSelected, setNoClientSelected] = useState(false); // 의뢰인 없음 스위치
-	const [selectedClients, setSelectedClients] = useState([]);
-	const [selectedCreditors, setSelectedCreditors] = useState([]);
-	const [selectedGroups, setSelectedGroups] = useState([]);
-	const [selectedDebtors, setSelectedDebtors] = useState([]);
-	const [selectedAssignees, setSelectedAssignees] = useState([]);
-	const [userType, setUserType] = useState(null);
-	const router = useRouter();
+  const [step, setStep] = useState(1);
 
-	// --------------------- 의뢰 내용 + react-hook-form ---------------------
-	const {
-		register,
-		handleSubmit,
-		formState: { errors },
-	} = useForm({
-		resolver: yupResolver(assignmentSchema),
-		mode: "onChange",
-	});
+  // --------------------- 의뢰 타입: 채권 or 소송 ---------------------
+  const [assignmentType, setAssignmentType] = useState("채권");
 
-	// 모달이 열릴 때마다 State 리셋 (기존 등록 정보 초기화)
-	useEffect(() => {
-		if (open) {
-			setStep(1);
-			setNoClientSelected(false);
-			setSelectedClients([]);
-			setSelectedCreditors([]);
-			setSelectedDebtors([]);
-		}
-	}, [open]);
+  // --------------------- 의뢰인/그룹 선택 ---------------------
+  const [noClientSelected, setNoClientSelected] = useState(false);
+  const [selectedClients, setSelectedClients] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [userType, setUserType] = useState(null);
 
-	// --------------------- 스텝 이동 ---------------------
-	const goToNextStep = () => {
-		if (step === 1) {
-			// Step1 검증: 의뢰인 없음 스위치가 OFF인데 아무도 선택 안 했다면 불가
-			if (
-				!noClientSelected &&
-				selectedClients.length === 0 &&
-				selectedGroups.length === 0
-			) {
-				alert("의뢰인을 선택하거나 '의뢰인 없음'을 켜주세요.");
-				return;
-			}
-		}
-		setStep(step + 1);
-	};
+  // --------------------- 담당자(직원) 선택 ---------------------
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
 
-	const goToPrevStep = () => {
-		setStep(step - 1);
-	};
+  // --------------------- (채권자/원고) 리스트 ---------------------
+  const [selectedCreditors, setSelectedCreditors] = useState([]);
 
+  // --------------------- (채무자/피고) 리스트 ---------------------
+  const [selectedDebtors, setSelectedDebtors] = useState([]);
 
-	const onSubmit = async (data) => {
-		try {
-			// Step 1: 의뢰 생성
-			const { data: assignmentData, error: assignmentError } = await supabase
-				.from("assignments")
-				.insert([
-					{
-						description: data.description,
-					},
-				])
-				.select("*")
-				.single();
+  const router = useRouter();
 
-			if (assignmentError) {
-				console.error("Assignment 추가 오류:", assignmentError);
-				alert("의뢰 추가 중 오류가 발생했습니다.");
-				return;
-			}
+  // --------------------- react-hook-form ---------------------
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(assignmentSchema),
+    mode: "onChange",
+  });
 
-			const assignmentId = assignmentData.id;
+  // 모달이 열릴 때마다 리셋
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setNoClientSelected(false);
+      setSelectedClients([]);
+      setSelectedGroups([]);
+      setUserType(null);
+      setSelectedAssignees([]);
+      setSelectedCreditors([]);
+      setSelectedDebtors([]);
+      setAssignmentType("채권"); // 초기값: 채권
+    }
+  }, [open]);
 
-			if (noClientSelected) {
-				const { error: clientError } = await supabase
-					.from("assignment_clients")
-					.insert({
-						assignment_id: assignmentId,
-						client_id: "e8353222-07e6-4d05-ac2c-5e004c043ce6"
-					});
-				if (clientError) {
-					console.error("Assignment Clients 추가 오류:", clientError);
-					alert("고객 추가 중 오류가 발생했습니다.");
-					return;
-				}
-			}
+  // --------------------- 스텝 이동 ---------------------
+  const goToNextStep = () => {
+    if (step === 1) {
+      // Step1 검증
+      if (
+        !noClientSelected &&
+        selectedClients.length === 0 &&
+        selectedGroups.length === 0
+      ) {
+        alert("의뢰인을 선택하거나 '의뢰인 없음'을 켜주세요.");
+        return;
+      }
+    }
+    setStep((prev) => prev + 1);
+  };
 
-			const assigneeInsertData = selectedAssignees.map((assignee) => ({
-				assignment_id: assignmentId,
-				user_id: assignee.id,
-				role: assignee.employee_type,
-			}));
+  const goToPrevStep = () => {
+    setStep((prev) => prev - 1);
+  };
 
-			const { error: assigneeError } = await supabase
-				.from("assignment_assignees")
-				.insert(assigneeInsertData);
+  // --------------------- 전체 취소(리셋) ---------------------
+  const handleCancel = () => {
+    setStep(1);
+    setNoClientSelected(false);
+    setSelectedClients([]);
+    setSelectedGroups([]);
+    setUserType(null);
+    setSelectedAssignees([]);
+    setSelectedCreditors([]);
+    setSelectedDebtors([]);
+    setAssignmentType("채권"); // 리셋
+    onOpenChange(false);
+  };
 
-			if (assigneeError) {
-				console.error("담당자 추가 오류:", assigneeError);
-				return;
-			}
-			// Step 2: 의뢰인 데이터 추가
-			if (!noClientSelected) {
-				if (selectedClients.length > 0) {
-					const clientInsertData = selectedClients.map((client) => ({
-						assignment_id: assignmentId,
-						client_id: client.id,
-						type: userType
-					}));
-					const { error: clientError } = await supabase
-						.from("assignment_clients")
-						.insert(clientInsertData);
-					if (clientError) {
-						console.error("Assignment Clients 추가 오류:", clientError);
-						alert("Clients 추가 중 오류가 발생했습니다.");
-						return;
-					}
-				}
+  // --------------------- 의뢰 최종 저장 ---------------------
+  const onSubmit = async (data) => {
+    try {
+      // 1) assignments 테이블에 INSERT (type 컬럼)
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from("assignments")
+        .insert([
+          {
+            description: data.description,
+            type: assignmentType, // "채권" 또는 "소송"
+          },
+        ])
+        .select("*")
+        .single();
 
-				if (selectedGroups.length > 0) {
-					const groupInsertData = selectedGroups.map((group) => ({
-						assignment_id: assignmentId,
-						group_id: group.id,
-						type: userType
-					}));
-					const { error: groupError } = await supabase
-						.from("assignment_groups")
-						.insert(groupInsertData);
-					if (groupError) {
-						console.error("Assignment Groups 추가 오류:", groupError);
-						alert("Groups 추가 중 오류가 발생했습니다.");
-						return;
-					}
-				}
-			}
+      if (assignmentError) {
+        console.error("Assignment 추가 오류:", assignmentError);
+        alert("의뢰 추가 중 오류가 발생했습니다.");
+        return;
+      }
 
-			if (selectedCreditors.length > 0) {
-				const creditorsInsertData = selectedCreditors.map((creditor) => ({
-					assignment_id: assignmentId,
-					name: creditor.name,
-					birth_date: creditor?.birth_date || null,
-					phone_number: creditor?.phone_number || null,
-					address: creditor?.address || null,
-				}));
+      const assignmentId = assignmentData.id;
 
-				const { error: creditorError } = await supabase
-					.from("assignment_creditors")
-					.insert(creditorsInsertData);
+      // 2) 의뢰인 없음
+      if (noClientSelected) {
+        const { error: clientError } = await supabase
+          .from("assignment_clients")
+          .insert({
+            assignment_id: assignmentId,
+            client_id: "e8353222-07e6-4d05-ac2c-5e004c043ce6",
+          });
+        if (clientError) {
+          console.error("Assignment Clients 추가 오류:", clientError);
+          alert("고객 추가 중 오류가 발생했습니다.");
+          return;
+        }
+      }
 
-				if (creditorError) {
-					console.error("Assignment Creditors 추가 오류:", creditorError);
-					alert("채권자 추가 중 오류가 발생했습니다.");
-					return;
-				}
-			}
+      // 3) 담당자(직원) 연결
+      if (selectedAssignees.length > 0) {
+        const assigneeInsertData = selectedAssignees.map((assignee) => ({
+          assignment_id: assignmentId,
+          user_id: assignee.id,
+          role: assignee.employee_type,
+        }));
+        const { error: assigneeError } = await supabase
+          .from("assignment_assignees")
+          .insert(assigneeInsertData);
+        if (assigneeError) {
+          console.error("담당자 추가 오류:", assigneeError);
+          return;
+        }
+      }
 
-			if (selectedDebtors.length > 0) {
-				const debtorsInsertData = selectedDebtors.map((debtor) => ({
-					assignment_id: assignmentId,
-					name: debtor.name,
-					birth_date: debtor?.birth_date || null,
-					phone_number: debtor?.phone_number || null,
-					address: debtor.address || null,
-				}));
+      // 4) 의뢰인 연결
+      if (!noClientSelected) {
+        // 4-1) 개별 고객
+        if (selectedClients.length > 0) {
+          const clientInsertData = selectedClients.map((client) => ({
+            assignment_id: assignmentId,
+            client_id: client.id,
+            type: userType,
+          }));
+          const { error: clientError } = await supabase
+            .from("assignment_clients")
+            .insert(clientInsertData);
+          if (clientError) {
+            console.error("Assignment Clients 추가 오류:", clientError);
+            alert("Clients 추가 중 오류가 발생했습니다.");
+            return;
+          }
+        }
+        // 4-2) 그룹
+        if (selectedGroups.length > 0) {
+          const groupInsertData = selectedGroups.map((group) => ({
+            assignment_id: assignmentId,
+            group_id: group.id,
+            type: userType,
+          }));
+          const { error: groupError } = await supabase
+            .from("assignment_groups")
+            .insert(groupInsertData);
+          if (groupError) {
+            console.error("Assignment Groups 추가 오류:", groupError);
+            alert("Groups 추가 중 오류가 발생했습니다.");
+            return;
+          }
+        }
+      }
 
-				const { error: debtorError } = await supabase
-					.from("assignment_debtors")
-					.insert(debtorsInsertData);
+			// 5) (채권자/원고) 저장
+if (selectedCreditors.length > 0) {
+  const creditorsInsertData = selectedCreditors.map((creditor) => ({
+    assignment_id: assignmentId,
+    name: creditor.name,
+    phone_number: creditor?.phone_number || null,
+    address: creditor?.address || null,
+    // New columns
+    registration_number: creditor?.registration_number || null,
+    workplace_name: creditor?.workplace_name || null,
+    workplace_address: creditor?.workplace_address || null,
+  }));
 
-				if (debtorError) {
-					console.error("Assignment Debtors 추가 오류:", debtorError);
-					alert("채무자 추가 중 오류가 발생했습니다.");
-					return;
-				}
-			}
+  const { error: creditorError } = await supabase
+    .from("assignment_creditors")
+    .insert(creditorsInsertData);
 
-			// 성공 메시지 및 페이지 이동
-			alert("의뢰가 성공적으로 등록되었습니다!");
-			onSuccess && onSuccess();
-			onOpenChange(false);
-			router.push(`/client/assignment/${assignmentId}`);
-		} catch (err) {
-			console.error("의뢰 추가 중 예기치 못한 오류:", err);
-			alert("의뢰 추가 중 오류가 발생했습니다.");
-		}
-	};
-
-
-
-	// --------------------- 전체 취소(리셋) ---------------------
-	const handleCancel = () => {
-		setStep(1);
-		setNoClientSelected(false);
-		setSelectedClients([]);
-		setSelectedCreditors([]);
-		setSelectedDebtors([]);
-		onOpenChange(false);
-	};
-
-	// --------------------- 선택 제거 핸들러 (의뢰인) ---------------------
-	const removeClient = (clientId) => {
-		setSelectedClients((prev) => prev.filter((c) => c.id !== clientId));
-	};
-
-	// --------------------- 선택 제거 핸들러 (채권자) ---------------------
-	const removeCreditor = (index) => {
-		setSelectedCreditors((prev) => prev.filter((_, i) => i !== index));
-	};
-
-	// --------------------- 선택 제거 핸들러 (채무자) ---------------------
-	const removeDebtor = (index) => {
-		setSelectedDebtors((prev) => prev.filter((_, i) => i !== index));
-	};
-
-	const removeGroup = (groupId) => {
-		setSelectedGroups((prev) => prev.filter((g) => g.id !== groupId));
-	};
+  if (creditorError) {
+    console.error("Assignment Creditors 추가 오류:", creditorError);
+    alert("채권자/원고 추가 중 오류가 발생했습니다.");
+    return;
+  }
+}
 
 
-	return (
-		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Portal>
-				<Theme>
-					<Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-30" />
-					<Dialog.Content
-						className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none z-40 overflow-y-auto"
-						style={{ width: "90%", maxWidth: "600px" }}
-					>
-						<Dialog.Close asChild>
-							<Button
-								variant="ghost"
-								color="gray"
-								style={{ position: "absolute", top: 24, right: 24 }}
-							>
-								<Cross2Icon width={25} height={25} />
-							</Button>
-						</Dialog.Close>
+			// Step6) (채무자/피고) 저장 부분만 수정
+if (selectedDebtors.length > 0) {
+  const debtorsInsertData = selectedDebtors.map((debtor) => ({
+    assignment_id: assignmentId,
+    name: debtor.name,
+    phone_number: debtor?.phone_number || null,
+    address: debtor?.address || null,
+    registration_number: debtor?.registration_number || null,
+    workplace_name: debtor?.workplace_name || null,
+    workplace_address: debtor?.workplace_address || null,
+  }));
 
-						{/* ========== Step1: 의뢰인 선택 ========== */}
-						{step === 1 && (
-							<>
-								<Dialog.Title className="font-bold text-xl pb-6">
-									1단계: 의뢰인을 선택해주세요
-								</Dialog.Title>
+  const { error: debtorError } = await supabase
+    .from("assignment_debtors")
+    .insert(debtorsInsertData);
 
-								{/* 의뢰인 없음 스위치 */}
-								<Flex align="center" mb="3" gap="2">
-									<Text>의뢰인 없음 (미가입)</Text>
-									<Switch.Root
-										checked={noClientSelected}
-										onCheckedChange={(checked) => {
-											setNoClientSelected(checked);
-											if (checked) setSelectedClients([]);
-										}}
-										style={{ width: 42, height: 25, position: "relative" }}
-									>
-										<Switch.Thumb
-											style={{
-												display: "block",
-												width: 21,
-												height: 21,
-												backgroundColor: "white",
-												borderRadius: "50%",
-												transition: "transform 100ms",
-												transform: noClientSelected
-													? "translateX(19px)"
-													: "translateX(2px)",
-											}}
-										/>
-									</Switch.Root>
-								</Flex>
+  if (debtorError) {
+    console.error("Assignment Debtors 추가 오류:", debtorError);
+    alert("채무자/피고 추가 중 오류가 발생했습니다.");
+    return;
+  }
+}
 
-								{!noClientSelected && (
-									<Step1_ClientAndGroupSelection
-										noClientSelected={noClientSelected}
-										selectedClients={selectedClients}
-										setSelectedClients={setSelectedClients}
-										removeClient={removeClient}
-										selectedGroups={selectedGroups}
-										setSelectedGroups={setSelectedGroups}
-										removeGroup={removeGroup}
-										userType={userType}
-										setUserType={setUserType}
-									/>
-								)}
+      // 성공 메시지 및 페이지 이동
+      alert("의뢰가 성공적으로 등록되었습니다!");
+      onSuccess && onSuccess();
+      onOpenChange(false);
+      router.push(`/client/assignment/${assignmentId}`);
+    } catch (err) {
+      console.error("의뢰 추가 중 예기치 못한 오류:", err);
+      alert("의뢰 추가 중 오류가 발생했습니다.");
+    }
+  };
 
-								<Flex justify="end" mt="4" gap="2">
-									<Button variant="soft" color="gray" onClick={handleCancel}>
-										닫기
-									</Button>
-									<Button
-										variant="soft"
-										onClick={goToNextStep}
-										disabled={!noClientSelected && selectedClients.length === 0 && selectedGroups.length === 0}
-									>
-										다음
-									</Button>
-								</Flex>
-							</>
-						)}
+  // --------------------- 선택 제거 핸들러 ---------------------
+  const removeClient = (clientId) => {
+    setSelectedClients((prev) => prev.filter((c) => c.id !== clientId));
+  };
+  const removeGroup = (groupId) => {
+    setSelectedGroups((prev) => prev.filter((g) => g.id !== groupId));
+  };
+  const removeCreditor = (index) => {
+    setSelectedCreditors((prev) => prev.filter((_, i) => i !== index));
+  };
+  const removeDebtor = (index) => {
+    setSelectedDebtors((prev) => prev.filter((_, i) => i !== index));
+  };
 
-						{step === 2 && (
-							<>
-								<Dialog.Title className="font-bold text-xl pb-6">
-									2단계: 담당자를 선택해주세요
-								</Dialog.Title>
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Theme>
+          <Dialog.Overlay className="fixed inset-0 bg-black opacity-75 z-30" />
+          <Dialog.Content
+            className="fixed bg-gray-3 left-1/2 top-1/2 max-h-[85vh] w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-md p-[25px] shadow focus:outline-none z-40 overflow-y-auto"
+            style={{ width: "90%", maxWidth: "600px" }}
+          >
+            <Dialog.Close asChild>
+              <Button
+                variant="ghost"
+                color="gray"
+                style={{ position: "absolute", top: 24, right: 24 }}
+              >
+                <Cross2Icon width={25} height={25} />
+              </Button>
+            </Dialog.Close>
 
-								<Step2_AssigneeRegistration
-									selectedAssignees={selectedAssignees}
-									setSelectedAssignees={setSelectedAssignees}
-								/>
+            {/* 상단에 스위치: 채권 <-> 소송 */}
+            <Box mb="3">
+              <Flex align="center" gap="2">
+                <Text>채권</Text>
+                <Switch.Root
+                  checked={assignmentType === "소송"}
+                  onCheckedChange={(checked) =>
+                    setAssignmentType(checked ? "소송" : "채권")
+                  }
+                  style={{ width: 42, height: 25, position: "relative" }}
+                >
+                  <Switch.Thumb
+                    style={{
+                      display: "block",
+                      width: 21,
+                      height: 21,
+                      backgroundColor: "white",
+                      borderRadius: "50%",
+                      transition: "transform 100ms",
+                      transform:
+                        assignmentType === "소송"
+                          ? "translateX(19px)"
+                          : "translateX(2px)",
+                    }}
+                  />
+                </Switch.Root>
+                <Text>소송</Text>
+              </Flex>
+            </Box>
 
-								<Flex justify="end" mt="4" gap="2">
-									<Button variant="soft" color="gray" onClick={goToPrevStep}>
-										이전
-									</Button>
-									<Button variant="soft" onClick={goToNextStep}>
-										다음
-									</Button>
-								</Flex>
-							</>
-						)}
+            {/* ========== Step1: 의뢰인 선택 ========== */}
+            {step === 1 && (
+              <>
+                <Dialog.Title className="font-bold text-xl pb-6">
+                  1단계: 의뢰인 선택
+                </Dialog.Title>
+                <Flex align="center" mb="3" gap="2">
+                  <Text>의뢰인 없음 (미가입)</Text>
+                  <Switch.Root
+                    checked={noClientSelected}
+                    onCheckedChange={(checked) => {
+                      setNoClientSelected(checked);
+                      if (checked) {
+                        setSelectedClients([]);
+                        setSelectedGroups([]);
+                      }
+                    }}
+                    style={{ width: 42, height: 25, position: "relative" }}
+                  >
+                    <Switch.Thumb
+                      style={{
+                        display: "block",
+                        width: 21,
+                        height: 21,
+                        backgroundColor: "white",
+                        borderRadius: "50%",
+                        transition: "transform 100ms",
+                        transform: noClientSelected
+                          ? "translateX(19px)"
+                          : "translateX(2px)",
+                      }}
+                    />
+                  </Switch.Root>
+                </Flex>
 
-						{/* ========== Step2: 채권자(Creditor) 등록 ========== */}
-						{step === 3 && (
-							<>
-								<Dialog.Title className="font-bold text-xl pb-6">
-									3단계: 채권자 정보를 입력하세요
-								</Dialog.Title>
+                {!noClientSelected && (
+                  <Step1_ClientAndGroupSelection
+                    noClientSelected={noClientSelected}
+                    selectedClients={selectedClients}
+                    setSelectedClients={setSelectedClients}
+                    removeClient={removeClient}
+                    selectedGroups={selectedGroups}
+                    setSelectedGroups={setSelectedGroups}
+                    removeGroup={removeGroup}
+                    userType={userType}
+                    setUserType={setUserType}
+                  />
+                )}
 
-								<Step2_CreditorRegistration
-									selectedCreditors={selectedCreditors}
-									setSelectedCreditors={setSelectedCreditors}
-									removeCreditor={removeCreditor}
-								/>
+                <Flex justify="end" mt="4" gap="2">
+                  <Button variant="soft" color="gray" onClick={handleCancel}>
+                    닫기
+                  </Button>
+                  <Button
+                    variant="soft"
+                    onClick={goToNextStep}
+                    disabled={
+                      !noClientSelected &&
+                      selectedClients.length === 0 &&
+                      selectedGroups.length === 0
+                    }
+                  >
+                    다음
+                  </Button>
+                </Flex>
+              </>
+            )}
 
-								<Flex justify="end" mt="4" gap="2">
-									<Button variant="soft" color="gray" onClick={goToPrevStep}>
-										이전
-									</Button>
-									<Button variant="soft" onClick={goToNextStep}>
-										다음
-									</Button>
-								</Flex>
-							</>
-						)}
+            {/* ========== Step2: 담당자 선택 ========== */}
+            {step === 2 && (
+              <>
+                <Dialog.Title className="font-bold text-xl pb-6">
+                  2단계: 담당자 선택
+                </Dialog.Title>
+                <Step2_AssigneeRegistration
+                  selectedAssignees={selectedAssignees}
+                  setSelectedAssignees={setSelectedAssignees}
+                />
 
-						{/* ========== Step3: 채무자(Debtor) 등록 ========== */}
-						{step === 4 && (
-							<>
-								<Dialog.Title className="font-bold text-xl pb-6">
-									4단계: 채무자 정보를 입력하세요
-								</Dialog.Title>
+                <Flex justify="end" mt="4" gap="2">
+                  <Button variant="soft" color="gray" onClick={goToPrevStep}>
+                    이전
+                  </Button>
+                  <Button variant="soft" onClick={goToNextStep}>
+                    다음
+                  </Button>
+                </Flex>
+              </>
+            )}
 
-								<Step3_DebtorRegistration
-									selectedDebtors={selectedDebtors}
-									setSelectedDebtors={setSelectedDebtors}
-									removeDebtor={removeDebtor}
-								/>
+            {/* ========== Step3: (채권자/원고) 등록 ========== */}
+            {step === 3 && (
+              <>
+                <Dialog.Title className="font-bold text-xl pb-6">
+                  {/* 
+                    assignmentType이 '채권'일 때 → "채권자 정보를..."
+                    assignmentType이 '소송'일 때 → "원고 정보를..."
+                  */}
+                  {assignmentType === "소송"
+                    ? "3단계: 원고 정보를 입력하세요"
+                    : "3단계: 채권자 정보를 입력하세요"}
+                </Dialog.Title>
 
-								<Flex justify="end" mt="4" gap="2">
-									<Button variant="soft" color="gray" onClick={goToPrevStep}>
-										이전
-									</Button>
-									<Button variant="soft" onClick={goToNextStep}>
-										다음
-									</Button>
-								</Flex>
-							</>
-						)}
+                <Step2_CreditorRegistration
+                  assignmentType={assignmentType}
+                  selectedCreditors={selectedCreditors}
+                  setSelectedCreditors={setSelectedCreditors}
+                  removeCreditor={removeCreditor}
+                />
 
-						{/* ========== Step4: 의뢰 내용 입력 ========== */}
-						{step === 5 && (
-							<>
-								<Dialog.Title className="font-bold text-xl pb-6">
-									5단계: 의뢰 내용을 입력하세요
-								</Dialog.Title>
-								<Step4_AssignmentContent
-									register={register}
-									goToPrevStep={goToPrevStep}
-									handleSubmit={handleSubmit}
-									onSubmit={onSubmit}
-									errors={errors}
-								/>
-							</>
-						)}
-					</Dialog.Content>
-				</Theme>
-			</Dialog.Portal>
-		</Dialog.Root>
-	);
+                <Flex justify="end" mt="4" gap="2">
+                  <Button variant="soft" color="gray" onClick={goToPrevStep}>
+                    이전
+                  </Button>
+                  <Button variant="soft" onClick={goToNextStep}>
+                    다음
+                  </Button>
+                </Flex>
+              </>
+            )}
+
+            {/* ========== Step4: (채무자/피고) 등록 ========== */}
+            {step === 4 && (
+              <>
+                <Dialog.Title className="font-bold text-xl pb-6">
+                  {assignmentType === "소송"
+                    ? "4단계: 피고 정보를 입력하세요"
+                    : "4단계: 채무자 정보를 입력하세요"}
+                </Dialog.Title>
+
+                <Step3_DebtorRegistration
+                  assignmentType={assignmentType}
+                  selectedDebtors={selectedDebtors}
+                  setSelectedDebtors={setSelectedDebtors}
+                  removeDebtor={removeDebtor}
+                />
+
+                <Flex justify="end" mt="4" gap="2">
+                  <Button variant="soft" color="gray" onClick={goToPrevStep}>
+                    이전
+                  </Button>
+                  <Button variant="soft" onClick={goToNextStep}>
+                    다음
+                  </Button>
+                </Flex>
+              </>
+            )}
+
+            {/* ========== Step5: 의뢰내용 입력 ========== */}
+            {step === 5 && (
+              <>
+                <Dialog.Title className="font-bold text-xl pb-6">
+                  5단계: 의뢰 내용을 입력하세요
+                </Dialog.Title>
+                <Step4_AssignmentContent
+                  register={register}
+                  goToPrevStep={goToPrevStep}
+                  handleSubmit={handleSubmit}
+                  onSubmit={onSubmit}
+                  errors={errors}
+                />
+              </>
+            )}
+          </Dialog.Content>
+        </Theme>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
 };
 
 export default AssignmentForm;
-

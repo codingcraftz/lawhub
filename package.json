@@ -46,6 +46,7 @@
     "react-native-modal": "^13.0.1",
     "reactflow": "^11.11.4",
     "three": "^0.169.0",
+    "use-debounce": "^10.0.4",
     "yup": "^1.4.0"
   },
   "devDependencies": {
