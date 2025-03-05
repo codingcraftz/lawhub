@@ -90,7 +90,7 @@ const HomePage = () => {
             24시간 365일
           </Text>
           <Text size="4" weight="bold" className="text-blue-11">
-            전문 변호사가 답변해드립니다
+            법률 전문가가 답해드립니다.
           </Text>
         </motion.div>
       </motion.div>
