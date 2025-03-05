@@ -39,7 +39,7 @@ const BondDetails = ({ assignmentId, user }) => {
 	if (!bond) {
 		return (
 			<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
-				<Flex justify="between" align="center" className="mb-3">
+				<Flex className="justify-between mb-3">
 					<Text as="h2" className="font-semibold text-lg">
 						채권 정보
 					</Text>
@@ -102,78 +102,79 @@ const BondDetails = ({ assignmentId, user }) => {
 				)}
 			</Flex>
 
-			<div className="mb-4">
-				<Text size="6" className="font-bold">
+			<Flex justify="between" align="center">
+				<Text as="p" className="text-lg font-bold text-blue-11">
 					{Math.floor(principal).toLocaleString()}원
+									{isAdmin && <Text as="p" className="text-base font-normal text-gray-11">원금+비용: {Math.floor(principal+totalExpenses).toLocaleString()}</Text>}
 				</Text>
-			</div>
+				<Button variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
+					{isExpanded ? "닫기" : "상세 보기"}
+				</Button>
+			</Flex>
 
-			<Button variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
-				{isExpanded ? "간단히 보기" : "상세 보기"}
-			</Button>
+			<motion.div
+				initial={{ height: 0, opacity: 0 }}
+				animate={{
+					height: isExpanded ? "auto" : 0,
+					opacity: isExpanded ? 1 : 0,
+				}}
+				transition={{ duration: 0.3 }}
+				className="overflow-hidden"
+			>
+				<Flex direction="column" className="bg-gray-3 rounded p-4 mt-2">
+					<Box mb="3">
+						<Text className="font-semibold">
+							수임 원금:{" "}
+							<Text as="span" className="font-normal">
+								{principal.toLocaleString()}원
+							</Text>
+						</Text>
+					</Box>
 
-			{isExpanded && (
-				<motion.div
-					initial={{ height: 0, opacity: 0 }}
-					animate={{ height: "auto", opacity: 1 }}
-					transition={{ duration: 0.3 }}
-					className="overflow-hidden"
-				>
-					<Flex direction="column" className="bg-gray-3 rounded p-4 mt-2">
-						<Box mb="3">
-							<Text className="font-semibold">
-								수임 원금:{" "}
-								<Text as="span" className="font-normal">
-									{principal.toLocaleString()}원
-								</Text>
+					<Box mb="3">
+						<Text className="font-semibold mb-1">
+							1차 이자{" "}
+							<Text as="span" className="font-normal text-sm">
+								({formatDate(bond.interest_1_start_date)} ~{" "}
+								{formattedEndDate(bond.interest_1_end_date)})
 							</Text>
-						</Box>
+						</Text>
+						<Text as="p" size="2">이자율: {bond.interest_1_rate}%</Text>
+						<Text size="2">
+							이자 총액: {Math.floor(totalInterest1).toLocaleString()}원
+						</Text>
+					</Box>
 
-						<Box mb="3">
-							<Text className="font-semibold mb-1">
-								1차 이자{" "}
-								<Text as="span" className="font-normal text-sm">
-									({formatDate(bond.interest_1_start_date)} ~{" "}
-									{formattedEndDate(bond.interest_1_end_date)})
-								</Text>
+					<Box mb="3">
+						<Text className="font-semibold mb-1">
+							2차 이자{" "}
+							<Text as="span" className="font-normal text-sm">
+								({formatDate(bond.interest_2_start_date)} ~{" "}
+								{formattedEndDate(bond.interest_2_end_date)})
 							</Text>
-							<Text as="p" size="2">이자율: {bond.interest_1_rate}%</Text>
-							<Text size="2">
-								이자 총액: {Math.floor(totalInterest1).toLocaleString()}원
-							</Text>
-						</Box>
+						</Text>
+						<Text as="p" size="2">이자율: {bond.interest_2_rate}%</Text>
+						<Text size="2">
+							이자 총액: {Math.floor(totalInterest2).toLocaleString()}원
+						</Text>
+					</Box>
 
-						<Box mb="3">
-							<Text className="font-semibold mb-1">
-								2차 이자{" "}
-								<Text as="span" className="font-normal text-sm">
-									({formatDate(bond.interest_2_start_date)} ~{" "}
-									{formattedEndDate(bond.interest_2_end_date)})
-								</Text>
-							</Text>
-							<Text as="p" size="2">이자율: {bond.interest_2_rate}%</Text>
-							<Text size="2">
-								이자 총액: {Math.floor(totalInterest2).toLocaleString()}원
-							</Text>
-						</Box>
-
-						<Box>
-							<Text className="font-semibold mb-1">비용</Text>
-							{bond.expenses?.length > 0 ? (
-								<ul className="list-disc ml-5 space-y-1">
-									{bond.expenses.map((expense, idx) => (
-										<li key={idx} className="text-sm">
-											{expense.item}: {parseInt(expense.amount).toLocaleString()}원
-										</li>
-									))}
-								</ul>
-							) : (
-								<Text as="p" size="2">비용 미등록</Text>
-							)}
-						</Box>
-					</Flex>
-				</motion.div>
-			)}
+					<Box>
+						<Text className="font-semibold mb-1">비용</Text>
+						{bond.expenses?.length > 0 ? (
+							<ul className="list-disc ml-5 space-y-1">
+								{bond.expenses.map((expense, idx) => (
+									<li key={idx} className="text-sm">
+										{expense.item}: {parseInt(expense.amount).toLocaleString()}원
+									</li>
+								))}
+							</ul>
+						) : (
+							<Text as="p" size="2">비용 미등록</Text>
+						)}
+					</Box>
+				</Flex>
+			</motion.div>
 
 			{isFormOpen && (
 				<BondForm
@@ -189,4 +190,3 @@ const BondDetails = ({ assignmentId, user }) => {
 };
 
 export default BondDetails;
-
