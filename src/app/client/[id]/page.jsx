@@ -42,6 +42,7 @@ const ClientCasePage = () => {
 			.from("assignments")
 			.select(`
 				id,
+				type,
 				description,
 				status,
 				created_at,

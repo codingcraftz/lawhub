@@ -8,7 +8,7 @@ import { Button, Flex, Text, Box } from "@radix-ui/themes";
 import { motion } from "framer-motion";
 import TimelineForm from "../_components/dialogs/TimelineForm";
 
-const AssignmentTimelines = ({ assignmentId, user }) => {
+const AssignmentTimelines = ({ assignmentId, user, isSosong }) => {
 	const [timelines, setTimelines] = useState([]);
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [isFormOpen, setIsFormOpen] = useState(false);
@@ -52,7 +52,7 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 		<section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
 			<Flex justify="between" align="center" className="mb-3">
 				<Text as="h2" className="font-semibold text-lg">
-					채권 회수 현황
+					{isSosong?"소송 진행 상황":"회수 진행 상황"}
 				</Text>
 				{isAdmin && (
 					<Button
@@ -67,13 +67,13 @@ const AssignmentTimelines = ({ assignmentId, user }) => {
 			</Flex>
 
 			{timelines.length === 0 ? (
-				<Text>등록된 목표가 없습니다.</Text>
+				<Text>등록된 현황이 없습니다.</Text>
 			) : (
 				<>
 					<Flex justify="between" align="center" className="mb-3">
 						<Box className="font-semibold w-full">
 							<Text as="p" className="font-semibold">
-								현재 진행 상황:{" "}
+								{" "}
 								{timelines[timelines.length - 1]?.description || "정보 없음"}
 							</Text>
 							<div className="flex gap-2 pr-2 items-center justify-end w-full">

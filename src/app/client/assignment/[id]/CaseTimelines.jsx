@@ -7,7 +7,7 @@ import { supabase } from "@/utils/supabase";
 import { Box, Flex, Button, Text } from "@radix-ui/themes";
 import CaseTimelineForm from "../_components/dialogs/CaseTimelineForm";
 
-export default function CaseTimelines({ caseId, isAdmin, handleSuccess }) {
+export default function CaseTimelines({ caseId, isAdmin, handleSuccess , assignmentType}) {
 	const [timelines, setTimelines] = useState([]);
 	const [selectedTimeline, setSelectedTimeline] = useState(null);
 	const [timelineFormOpen, setTimelineFormOpen] = useState(false);

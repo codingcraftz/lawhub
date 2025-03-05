@@ -267,4 +267,3 @@ export default function Step1_ClientAndGroupSelection({
 		</Box>
 	);
 }
-
