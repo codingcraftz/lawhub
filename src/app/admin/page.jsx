@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/utils/supabase";
-import { Box, Text } from "@radix-ui/themes";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@radix-ui/react-tabs";
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/utils/supabase';
+import { Box, Text } from '@radix-ui/themes';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@radix-ui/react-tabs';
 
 // 기존 탭
-import StaffManagementTab from "./StaffManagementTab";
-import ClientManagementTab from "./ClientManagementTab";
+import StaffManagementTab from './StaffManagementTab';
+import ClientManagementTab from './ClientManagementTab';
 
 // 새로 추가할 탭
-import InquiryManagementTab from "./InquiryManagementTab";
-import RequestManagementTab from "./RequestManagementTab";
-import useRoleRedirect from "@/hooks/userRoleRedirect";
-import ChatbotManager from "./ChatbotManagement";
+import InquiryManagementTab from './InquiryManagementTab';
+import RequestManagementTab from './RequestManagementTab';
+import useRoleRedirect from '@/hooks/userRoleRedirect';
+import ChatbotManager from './ChatbotManagement';
 
 export default function AdminPage() {
   const [users, setUsers] = useState([]);
@@ -24,43 +24,39 @@ export default function AdminPage() {
   const [inquiries, setInquiries] = useState([]);
   const [requests, setRequests] = useState([]);
 
-  useRoleRedirect(["admin"], [], "/");
+  useRoleRedirect(['admin'], [], '/');
 
   const fetchAllData = async () => {
     setIsLoading(true);
 
     // 1) users
-    const { data: usersData, error: usersError } = await supabase
-      .from("users")
-      .select("*");
+    const { data: usersData, error: usersError } = await supabase.from('users').select('*');
     if (usersError) {
-      console.error("Error fetching users:", usersError);
+      console.error('Error fetching users:', usersError);
     }
 
     // 2) assignments
-    const { data: assignmentsData, error: assignmentsError } = await supabase
-      .from("assignments")
-      .select("*");
+    const { data: assignmentsData, error: assignmentsError } = await supabase.from('assignments').select('*');
     if (assignmentsError) {
-      console.error("Error fetching assignments:", assignmentsError);
+      console.error('Error fetching assignments:', assignmentsError);
     }
 
     // 3) inquiries
     const { data: inquiriesData, error: inquiriesError } = await supabase
-      .from("inquiries")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .from('inquiries')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (inquiriesError) {
-      console.error("Error fetching inquiries:", inquiriesError);
+      console.error('Error fetching inquiries:', inquiriesError);
     }
 
     // 4) requests
     const { data: requestsData, error: requestsError } = await supabase
-      .from("requests")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .from('requests')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (requestsError) {
-      console.error("Error fetching requests:", requestsError);
+      console.error('Error fetching requests:', requestsError);
     }
 
     setUsers(usersData || []);
@@ -77,11 +73,11 @@ export default function AdminPage() {
   if (isLoading) return <Text>로딩 중...</Text>;
 
   return (
-    <Box className="flex w-full p-4 max-w-screen-lg mx-auto">
-      <Tabs className="w-full" defaultValue="staffManagement">
-        <TabsList className="flex mb-4 border-b border-gray-6">
+    <Box className='flex w-full p-4 max-w-screen-2xl mx-auto sm:px-2 md:px-4 lg:px-24'>
+      <Tabs className='w-full' defaultValue='staffManagement'>
+        <TabsList className='flex mb-4 border-b border-gray-6'>
           <TabsTrigger
-            value="staffManagement"
+            value='staffManagement'
             className="
               px-4 py-2 
               hover:bg-gray-3 
@@ -96,7 +92,7 @@ export default function AdminPage() {
             직원 관리
           </TabsTrigger>
           <TabsTrigger
-            value="clientManagement"
+            value='clientManagement'
             className="
               px-4 py-2 
               hover:bg-gray-3 
@@ -112,7 +108,7 @@ export default function AdminPage() {
           </TabsTrigger>
           {/* 추가: 문의 / 의뢰 탭 */}
           <TabsTrigger
-            value="inquiryManagement"
+            value='inquiryManagement'
             className="
               px-4 py-2 
               hover:bg-gray-3 
@@ -127,7 +123,7 @@ export default function AdminPage() {
             문의 내역
           </TabsTrigger>
           <TabsTrigger
-            value="requestManagement"
+            value='requestManagement'
             className="
               px-4 py-2 
               hover:bg-gray-3 
@@ -142,7 +138,7 @@ export default function AdminPage() {
             의뢰 내역
           </TabsTrigger>
           <TabsTrigger
-            value="chatbotManagement"
+            value='chatbotManagement'
             className="
               px-4 py-2 
               hover:bg-gray-3 
@@ -158,35 +154,23 @@ export default function AdminPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="staffManagement" className="animate-fadeIn w-full">
+        <TabsContent value='staffManagement' className='animate-fadeIn w-full'>
           <StaffManagementTab users={users} onRefresh={fetchAllData} />
         </TabsContent>
 
-        <TabsContent value="clientManagement" className="animate-fadeIn w-full">
+        <TabsContent value='clientManagement' className='animate-fadeIn w-full'>
           <ClientManagementTab users={users} onRefresh={fetchAllData} />
         </TabsContent>
 
         {/* 추가: 문의 / 의뢰 탭 콘텐츠 */}
-        <TabsContent
-          value="inquiryManagement"
-          className="animate-fadeIn w-full"
-        >
-          <InquiryManagementTab
-            inquiries={inquiries}
-            onRefresh={fetchAllData}
-          />
+        <TabsContent value='inquiryManagement' className='animate-fadeIn w-full'>
+          <InquiryManagementTab inquiries={inquiries} onRefresh={fetchAllData} />
         </TabsContent>
 
-        <TabsContent
-          value="requestManagement"
-          className="animate-fadeIn w-full"
-        >
+        <TabsContent value='requestManagement' className='animate-fadeIn w-full'>
           <RequestManagementTab requests={requests} onRefresh={fetchAllData} />
         </TabsContent>
-        <TabsContent
-          value="chatbotManagement"
-          className="animate-fadeIn w-full"
-        >
+        <TabsContent value='chatbotManagement' className='animate-fadeIn w-full'>
           <ChatbotManager />
         </TabsContent>
       </Tabs>

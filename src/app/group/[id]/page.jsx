@@ -1,34 +1,30 @@
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { supabase } from "@/utils/supabase";
-import useRoleRedirect from "@/hooks/userRoleRedirect";
-import { Box, Text } from "@radix-ui/themes";
-import AssignmentsOverview from "@/components/Assignment/AssignmentsOverview";
-import FilterBar from "@/components/Assignment/FilterBar";
-import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
+import React, { useCallback, useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import { supabase } from '@/utils/supabase';
+import useRoleRedirect from '@/hooks/userRoleRedirect';
+import { Box, Text } from '@radix-ui/themes';
+import AssignmentsOverview from '@/components/Assignment/AssignmentsOverview';
+import FilterBar from '@/components/Assignment/FilterBar';
+import AssignmentsTable from '@/components/Assignment/AssignmentsTable';
 
 const GroupCasePage = () => {
-  useRoleRedirect(["staff", "admin", "client"], [], "/");
+  useRoleRedirect(['staff', 'admin', 'client'], [], '/');
   const router = useRouter();
   const { id: groupId } = useParams();
-  const [groupName, setGroupName] = useState("");
+  const [groupName, setGroupName] = useState('');
   const [assignments, setAssignments] = useState([]);
   const [filteredAssignments, setFilteredAssignments] = useState([]);
 
   // 그룹 이름 불러오기
   const fetchGroup = useCallback(async () => {
     if (!groupId) return;
-    const { data: groupData, error } = await supabase
-      .from("groups")
-      .select("name")
-      .eq("id", groupId)
-      .single();
+    const { data: groupData, error } = await supabase.from('groups').select('name').eq('id', groupId).single();
 
     if (error || !groupData) {
-      console.log("그룹 정보를 불러오는데 실패했습니다.");
+      console.log('그룹 정보를 불러오는데 실패했습니다.');
     } else {
       setGroupName(groupData.name);
     }
@@ -39,7 +35,7 @@ const GroupCasePage = () => {
     if (!groupId) return;
 
     const { data, error } = await supabase
-      .from("assignments")
+      .from('assignments')
       .select(
         `
 				id,
@@ -58,12 +54,12 @@ const GroupCasePage = () => {
 					interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
 				),
 				enforcements ( id, status, amount, type )
-			`,
+			`
       )
-      .eq("assignment_groups.group_id", groupId);
+      .eq('assignment_groups.group_id', groupId);
 
     if (error) {
-      console.error("Error fetching assignments:", error);
+      console.error('Error fetching assignments:', error);
       return;
     }
 
@@ -77,14 +73,11 @@ const GroupCasePage = () => {
   }, [groupId]);
 
   return (
-    <Box className="w-full py-4 px-4 sm:px-6 md:px-12">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <ArrowLeftIcon
-            className="w-8 h-8 cursor-pointer"
-            onClick={() => router.back()}
-          />
-          <h1 className="text-2xl font-bold">{groupName} 의뢰 목록</h1>
+    <Box className='w-full py-4 px-4 max-w-screen-2xl sm:px-2 md:px-4 lg:px-24'>
+      <header className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4'>
+        <div className='flex items-center gap-2'>
+          <ArrowLeftIcon className='w-8 h-8 cursor-pointer' onClick={() => router.back()} />
+          <h1 className='text-2xl font-bold'>{groupName} 의뢰 목록</h1>
         </div>
       </header>
 
@@ -92,10 +85,7 @@ const GroupCasePage = () => {
       <AssignmentsOverview assignments={assignments} />
 
       {/* (2) 필터 바 */}
-      <FilterBar
-        assignments={assignments}
-        setFilteredAssignments={setFilteredAssignments}
-      />
+      <FilterBar assignments={assignments} setFilteredAssignments={setFilteredAssignments} />
 
       {/* (3) 의뢰 테이블 */}
       <AssignmentsTable assignments={filteredAssignments} isAdmin={true} />
