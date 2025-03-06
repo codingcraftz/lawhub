@@ -5,7 +5,14 @@ import { supabase } from "@/utils/supabase";
 import { Button, Popover, Text, Flex } from "@radix-ui/themes";
 import { Pencil1Icon } from "@radix-ui/react-icons";
 
-export default function CombinedProceduresStatus({ assignmentId, civil_litigation_status, asset_declaration_status, creditor_attachment_status, isAdmin, isSosong }) {
+export default function CombinedProceduresStatus({
+  assignmentId,
+  civil_litigation_status,
+  asset_declaration_status,
+  creditor_attachment_status,
+  isAdmin,
+  isSosong,
+}) {
   // 상태를 로컬로 관리
   const [statuses, setStatuses] = useState({
     civil_litigation_status: civil_litigation_status || "",
@@ -18,7 +25,13 @@ export default function CombinedProceduresStatus({ assignmentId, civil_litigatio
 
   // 각 필드별 가능한 옵션들
   const civilLitigationOptions = ["예정", "진행중", "승소", "패소", "일부승"];
-  const assetDeclarationOptions = ["예정", "진행중", "명시선서", "감치", "각하"];
+  const assetDeclarationOptions = [
+    "예정",
+    "진행중",
+    "명시선서",
+    "감치",
+    "각하",
+  ];
   const creditorAttachmentOptions = ["예정", "진행중", "완료"];
 
   // 필드 업데이트 함수
@@ -43,25 +56,33 @@ export default function CombinedProceduresStatus({ assignmentId, civil_litigatio
 
   return (
     <div className="flex itemse-center">
-    <div className="w-full flex flex-col items-center justify-center">
-      {/* 1) 읽기 영역 */}
-      <Flex direction="column" gap="1" className="text-sm justify-center">
-        <Text>민사소송: {statuses.civil_litigation_status || "-"}</Text>
-        {!isSosong && <Text>재산명시: {statuses.asset_declaration_status || "-"}</Text>}
-        {!isSosong && <Text>채권압류: {statuses.creditor_attachment_status || "-"}</Text>}
-      </Flex>
-            {/* 2) 관리자면 pencil 버튼 표시 */}
-    </div>
-          {isAdmin && (
+      <div className="w-full flex flex-col items-center justify-center">
+        {/* 1) 읽기 영역 */}
+        <Flex direction="column" gap="1" className="text-sm justify-center">
+          <Text>민사소송: {statuses.civil_litigation_status || "-"}</Text>
+          {!isSosong && (
+            <Text>재산명시: {statuses.asset_declaration_status || "-"}</Text>
+          )}
+          {!isSosong && (
+            <Text>채권압류: {statuses.creditor_attachment_status || "-"}</Text>
+          )}
+        </Flex>
+        {/* 2) 관리자면 pencil 버튼 표시 */}
+      </div>
+      {isAdmin && (
         <Popover.Root open={open} onOpenChange={setOpen}>
           <Popover.Trigger asChild>
-            <Button variant="ghost" size="2" className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="2"
+              className="flex items-center gap-1"
+            >
               <Pencil1Icon />
               <Text size="2">편집</Text>
             </Button>
           </Popover.Trigger>
 
-          <Popover.Content 
+          <Popover.Content
             className="bg-white shadow-lg border border-gray-300 rounded-lg max-w-[280px] space-y-4"
             sideOffset={8}
           >
@@ -71,9 +92,15 @@ export default function CombinedProceduresStatus({ assignmentId, civil_litigatio
                 {civilLitigationOptions.map((option) => (
                   <Button
                     key={option}
-                    variant={statuses.civil_litigation_status === option ? "outline" : "ghost"}
+                    variant={
+                      statuses.civil_litigation_status === option
+                        ? "outline"
+                        : "ghost"
+                    }
                     size="1"
-                    onClick={() => updateField("civil_litigation_status", option)}
+                    onClick={() =>
+                      updateField("civil_litigation_status", option)
+                    }
                   >
                     {option}
                   </Button>
@@ -81,44 +108,56 @@ export default function CombinedProceduresStatus({ assignmentId, civil_litigatio
               </Flex>
             </div>
 
-{!isSosong && 
-<div>
-            <div className="space-y-2">
-              <Text className="font-semibold">재산명시</Text>
-              <Flex gap="2" wrap="wrap" className="items-center">
-                {assetDeclarationOptions.map((option) => (
-                  <Button
-                    key={option}
-                    variant={statuses.asset_declaration_status === option ? "outline" : "ghost"}
-                    size="1"
-                    onClick={() => updateField("asset_declaration_status", option)}
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </Flex>
-            </div>
+            {!isSosong && (
+              <div>
+                <div className="space-y-2">
+                  <Text className="font-semibold">재산명시</Text>
+                  <Flex gap="2" wrap="wrap" className="items-center">
+                    {assetDeclarationOptions.map((option) => (
+                      <Button
+                        key={option}
+                        variant={
+                          statuses.asset_declaration_status === option
+                            ? "outline"
+                            : "ghost"
+                        }
+                        size="1"
+                        onClick={() =>
+                          updateField("asset_declaration_status", option)
+                        }
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </Flex>
+                </div>
 
-            <div className="space-y-2">
-              <Text className="font-semibold">채권압류</Text>
-              <Flex gap="2" wrap="wrap" className="items-center">
-                {creditorAttachmentOptions.map((option) => (
-                  <Button
-                    key={option}
-                    variant={statuses.creditor_attachment_status === option ? "outline" : "ghost"}
-                    size="1"
-                    onClick={() => updateField("creditor_attachment_status", option)}
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </Flex>
-            </div>
-            </div>
-}
+                <div className="space-y-2">
+                  <Text className="font-semibold">채권압류</Text>
+                  <Flex gap="2" wrap="wrap" className="items-center">
+                    {creditorAttachmentOptions.map((option) => (
+                      <Button
+                        key={option}
+                        variant={
+                          statuses.creditor_attachment_status === option
+                            ? "outline"
+                            : "ghost"
+                        }
+                        size="1"
+                        onClick={() =>
+                          updateField("creditor_attachment_status", option)
+                        }
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </Flex>
+                </div>
+              </div>
+            )}
           </Popover.Content>
         </Popover.Root>
       )}
-  </div>
+    </div>
   );
 }

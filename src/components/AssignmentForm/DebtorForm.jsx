@@ -76,7 +76,11 @@ export default function DebtorForm({
           {initialData ? "채무자 수정" : "채무자 추가"}
         </Text>
         {/* 닫기 버튼 */}
-        <Button variant="ghost" color="gray" onClick={() => onOpenChange(false)}>
+        <Button
+          variant="ghost"
+          color="gray"
+          onClick={() => onOpenChange(false)}
+        >
           <Cross2Icon width={20} height={20} />
         </Button>
       </Flex>
@@ -115,7 +119,9 @@ export default function DebtorForm({
             mask="999999-9999999"
             maskChar={null}
             value={formData.registration_number}
-            onChange={(e) => handleChange("registration_number", e.target.value)}
+            onChange={(e) =>
+              handleChange("registration_number", e.target.value)
+            }
           >
             {(inputProps) => (
               <input

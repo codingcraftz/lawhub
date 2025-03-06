@@ -13,7 +13,7 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
   const [currentCreditor, setCurrentCreditor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const isSosong = assignmentType ==="소송"
+  const isSosong = assignmentType === "소송";
 
   const isAdmin = user?.role === "staff" || user?.role === "admin";
 
@@ -21,7 +21,8 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
   const fetchCreditors = async () => {
     const { data, error } = await supabase
       .from("assignment_creditors")
-      .select(`
+      .select(
+        `
         id,
         name,
         phone_number,
@@ -29,7 +30,8 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
         registration_number,
         workplace_name,
         workplace_address
-      `)
+      `,
+      )
       .eq("assignment_id", assignmentId);
 
     if (error) {
@@ -58,12 +60,10 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
           .eq("id", currentCreditor.id);
       } else {
         // 신규 등록
-        response = await supabase
-          .from("assignment_creditors")
-          .insert({
-            ...creditorData,
-            assignment_id: assignmentId,
-          });
+        response = await supabase.from("assignment_creditors").insert({
+          ...creditorData,
+          assignment_id: assignmentId,
+        });
       }
 
       if (response.error) {
@@ -108,7 +108,7 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
     <section className="mb-6 p-4 rounded shadow-md shadow-gray-7 bg-gray-2 text-gray-12">
       <Flex justify="between" align="center" className="mb-3">
         <Text as="h2" className="font-semibold text-lg">
-          {isSosong ? "원고 정보":"채권자 정보"}
+          {isSosong ? "원고 정보" : "채권자 정보"}
         </Text>
         {isAdmin && (
           <Button
@@ -123,7 +123,9 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
       </Flex>
 
       {creditors.length === 0 ? (
-        <Text>{isSosong? "등록된 원고가 없습니다.":"등록된 채권자가 없습니다."}</Text>
+        <Text>
+          {isSosong ? "등록된 원고가 없습니다." : "등록된 채권자가 없습니다."}
+        </Text>
       ) : (
         creditors.map((creditor) => (
           <Box
@@ -157,7 +159,10 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
                     </Button>
                   </Flex>
                 )}
-                <Button variant="ghost" onClick={() => toggleExpand(creditor.id)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => toggleExpand(creditor.id)}
+                >
                   {isExpanded[creditor.id] ? "닫기" : "상세보기"}
                 </Button>
               </Flex>
@@ -182,16 +187,24 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
                       </Text>
                     )}
                     {creditor.phone_number && (
-                      <Text size="2" as="p">전화번호: {creditor.phone_number}</Text>
+                      <Text size="2" as="p">
+                        전화번호: {creditor.phone_number}
+                      </Text>
                     )}
                     {creditor.address && (
-                      <Text size="2" as="p">주소: {creditor.address}</Text>
+                      <Text size="2" as="p">
+                        주소: {creditor.address}
+                      </Text>
                     )}
                     {creditor.workplace_name && (
-                      <Text size="2" as="p">직장: {creditor.workplace_name}</Text>
+                      <Text size="2" as="p">
+                        직장: {creditor.workplace_name}
+                      </Text>
                     )}
                     {creditor.workplace_address && (
-                      <Text size="2" as="p">직장주소: {creditor.workplace_address}</Text>
+                      <Text size="2" as="p">
+                        직장주소: {creditor.workplace_address}
+                      </Text>
                     )}
                   </div>
                 </Box>
@@ -208,7 +221,7 @@ const CreditorInfo = ({ assignmentId, user, assignmentType }) => {
           initialData={currentCreditor}
           onOpenChange={setIsFormOpen}
           onSubmit={handleSaveCreditor}
-					isSosong ={isSosong}
+          isSosong={isSosong}
         />
       )}
     </section>

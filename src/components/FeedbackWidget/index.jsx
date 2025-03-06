@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { usePathname } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { useUser } from '@/hooks/useUser';
+import { useEffect, useState, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { usePathname } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { useUser } from "@/hooks/useUser";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
 export default function FeedbackWidget() {
   const [feedbackMode, setFeedbackMode] = useState(false);
   const [selectedElementPath, setSelectedElementPath] = useState(null);
   const [modalId, setModalId] = useState(null);
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState("");
   const [feedbacks, setFeedbacks] = useState([]);
   const [openFeedbackId, setOpenFeedbackId] = useState(null);
   const [newFeedbackModalOpen, setNewFeedbackModalOpen] = useState(false);
@@ -28,8 +28,8 @@ export default function FeedbackWidget() {
 
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      comment: ''
-    }
+      comment: "",
+    },
   });
 
   useEffect(() => {
@@ -49,12 +49,12 @@ export default function FeedbackWidget() {
       timeoutId = setTimeout(handleScrollOrResize, 100);
     };
 
-    window.addEventListener('scroll', debouncedHandler);
-    window.addEventListener('resize', debouncedHandler);
+    window.addEventListener("scroll", debouncedHandler);
+    window.addEventListener("resize", debouncedHandler);
 
     return () => {
-      window.removeEventListener('scroll', debouncedHandler);
-      window.removeEventListener('resize', debouncedHandler);
+      window.removeEventListener("scroll", debouncedHandler);
+      window.removeEventListener("resize", debouncedHandler);
       clearTimeout(timeoutId);
     };
   }, [feedbackMode, feedbacks]);
@@ -72,38 +72,41 @@ export default function FeedbackWidget() {
 
     while (currentElement && currentElement !== document.body) {
       let selector = currentElement.tagName.toLowerCase();
-      
+
       if (currentElement.id) {
         selector += `#${currentElement.id}`;
-      } else if (currentElement.className && typeof currentElement.className === 'string') {
+      } else if (
+        currentElement.className &&
+        typeof currentElement.className === "string"
+      ) {
         // 클래스명 처리 개선
         const classes = currentElement.className
-          .split(' ')
-          .filter(c => c && !c.includes(':') && !c.includes('.'))
-          .map(c => c.trim())
+          .split(" ")
+          .filter((c) => c && !c.includes(":") && !c.includes("."))
+          .map((c) => c.trim())
           .filter(Boolean)
-          .map(c => c.replace(/[^\w-]/g, '\\$&')) // 특수문자 이스케이프
-          .join('.');
-          
+          .map((c) => c.replace(/[^\w-]/g, "\\$&")) // 특수문자 이스케이프
+          .join(".");
+
         if (classes) {
           selector += `.${classes}`;
         }
       }
-      
+
       path.unshift(selector);
       currentElement = currentElement.parentElement;
     }
 
-    return path.join(' > ').trim();
+    return path.join(" > ").trim();
   };
 
   // 피드백 로드 함수 수정
   const loadFeedbacks = async () => {
     const { data } = await supabase
-      .from('admin_feedbacks')
-      .select('*')
-      .eq('page_url', pathname)
-      .eq('is_resolved', false);
+      .from("admin_feedbacks")
+      .select("*")
+      .eq("page_url", pathname)
+      .eq("is_resolved", false);
 
     setFeedbacks(data || []);
     // 피드백 로드 후 즉시 위치 업데이트
@@ -124,9 +127,9 @@ export default function FeedbackWidget() {
     const handleDocumentClick = (e) => {
       // 피드백 컨트롤 요소나 input/textarea인 경우 무시
       if (
-        e.target.closest('.feedback-controls') || 
-        e.target.tagName.toLowerCase() === 'input' ||
-        e.target.tagName.toLowerCase() === 'textarea'
+        e.target.closest(".feedback-controls") ||
+        e.target.tagName.toLowerCase() === "input" ||
+        e.target.tagName.toLowerCase() === "textarea"
       ) {
         return;
       }
@@ -138,7 +141,9 @@ export default function FeedbackWidget() {
       e.stopPropagation();
 
       const clickedElement = e.target;
-      const targetModalId = clickedElement.closest('[data-dialog-id]')?.getAttribute('data-dialog-id');
+      const targetModalId = clickedElement
+        .closest("[data-dialog-id]")
+        ?.getAttribute("data-dialog-id");
       const path = generateElementPath(clickedElement);
 
       setSelectedElementPath(path);
@@ -146,9 +151,11 @@ export default function FeedbackWidget() {
       setNewFeedbackModalOpen(true);
     };
 
-    document.addEventListener('click', handleDocumentClick, { capture: true });
+    document.addEventListener("click", handleDocumentClick, { capture: true });
     return () => {
-      document.removeEventListener('click', handleDocumentClick, { capture: true });
+      document.removeEventListener("click", handleDocumentClick, {
+        capture: true,
+      });
     };
   }, [feedbackMode, newFeedbackModalOpen, openFeedbackId]);
 
@@ -157,23 +164,23 @@ export default function FeedbackWidget() {
     if (!feedbackMode) return;
 
     const handleMouseOver = (e) => {
-      if (e.target.closest('.feedback-controls')) return;
-      e.target.style.outline = '2px solid #3B82F6';
-      e.target.style.cursor = 'pointer';
+      if (e.target.closest(".feedback-controls")) return;
+      e.target.style.outline = "2px solid #3B82F6";
+      e.target.style.cursor = "pointer";
     };
 
     const handleMouseOut = (e) => {
-      if (e.target.closest('.feedback-controls')) return;
-      e.target.style.outline = '';
-      e.target.style.cursor = '';
+      if (e.target.closest(".feedback-controls")) return;
+      e.target.style.outline = "";
+      e.target.style.cursor = "";
     };
 
-    document.addEventListener('mouseover', handleMouseOver);
-    document.addEventListener('mouseout', handleMouseOut);
+    document.addEventListener("mouseover", handleMouseOver);
+    document.addEventListener("mouseout", handleMouseOut);
 
     return () => {
-      document.removeEventListener('mouseover', handleMouseOver);
-      document.removeEventListener('mouseout', handleMouseOut);
+      document.removeEventListener("mouseover", handleMouseOver);
+      document.removeEventListener("mouseout", handleMouseOut);
     };
   }, [feedbackMode]);
 
@@ -186,12 +193,12 @@ export default function FeedbackWidget() {
       feedbacks.forEach((feedback) => {
         try {
           // 선택자를 단순화하여 마지막 요소만 찾기
-          const pathParts = feedback.element_path.split(' > ');
+          const pathParts = feedback.element_path.split(" > ");
           const lastElement = pathParts[pathParts.length - 1];
           const elements = document.querySelectorAll(lastElement);
-          
+
           // 여러 요소 중 원래 경로와 가장 잘 매칭되는 요소 찾기
-          const element = Array.from(elements).find(el => {
+          const element = Array.from(elements).find((el) => {
             const currentPath = generateElementPath(el);
             return currentPath.includes(lastElement);
           });
@@ -204,10 +211,10 @@ export default function FeedbackWidget() {
             };
           }
         } catch (error) {
-          console.warn('Failed to find element:', feedback.element_path);
+          console.warn("Failed to find element:", feedback.element_path);
         }
       });
-      
+
       setIconPositions(positions);
     });
   };
@@ -222,14 +229,16 @@ export default function FeedbackWidget() {
     }
 
     const { data, error } = await supabase
-      .from('admin_feedbacks')
-      .insert([{
-        page_url: pathname,
-        element_path: selectedElementPath,
-        comment: commentText,
-        author: 'admin',
-        modal_id: modalId
-      }])
+      .from("admin_feedbacks")
+      .insert([
+        {
+          page_url: pathname,
+          element_path: selectedElementPath,
+          comment: commentText,
+          author: "admin",
+          modal_id: modalId,
+        },
+      ])
       .select()
       .single();
 
@@ -239,23 +248,23 @@ export default function FeedbackWidget() {
     }
 
     alert("피드백이 성공적으로 저장되었습니다."); // 저장 성공 확인
-    setFeedbacks(prev => [...prev, data]);
+    setFeedbacks((prev) => [...prev, data]);
     setNewFeedbackModalOpen(false);
   };
 
   // 피드백 해결 함수
   const resolveFeedback = async (feedbackId) => {
     const { error } = await supabase
-      .from('admin_feedbacks')
-      .update({ 
+      .from("admin_feedbacks")
+      .update({
         is_resolved: true,
         resolved_at: new Date().toISOString(),
-        resolved_by: 'admin'
+        resolved_by: "admin",
       })
-      .eq('id', feedbackId);
+      .eq("id", feedbackId);
 
     if (!error) {
-      setFeedbacks(prev => prev.filter(fb => fb.id !== feedbackId));
+      setFeedbacks((prev) => prev.filter((fb) => fb.id !== feedbackId));
       setOpenFeedbackId(null);
     }
   };
@@ -271,11 +280,11 @@ export default function FeedbackWidget() {
     };
 
     return (
-      <div 
+      <div
         className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-30 flex items-center justify-center z-[9999] feedback-controls"
         onClick={onClose}
       >
-        <div 
+        <div
           className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg max-w-lg w-full mx-4 feedback-controls"
           onClick={handleModalClick}
         >
@@ -347,14 +356,14 @@ export default function FeedbackWidget() {
         }}
       >
         <h2 className="text-lg font-semibold mb-4">새 피드백 남기기</h2>
-        <form 
+        <form
           className="feedback-controls"
           onSubmit={handleSubmit(onSubmit)}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative">
             <textarea
-              {...register('comment', { required: true })}
+              {...register("comment", { required: true })}
               className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 min-h-[100px]"
               placeholder="피드백을 입력하세요..."
               autoFocus
@@ -393,12 +402,12 @@ export default function FeedbackWidget() {
   const toggleFeedbackMode = async () => {
     const newMode = !feedbackMode;
     setFeedbackMode(newMode);
-    
+
     // 피드백 모드 켤 때만 데이터 새로 로드
     if (newMode) {
       await loadFeedbacks();
     }
-    
+
     // 모드 끌 때는 상태 초기화
     if (!newMode) {
       setSelectedElementPath(null);
@@ -407,7 +416,7 @@ export default function FeedbackWidget() {
     }
   };
 
-            if (user?.role !=="admin") return null;
+  if (user?.role !== "admin") return null;
   return (
     <div className="feedback-widget">
       {/* 피드백 모드 토글 버튼 수정 */}
@@ -416,43 +425,44 @@ export default function FeedbackWidget() {
           onClick={toggleFeedbackMode}
           className="p-3 bg-blue-600 text-white rounded shadow-lg hover:bg-blue-700"
         >
-          {feedbackMode ? '피드백 모드 종료' : '피드백 모드 시작'}
+          {feedbackMode ? "피드백 모드 종료" : "피드백 모드 시작"}
         </button>
       </div>
 
       {/* 피드백 아이콘들은 feedbackMode가 true일 때만 표시 */}
-      {feedbackMode && Object.entries(groupedFeedbacks).map(([elementPath, feedbackGroup]) => {
-        const pos = iconPositions[feedbackGroup[0].id];
-        if (!pos) return null;
+      {feedbackMode &&
+        Object.entries(groupedFeedbacks).map(([elementPath, feedbackGroup]) => {
+          const pos = iconPositions[feedbackGroup[0].id];
+          if (!pos) return null;
 
-        return (
-          <div
-            key={elementPath}
-            className="feedback-controls"
-            style={{
-              position: 'absolute',
-              top: pos.top,
-              left: pos.left,
-              zIndex: 98
-            }}
-          >
-            <button
-              className="bg-yellow-200 p-2 rounded-full shadow-lg hover:bg-yellow-300 relative"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenFeedbackId(elementPath);
+          return (
+            <div
+              key={elementPath}
+              className="feedback-controls"
+              style={{
+                position: "absolute",
+                top: pos.top,
+                left: pos.left,
+                zIndex: 98,
               }}
             >
-              💬
-              {feedbackGroup.length > 1 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                  {feedbackGroup.length}
-                </span>
-              )}
-            </button>
-          </div>
-        );
-      })}
+              <button
+                className="bg-yellow-200 p-2 rounded-full shadow-lg hover:bg-yellow-300 relative"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenFeedbackId(elementPath);
+                }}
+              >
+                💬
+                {feedbackGroup.length > 1 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                    {feedbackGroup.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          );
+        })}
 
       {/* 피드백 상세 모달 수정 */}
       {Object.entries(groupedFeedbacks).map(([elementPath, feedbackGroup]) => (

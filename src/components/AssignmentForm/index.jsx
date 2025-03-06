@@ -197,53 +197,52 @@ const AssignmentForm = ({ open, onOpenChange, onSuccess }) => {
         }
       }
 
-			// 5) (채권자/원고) 저장
-if (selectedCreditors.length > 0) {
-  const creditorsInsertData = selectedCreditors.map((creditor) => ({
-    assignment_id: assignmentId,
-    name: creditor.name,
-    phone_number: creditor?.phone_number || null,
-    address: creditor?.address || null,
-    // New columns
-    registration_number: creditor?.registration_number || null,
-    workplace_name: creditor?.workplace_name || null,
-    workplace_address: creditor?.workplace_address || null,
-  }));
+      // 5) (채권자/원고) 저장
+      if (selectedCreditors.length > 0) {
+        const creditorsInsertData = selectedCreditors.map((creditor) => ({
+          assignment_id: assignmentId,
+          name: creditor.name,
+          phone_number: creditor?.phone_number || null,
+          address: creditor?.address || null,
+          // New columns
+          registration_number: creditor?.registration_number || null,
+          workplace_name: creditor?.workplace_name || null,
+          workplace_address: creditor?.workplace_address || null,
+        }));
 
-  const { error: creditorError } = await supabase
-    .from("assignment_creditors")
-    .insert(creditorsInsertData);
+        const { error: creditorError } = await supabase
+          .from("assignment_creditors")
+          .insert(creditorsInsertData);
 
-  if (creditorError) {
-    console.error("Assignment Creditors 추가 오류:", creditorError);
-    alert("채권자/원고 추가 중 오류가 발생했습니다.");
-    return;
-  }
-}
+        if (creditorError) {
+          console.error("Assignment Creditors 추가 오류:", creditorError);
+          alert("채권자/원고 추가 중 오류가 발생했습니다.");
+          return;
+        }
+      }
 
+      // Step6) (채무자/피고) 저장 부분만 수정
+      if (selectedDebtors.length > 0) {
+        const debtorsInsertData = selectedDebtors.map((debtor) => ({
+          assignment_id: assignmentId,
+          name: debtor.name,
+          phone_number: debtor?.phone_number || null,
+          address: debtor?.address || null,
+          registration_number: debtor?.registration_number || null,
+          workplace_name: debtor?.workplace_name || null,
+          workplace_address: debtor?.workplace_address || null,
+        }));
 
-			// Step6) (채무자/피고) 저장 부분만 수정
-if (selectedDebtors.length > 0) {
-  const debtorsInsertData = selectedDebtors.map((debtor) => ({
-    assignment_id: assignmentId,
-    name: debtor.name,
-    phone_number: debtor?.phone_number || null,
-    address: debtor?.address || null,
-    registration_number: debtor?.registration_number || null,
-    workplace_name: debtor?.workplace_name || null,
-    workplace_address: debtor?.workplace_address || null,
-  }));
+        const { error: debtorError } = await supabase
+          .from("assignment_debtors")
+          .insert(debtorsInsertData);
 
-  const { error: debtorError } = await supabase
-    .from("assignment_debtors")
-    .insert(debtorsInsertData);
-
-  if (debtorError) {
-    console.error("Assignment Debtors 추가 오류:", debtorError);
-    alert("채무자/피고 추가 중 오류가 발생했습니다.");
-    return;
-  }
-}
+        if (debtorError) {
+          console.error("Assignment Debtors 추가 오류:", debtorError);
+          alert("채무자/피고 추가 중 오류가 발생했습니다.");
+          return;
+        }
+      }
 
       // 성공 메시지 및 페이지 이동
       alert("의뢰가 성공적으로 등록되었습니다!");

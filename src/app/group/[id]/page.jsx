@@ -11,36 +11,37 @@ import FilterBar from "@/components/Assignment/FilterBar";
 import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
 
 const GroupCasePage = () => {
-	useRoleRedirect(["staff", "admin", "client"], [], "/");
-	const router = useRouter();
-	const { id: groupId } = useParams();
-	const [groupName, setGroupName] = useState("");
-	const [assignments, setAssignments] = useState([]);
-	const [filteredAssignments, setFilteredAssignments] = useState([]);
+  useRoleRedirect(["staff", "admin", "client"], [], "/");
+  const router = useRouter();
+  const { id: groupId } = useParams();
+  const [groupName, setGroupName] = useState("");
+  const [assignments, setAssignments] = useState([]);
+  const [filteredAssignments, setFilteredAssignments] = useState([]);
 
-	// 그룹 이름 불러오기
-	const fetchGroup = useCallback(async () => {
-		if (!groupId) return;
-		const { data: groupData, error } = await supabase
-			.from("groups")
-			.select("name")
-			.eq("id", groupId)
-			.single();
+  // 그룹 이름 불러오기
+  const fetchGroup = useCallback(async () => {
+    if (!groupId) return;
+    const { data: groupData, error } = await supabase
+      .from("groups")
+      .select("name")
+      .eq("id", groupId)
+      .single();
 
-		if (error || !groupData) {
-			console.log("그룹 정보를 불러오는데 실패했습니다.");
-		} else {
-			setGroupName(groupData.name);
-		}
-	}, [groupId]);
+    if (error || !groupData) {
+      console.log("그룹 정보를 불러오는데 실패했습니다.");
+    } else {
+      setGroupName(groupData.name);
+    }
+  }, [groupId]);
 
-	// 의뢰 목록 불러오기
-	const fetchAssignments = async () => {
-		if (!groupId) return;
+  // 의뢰 목록 불러오기
+  const fetchAssignments = async () => {
+    if (!groupId) return;
 
-		const { data, error } = await supabase
-			.from("assignments")
-			.select(`
+    const { data, error } = await supabase
+      .from("assignments")
+      .select(
+        `
 				id,
 				description,
 				status,
@@ -57,43 +58,49 @@ const GroupCasePage = () => {
 					interest_2_rate, interest_2_start_date, interest_2_end_date, expenses
 				),
 				enforcements ( id, status, amount, type )
-			`)
-			.eq("assignment_groups.group_id", groupId);
+			`,
+      )
+      .eq("assignment_groups.group_id", groupId);
 
-		if (error) {
-			console.error("Error fetching assignments:", error);
-			return;
-		}
+    if (error) {
+      console.error("Error fetching assignments:", error);
+      return;
+    }
 
-		setAssignments(data);
-		setFilteredAssignments(data);
-	};
+    setAssignments(data);
+    setFilteredAssignments(data);
+  };
 
-	useEffect(() => {
-		fetchGroup();
-		fetchAssignments();
-	}, [groupId]);
+  useEffect(() => {
+    fetchGroup();
+    fetchAssignments();
+  }, [groupId]);
 
-	return (
-		<Box className="w-full py-4 px-4 sm:px-6 md:px-12">
-			<header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-				<div className="flex items-center gap-2">
-					<ArrowLeftIcon className="w-8 h-8 cursor-pointer" onClick={() => router.back()} />
-					<h1 className="text-2xl font-bold">{groupName} 의뢰 목록</h1>
-				</div>
-			</header>
+  return (
+    <Box className="w-full py-4 px-4 sm:px-6 md:px-12">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <ArrowLeftIcon
+            className="w-8 h-8 cursor-pointer"
+            onClick={() => router.back()}
+          />
+          <h1 className="text-2xl font-bold">{groupName} 의뢰 목록</h1>
+        </div>
+      </header>
 
-			{/* (1) 의뢰 개요 */}
-			<AssignmentsOverview assignments={assignments} />
+      {/* (1) 의뢰 개요 */}
+      <AssignmentsOverview assignments={assignments} />
 
-			{/* (2) 필터 바 */}
-			<FilterBar assignments={assignments} setFilteredAssignments={setFilteredAssignments} />
+      {/* (2) 필터 바 */}
+      <FilterBar
+        assignments={assignments}
+        setFilteredAssignments={setFilteredAssignments}
+      />
 
-			{/* (3) 의뢰 테이블 */}
-			<AssignmentsTable assignments={filteredAssignments} isAdmin={true} />
-		</Box>
-	);
+      {/* (3) 의뢰 테이블 */}
+      <AssignmentsTable assignments={filteredAssignments} isAdmin={true} />
+    </Box>
+  );
 };
 
 export default GroupCasePage;
-

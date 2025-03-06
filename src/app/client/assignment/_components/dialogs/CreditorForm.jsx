@@ -13,8 +13,8 @@ import { supabase } from "@/utils/supabase";
  */
 export default function CreditorForm({
   initialData,
-  onOpenChange,   // 함수: 모달 열고닫기 (state set)
-  onSubmit,       // 최종 저장 핸들러
+  onOpenChange, // 함수: 모달 열고닫기 (state set)
+  onSubmit, // 최종 저장 핸들러
   isSubmitting,
 }) {
   // 폼 상태

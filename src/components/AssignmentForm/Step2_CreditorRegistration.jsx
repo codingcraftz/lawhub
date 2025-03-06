@@ -40,7 +40,8 @@ export default function Step2_CreditorRegistration({
               >
                 <Text mr="1">
                   {c.name} / {c.registration_number || "주민번호 없음"} /{" "}
-                  {c.phone_number || "전화번호 없음"} / {c.address || "집주소 없음"} /{" "}
+                  {c.phone_number || "전화번호 없음"} /{" "}
+                  {c.address || "집주소 없음"} /{" "}
                   {c.workplace_name || "직장이름 없음"} /{" "}
                   {c.workplace_address || "직장주소 없음"}
                 </Text>
@@ -59,14 +60,9 @@ export default function Step2_CreditorRegistration({
       )}
 
       {isAdding ? (
-        <CreditorForm
-          onOpenChange={setIsAdding}
-          onSubmit={handleAddCreditor}
-        />
+        <CreditorForm onOpenChange={setIsAdding} onSubmit={handleAddCreditor} />
       ) : (
-        <Button onClick={() => setIsAdding(true)}>
-          {labelText} 추가하기
-        </Button>
+        <Button onClick={() => setIsAdding(true)}>{labelText} 추가하기</Button>
       )}
     </Box>
   );

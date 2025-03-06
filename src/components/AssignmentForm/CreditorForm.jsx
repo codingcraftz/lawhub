@@ -62,7 +62,11 @@ export default function CreditorForm({ initialData, onOpenChange, onSubmit }) {
         <Text size="4" weight="bold">
           {initialData ? "채권자 수정" : "채권자 추가"}
         </Text>
-        <Button variant="ghost" color="gray" onClick={() => onOpenChange(false)}>
+        <Button
+          variant="ghost"
+          color="gray"
+          onClick={() => onOpenChange(false)}
+        >
           <Cross2Icon width={20} height={20} />
         </Button>
       </Flex>

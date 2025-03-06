@@ -7,30 +7,26 @@ import { Box, Text } from "@radix-ui/themes";
 import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
 import { useUser } from "@/hooks/useUser";
 
-
 export default function AssignmentSummary() {
-	const { id: clientId } = useParams();
-	const [assignments, setAssignments] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const { user } = useUser()
-	const isAdmin = user?.role === "admin" || user?.role === "staff"
+  const { id: clientId } = useParams();
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useUser();
+  const isAdmin = user?.role === "admin" || user?.role === "staff";
 
+  useEffect(() => {
+    if (clientId) {
+      fetchAssignments();
+    }
+  }, [clientId]);
 
+  const fetchAssignments = async () => {
+    setLoading(true);
 
-
-
-	useEffect(() => {
-		if (clientId) {
-			fetchAssignments();
-		}
-	}, [clientId]);
-
-	const fetchAssignments = async () => {
-		setLoading(true);
-
-		const { data, error } = await supabase
-			.from("assignments")
-			.select(`
+    const { data, error } = await supabase
+      .from("assignments")
+      .select(
+        `
         id,
         description,
         status,
@@ -53,25 +49,25 @@ export default function AssignmentSummary() {
           expenses
         ),
         enforcements ( id, status, amount, type )
-      `)
-			.eq("assignment_clients.client_id", clientId);
+      `,
+      )
+      .eq("assignment_clients.client_id", clientId);
 
-		if (error) {
-			console.error("의뢰 정보 불러오기 오류:", error);
-		} else {
-			setAssignments(data || []);
-		}
-		setLoading(false);
-	};
+    if (error) {
+      console.error("의뢰 정보 불러오기 오류:", error);
+    } else {
+      setAssignments(data || []);
+    }
+    setLoading(false);
+  };
 
-	if (loading) {
-		return <Text>로딩 중...</Text>;
-	}
+  if (loading) {
+    return <Text>로딩 중...</Text>;
+  }
 
-	return (
-		<Box className="w-full py-4">
-			<AssignmentsTable assignments={assignments} isAdmin={isAdmin} />
-		</Box>
-	);
+  return (
+    <Box className="w-full py-4">
+      <AssignmentsTable assignments={assignments} isAdmin={isAdmin} />
+    </Box>
+  );
 }
-

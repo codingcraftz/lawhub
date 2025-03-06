@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/utils/supabase";  // utils의 supabase 클라이언트 import
+import { supabase } from "@/utils/supabase"; // utils의 supabase 클라이언트 import
 import {
   Button,
   Flex,
@@ -86,20 +86,17 @@ function createMessage({
 
 /** 드래그 가능한 메시지 아이템 컴포넌트 */
 function SortableMessageItem({ message, onEdit, onDelete }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: message.id });
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: message.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const messageType = MESSAGE_TYPES.find(type => type.id === message.messageType);
+  const messageType = MESSAGE_TYPES.find(
+    (type) => type.id === message.messageType,
+  );
 
   return (
     <Card
@@ -112,24 +109,26 @@ function SortableMessageItem({ message, onEdit, onDelete }) {
           <Box {...attributes} {...listeners} style={{ cursor: "grab" }}>
             <DragHandleDots2Icon />
           </Box>
-          
+
           <Box className="flex-1">
             <Flex align="center" gap="2" mb="2">
               <Text size="2" className="flex items-center gap-1">
                 <span>{messageType.icon}</span>
-                <span style={{ 
-                  color: `var(--${messageType.color}-9)`,
-                  fontWeight: "bold" 
-                }}>
+                <span
+                  style={{
+                    color: `var(--${messageType.color}-9)`,
+                    fontWeight: "bold",
+                  }}
+                >
                   {messageType.label}
                 </span>
               </Text>
             </Flex>
-            
+
             <Box className="bg-gray-1 p-3 rounded-lg mb-2">
               <Text size="2">{message.responseText}</Text>
             </Box>
-            
+
             {message.buttonOptions?.length > 0 && (
               <Flex gap="2" mt="2" wrap="wrap">
                 {message.buttonOptions.map((opt, idx) => (
@@ -142,13 +141,18 @@ function SortableMessageItem({ message, onEdit, onDelete }) {
 
             {message.messageType === "input" && message.inputField && (
               <Box className="mt-2 p-2 bg-gray-2 rounded-lg">
-                <Text size="2" weight="bold">입력 필드 설정</Text>
+                <Text size="2" weight="bold">
+                  입력 필드 설정
+                </Text>
                 <Flex gap="2" mt="1">
                   <Badge variant="soft" color="purple">
-                    {INPUT_TYPES.find(t => t.id === message.inputField.type)?.label || "텍스트"}
+                    {INPUT_TYPES.find((t) => t.id === message.inputField.type)
+                      ?.label || "텍스트"}
                   </Badge>
                   {message.inputField.required && (
-                    <Badge variant="soft" color="red">필수</Badge>
+                    <Badge variant="soft" color="red">
+                      필수
+                    </Badge>
                   )}
                 </Flex>
                 {message.inputField.placeholder && (
@@ -164,10 +168,10 @@ function SortableMessageItem({ message, onEdit, onDelete }) {
             <IconButton size="1" variant="soft" onClick={() => onEdit(message)}>
               <Pencil1Icon />
             </IconButton>
-            <IconButton 
-              size="1" 
-              variant="soft" 
-              color="red" 
+            <IconButton
+              size="1"
+              variant="soft"
+              color="red"
               onClick={() => onDelete(message.id)}
             >
               <Cross2Icon />
@@ -182,9 +186,11 @@ function SortableMessageItem({ message, onEdit, onDelete }) {
 /** 시나리오 폼 다이얼로그 */
 function ScenarioFormDialog({ open, onClose, onSubmit, scenarioToEdit }) {
   const isEdit = !!scenarioToEdit;
-  
+
   const [title, setTitle] = useState(scenarioToEdit?.title || "");
-  const [description, setDescription] = useState(scenarioToEdit?.description || "");
+  const [description, setDescription] = useState(
+    scenarioToEdit?.description || "",
+  );
   const [isActive, setIsActive] = useState(scenarioToEdit?.isActive ?? true);
 
   const handleSubmit = (e) => {
@@ -196,10 +202,14 @@ function ScenarioFormDialog({ open, onClose, onSubmit, scenarioToEdit }) {
   return (
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Content>
-        <Dialog.Title>{isEdit ? "시나리오 수정" : "새 시나리오 추가"}</Dialog.Title>
+        <Dialog.Title>
+          {isEdit ? "시나리오 수정" : "새 시나리오 추가"}
+        </Dialog.Title>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <Box>
-            <Text as="label" size="2">시나리오 제목</Text>
+            <Text as="label" size="2">
+              시나리오 제목
+            </Text>
             <input
               className="w-full mt-1 p-2 rounded border border-gray-200"
               value={title}
@@ -209,7 +219,9 @@ function ScenarioFormDialog({ open, onClose, onSubmit, scenarioToEdit }) {
             />
           </Box>
           <Box>
-            <Text as="label" size="2">설명</Text>
+            <Text as="label" size="2">
+              설명
+            </Text>
             <textarea
               className="w-full mt-1 p-2 rounded border border-gray-200"
               value={description}
@@ -219,16 +231,16 @@ function ScenarioFormDialog({ open, onClose, onSubmit, scenarioToEdit }) {
             />
           </Box>
           <Flex align="center" gap="2">
-            <Text as="label" size="2">활성화</Text>
+            <Text as="label" size="2">
+              활성화
+            </Text>
             <Switch checked={isActive} onCheckedChange={setIsActive} />
           </Flex>
           <Flex justify="end" gap="2">
             <Button variant="soft" color="gray" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit">
-              {isEdit ? "저장" : "추가"}
-            </Button>
+            <Button type="submit">{isEdit ? "저장" : "추가"}</Button>
           </Flex>
         </form>
       </Dialog.Content>
@@ -237,25 +249,20 @@ function ScenarioFormDialog({ open, onClose, onSubmit, scenarioToEdit }) {
 }
 
 /** 메시지 폼 다이얼로그 */
-function MessageFormDialog({
-  open,
-  onClose,
-  onSubmit,
-  messageToEdit,
-}) {
+function MessageFormDialog({ open, onClose, onSubmit, messageToEdit }) {
   const isEdit = !!messageToEdit;
 
   const [messageType, setMessageType] = useState(
-    messageToEdit?.messageType || "initial"
+    messageToEdit?.messageType || "initial",
   );
   const [responseText, setResponseText] = useState(
-    messageToEdit?.responseText || ""
+    messageToEdit?.responseText || "",
   );
   const [triggerText, setTriggerText] = useState(
-    messageToEdit?.triggerText || []
+    messageToEdit?.triggerText || [],
   );
   const [buttonOptions, setButtonOptions] = useState(
-    messageToEdit?.buttonOptions || []
+    messageToEdit?.buttonOptions || [],
   );
   const [inputField, setInputField] = useState(
     messageToEdit?.inputField || {
@@ -263,7 +270,7 @@ function MessageFormDialog({
       required: false,
       placeholder: "",
       validation: null,
-    }
+    },
   );
 
   const handleSubmit = (e) => {
@@ -298,12 +305,12 @@ function MessageFormDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Content style={{ maxWidth: "600px" }}>
-        <Dialog.Title>
-          {isEdit ? "메시지 수정" : "새 메시지 추가"}
-        </Dialog.Title>
+        <Dialog.Title>{isEdit ? "메시지 수정" : "새 메시지 추가"}</Dialog.Title>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <Box>
-            <Text as="label" size="2" weight="bold">메시지 유형</Text>
+            <Text as="label" size="2" weight="bold">
+              메시지 유형
+            </Text>
             <Flex gap="2" mt="2">
               {MESSAGE_TYPES.map((type) => (
                 <Button
@@ -315,10 +322,14 @@ function MessageFormDialog({
                     e.preventDefault();
                     setMessageType(type.id);
                   }}
-                  style={messageType === type.id ? {
-                    backgroundColor: `var(--${type.color}-9)`,
-                    color: 'white'
-                  } : {}}
+                  style={
+                    messageType === type.id
+                      ? {
+                          backgroundColor: `var(--${type.color}-9)`,
+                          color: "white",
+                        }
+                      : {}
+                  }
                 >
                   <span>{type.icon}</span>
                   <span className="ml-1">{type.label}</span>
@@ -328,7 +339,9 @@ function MessageFormDialog({
           </Box>
 
           <Box>
-            <Text as="label" size="2" weight="bold">메시지 내용</Text>
+            <Text as="label" size="2" weight="bold">
+              메시지 내용
+            </Text>
             <textarea
               className="w-full mt-1 p-3 rounded-lg border border-gray-200"
               rows={3}
@@ -341,7 +354,9 @@ function MessageFormDialog({
 
           {messageType === "text" && (
             <Box>
-              <Text as="label" size="2" weight="bold">트리거 키워드</Text>
+              <Text as="label" size="2" weight="bold">
+                트리거 키워드
+              </Text>
               <input
                 className="w-full mt-1 p-3 rounded-lg border border-gray-200"
                 value={triggerText.join(", ")}
@@ -350,13 +365,14 @@ function MessageFormDialog({
                     e.target.value
                       .split(",")
                       .map((t) => t.trim())
-                      .filter(Boolean)
+                      .filter(Boolean),
                   )
                 }
                 placeholder="쉼표(,)로 구분하여 입력"
               />
               <Text size="1" color="gray">
-                사용자가 입력한 내용에 이 키워드가 포함되면 이 메시지가 출력됩니다
+                사용자가 입력한 내용에 이 키워드가 포함되면 이 메시지가
+                출력됩니다
               </Text>
             </Box>
           )}
@@ -364,9 +380,11 @@ function MessageFormDialog({
           {messageType === "button" && (
             <Box>
               <Flex justify="between" align="center" mb="2">
-                <Text as="label" size="2" weight="bold">버튼 옵션</Text>
-                <Button 
-                  size="1" 
+                <Text as="label" size="2" weight="bold">
+                  버튼 옵션
+                </Text>
+                <Button
+                  size="1"
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
@@ -420,18 +438,24 @@ function MessageFormDialog({
 
           {messageType === "input" && (
             <Box>
-              <Text as="label" size="2" weight="bold">입력 필드 설정</Text>
+              <Text as="label" size="2" weight="bold">
+                입력 필드 설정
+              </Text>
               <Card className="p-4 mt-2">
                 <Flex direction="column" gap="3">
                   <Box>
-                    <Text as="label" size="2">입력 유형</Text>
+                    <Text as="label" size="2">
+                      입력 유형
+                    </Text>
                     <select
                       className="w-full mt-1 p-2 rounded-lg border border-gray-200"
                       value={inputField.type}
-                      onChange={(e) => setInputField({
-                        ...inputField,
-                        type: e.target.value
-                      })}
+                      onChange={(e) =>
+                        setInputField({
+                          ...inputField,
+                          type: e.target.value,
+                        })
+                      }
                     >
                       {INPUT_TYPES.map((type) => (
                         <option key={type.id} value={type.id}>
@@ -440,16 +464,20 @@ function MessageFormDialog({
                       ))}
                     </select>
                   </Box>
-                  
+
                   <Box>
-                    <Text as="label" size="2">안내 문구</Text>
+                    <Text as="label" size="2">
+                      안내 문구
+                    </Text>
                     <input
                       className="w-full mt-1 p-2 rounded-lg border border-gray-200"
                       value={inputField.placeholder}
-                      onChange={(e) => setInputField({
-                        ...inputField,
-                        placeholder: e.target.value
-                      })}
+                      onChange={(e) =>
+                        setInputField({
+                          ...inputField,
+                          placeholder: e.target.value,
+                        })
+                      }
                       placeholder="예: 피해 금액을 입력해주세요"
                     />
                   </Box>
@@ -457,10 +485,12 @@ function MessageFormDialog({
                   <Flex align="center" gap="2">
                     <Switch
                       checked={inputField.required}
-                      onCheckedChange={(checked) => setInputField({
-                        ...inputField,
-                        required: checked
-                      })}
+                      onCheckedChange={(checked) =>
+                        setInputField({
+                          ...inputField,
+                          required: checked,
+                        })
+                      }
                     />
                     <Text size="2">필수 입력</Text>
                   </Flex>
@@ -473,9 +503,7 @@ function MessageFormDialog({
             <Button variant="soft" color="gray" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit">
-              {isEdit ? "저장" : "추가"}
-            </Button>
+            <Button type="submit">{isEdit ? "저장" : "추가"}</Button>
           </Flex>
         </form>
       </Dialog.Content>
@@ -500,7 +528,7 @@ export default function ChatbotManagement() {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // 시나리오 목록 로드
@@ -512,12 +540,12 @@ export default function ChatbotManagement() {
   const loadScenarios = async () => {
     try {
       setIsLoading(true);
-      
+
       // 시나리오 로드
       const { data: scenariosData, error: scenariosError } = await supabase
-        .from('chatbot_scenarios')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("chatbot_scenarios")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (scenariosError) throw scenariosError;
 
@@ -526,21 +554,23 @@ export default function ChatbotManagement() {
         scenariosData.map(async (scenario) => {
           // 메시지 로드
           const { data: messagesData, error: messagesError } = await supabase
-            .from('chatbot_messages')
-            .select(`
+            .from("chatbot_messages")
+            .select(
+              `
               *,
               button_options:chatbot_button_options(*),
               input_field:chatbot_input_fields(*)
-            `)
-            .eq('scenario_id', scenario.id)
-            .order('sort_order');
+            `,
+            )
+            .eq("scenario_id", scenario.id)
+            .order("sort_order");
 
           if (messagesError) throw messagesError;
 
           return {
             ...scenario,
             isActive: scenario.is_active,
-            messages: messagesData.map(msg => ({
+            messages: messagesData.map((msg) => ({
               ...msg,
               messageType: msg.message_type,
               responseText: msg.response_text,
@@ -549,13 +579,13 @@ export default function ChatbotManagement() {
               inputField: msg.input_field?.[0] || null,
             })),
           };
-        })
+        }),
       );
 
       setScenarios(scenariosWithMessages);
     } catch (error) {
-      console.error('Error loading scenarios:', error);
-      alert('시나리오 로드 중 오류가 발생했습니다.');
+      console.error("Error loading scenarios:", error);
+      alert("시나리오 로드 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -567,30 +597,28 @@ export default function ChatbotManagement() {
       if (editingScenario) {
         // 시나리오 수정
         const { error } = await supabase
-          .from('chatbot_scenarios')
+          .from("chatbot_scenarios")
           .update({
             title: data.title,
             description: data.description,
             is_active: data.isActive,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', editingScenario.id);
+          .eq("id", editingScenario.id);
 
         if (error) throw error;
 
         setEditingScenario(null);
       } else {
         // 시나리오 추가
-        const { error } = await supabase
-          .from('chatbot_scenarios')
-          .insert({
-            id: Date.now(),
-            title: data.title,
-            description: data.description,
-            is_active: data.isActive,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
+        const { error } = await supabase.from("chatbot_scenarios").insert({
+          id: Date.now(),
+          title: data.title,
+          description: data.description,
+          is_active: data.isActive,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
 
         if (error) throw error;
       }
@@ -598,8 +626,8 @@ export default function ChatbotManagement() {
       await loadScenarios();
       setShowScenarioDialog(false);
     } catch (error) {
-      console.error('Error saving scenario:', error);
-      alert('시나리오 저장 중 오류가 발생했습니다.');
+      console.error("Error saving scenario:", error);
+      alert("시나리오 저장 중 오류가 발생했습니다.");
     }
   };
 
@@ -609,9 +637,9 @@ export default function ChatbotManagement() {
 
     try {
       const { error } = await supabase
-        .from('chatbot_scenarios')
+        .from("chatbot_scenarios")
         .delete()
-        .eq('id', scenarioId);
+        .eq("id", scenarioId);
 
       if (error) throw error;
 
@@ -620,8 +648,8 @@ export default function ChatbotManagement() {
         setSelectedScenarioId(null);
       }
     } catch (error) {
-      console.error('Error deleting scenario:', error);
-      alert('시나리오 삭제 중 오류가 발생했습니다.');
+      console.error("Error deleting scenario:", error);
+      alert("시나리오 삭제 중 오류가 발생했습니다.");
     }
   };
 
@@ -631,27 +659,28 @@ export default function ChatbotManagement() {
 
     try {
       const messageId = editingMessage?.id || Math.floor(Date.now());
-      const sortOrder = editingMessage?.sort_order || selectedScenario.messages.length;
+      const sortOrder =
+        editingMessage?.sort_order || selectedScenario.messages.length;
 
       let finalMessageId = messageId;
 
       if (editingMessage) {
         // 메시지 수정
         const { error: messageError } = await supabase
-          .from('chatbot_messages')
+          .from("chatbot_messages")
           .update({
             message_type: messageData.messageType,
             response_text: messageData.responseText,
             trigger_text: messageData.triggerText,
             sort_order: sortOrder,
           })
-          .eq('id', messageId);
+          .eq("id", messageId);
 
         if (messageError) throw messageError;
       } else {
         // 메시지 추가
         const { data: insertedMessage, error: messageError } = await supabase
-          .from('chatbot_messages')
+          .from("chatbot_messages")
           .insert({
             id: messageId,
             scenario_id: selectedScenario.id,
@@ -668,22 +697,22 @@ export default function ChatbotManagement() {
       }
 
       // 버튼 옵션 처리
-      if (messageData.messageType === 'button') {
+      if (messageData.messageType === "button") {
         await supabase
-          .from('chatbot_button_options')
+          .from("chatbot_button_options")
           .delete()
-          .eq('message_id', finalMessageId);
+          .eq("message_id", finalMessageId);
 
         if (messageData.buttonOptions?.length > 0) {
           const { error: buttonError } = await supabase
-            .from('chatbot_button_options')
+            .from("chatbot_button_options")
             .insert(
               messageData.buttonOptions.map((opt) => ({
                 id: Math.floor(Date.now() + Math.random() * 1000),
                 message_id: finalMessageId,
                 text: opt.text,
                 value: opt.value,
-              }))
+              })),
             );
 
           if (buttonError) throw buttonError;
@@ -691,15 +720,15 @@ export default function ChatbotManagement() {
       }
 
       // 입력 필드 처리
-      if (messageData.messageType === 'input') {
+      if (messageData.messageType === "input") {
         await supabase
-          .from('chatbot_input_fields')
+          .from("chatbot_input_fields")
           .delete()
-          .eq('message_id', finalMessageId);
+          .eq("message_id", finalMessageId);
 
         if (messageData.inputField) {
           const { error: inputError } = await supabase
-            .from('chatbot_input_fields')
+            .from("chatbot_input_fields")
             .insert({
               id: Math.floor(Date.now()),
               message_id: finalMessageId,
@@ -715,8 +744,8 @@ export default function ChatbotManagement() {
       await loadScenarios();
       setShowMessageDialog(false);
     } catch (error) {
-      console.error('Error saving message:', error);
-      alert('메시지 저장 중 오류가 발생했습니다.');
+      console.error("Error saving message:", error);
+      alert("메시지 저장 중 오류가 발생했습니다.");
     }
   };
 
@@ -726,33 +755,33 @@ export default function ChatbotManagement() {
 
     try {
       const { error } = await supabase
-        .from('chatbot_messages')
+        .from("chatbot_messages")
         .delete()
-        .eq('id', msgId);
+        .eq("id", msgId);
 
       if (error) throw error;
 
       await loadScenarios();
     } catch (error) {
-      console.error('Error deleting message:', error);
-      alert('메시지 삭제 중 오류가 발생했습니다.');
+      console.error("Error deleting message:", error);
+      alert("메시지 삭제 중 오류가 발생했습니다.");
     }
   };
 
   // 메시지 순서 변경
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    
+
     if (active.id !== over.id) {
       try {
         const oldScenario = scenarios.find((s) => s.id === selectedScenarioId);
         const oldMessages = [...oldScenario.messages];
-        
+
         const oldIndex = oldMessages.findIndex((m) => m.id === active.id);
         const newIndex = oldMessages.findIndex((m) => m.id === over.id);
-        
+
         const newMessages = arrayMove(oldMessages, oldIndex, newIndex);
-        
+
         // 순서 업데이트를 데이터베이스에 반영
         const updates = newMessages.map((msg, index) => ({
           id: msg.id,
@@ -764,20 +793,20 @@ export default function ChatbotManagement() {
         }));
 
         const { error } = await supabase
-          .from('chatbot_messages')
+          .from("chatbot_messages")
           .upsert(updates);
 
         if (error) throw error;
 
         // 로컬 상태 업데이트
-        setScenarios(scenarios.map(s => 
-          s.id === selectedScenarioId 
-            ? { ...s, messages: newMessages }
-            : s
-        ));
+        setScenarios(
+          scenarios.map((s) =>
+            s.id === selectedScenarioId ? { ...s, messages: newMessages } : s,
+          ),
+        );
       } catch (error) {
-        console.error('Error updating message order:', error);
-        alert('메시지 순서 변경 중 오류가 발생했습니다.');
+        console.error("Error updating message order:", error);
+        alert("메시지 순서 변경 중 오류가 발생했습니다.");
       }
     }
   };
@@ -813,7 +842,7 @@ export default function ChatbotManagement() {
                 key={scenario.id}
                 className={`
                   cursor-pointer transition-all
-                  ${scenario.id === selectedScenarioId ? 'ring-2 ring-blue-500' : ''}
+                  ${scenario.id === selectedScenarioId ? "ring-2 ring-blue-500" : ""}
                   hover:shadow-md
                 `}
                 onClick={() => setSelectedScenarioId(scenario.id)}
@@ -837,7 +866,7 @@ export default function ChatbotManagement() {
                     </Box>
                     <Flex gap="2">
                       <Button
-                      size="1"
+                        size="1"
                         variant="soft"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -895,7 +924,7 @@ export default function ChatbotManagement() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={selectedScenario.messages.map(m => m.id)}
+                items={selectedScenario.messages.map((m) => m.id)}
                 strategy={verticalListSortingStrategy}
               >
                 {selectedScenario.messages.map((message) => (

@@ -65,12 +65,10 @@ export default function Step3_DebtorRegistration({
       {isAdding ? (
         <DebtorForm
           onOpenChange={setIsAdding} // 폼 안에서 닫기 누르면 false로
-          onSubmit={handleAddDebtor}  // 폼 submit하면 newDebtor 추가
+          onSubmit={handleAddDebtor} // 폼 submit하면 newDebtor 추가
         />
       ) : (
-        <Button onClick={() => setIsAdding(true)}>
-          {labelText} 추가하기
-        </Button>
+        <Button onClick={() => setIsAdding(true)}>{labelText} 추가하기</Button>
       )}
     </Box>
   );

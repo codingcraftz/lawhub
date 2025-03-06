@@ -91,16 +91,18 @@ const scenarios = {
 };
 
 // DatePicker 커스텀 입력 컴포넌트
-const CustomDateInput = React.forwardRef(({ value, onClick, placeholder }, ref) => (
-  <button
-    type="button"
-    className="w-full text-left px-4 py-2 bg-gray-3 text-gray-12 placeholder-gray-11 rounded-lg border border-gray-6 focus:outline-none focus:ring-2 focus:ring-blue-8"
-    onClick={onClick}
-    ref={ref}
-  >
-    {value || placeholder}
-  </button>
-));
+const CustomDateInput = React.forwardRef(
+  ({ value, onClick, placeholder }, ref) => (
+    <button
+      type="button"
+      className="w-full text-left px-4 py-2 bg-gray-3 text-gray-12 placeholder-gray-11 rounded-lg border border-gray-6 focus:outline-none focus:ring-2 focus:ring-blue-8"
+      onClick={onClick}
+      ref={ref}
+    >
+      {value || placeholder}
+    </button>
+  ),
+);
 CustomDateInput.displayName = "CustomDateInput";
 
 // 거래 내역 입력 Form + 테이블
@@ -167,7 +169,9 @@ function TransactionsTable({ transactions, setTransactions, type }) {
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-sm text-gray-12">시작일</label>
+                <label className="block mb-1 text-sm text-gray-12">
+                  시작일
+                </label>
                 <DatePicker
                   selected={startDate}
                   onChange={(date) => setStartDate(date)}
@@ -178,7 +182,9 @@ function TransactionsTable({ transactions, setTransactions, type }) {
                 />
               </div>
               <div>
-                <label className="block mb-1 text-sm text-gray-12">종료일</label>
+                <label className="block mb-1 text-sm text-gray-12">
+                  종료일
+                </label>
                 <DatePicker
                   selected={endDate}
                   onChange={(date) => setEndDate(date)}
@@ -191,7 +197,9 @@ function TransactionsTable({ transactions, setTransactions, type }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-sm text-gray-12">금액(원)</label>
+                <label className="block mb-1 text-sm text-gray-12">
+                  금액(원)
+                </label>
                 <input
                   type="number"
                   value={amount}
@@ -201,7 +209,9 @@ function TransactionsTable({ transactions, setTransactions, type }) {
                 />
               </div>
               <div>
-                <label className="block mb-1 text-sm text-gray-12">지급약정일</label>
+                <label className="block mb-1 text-sm text-gray-12">
+                  지급약정일
+                </label>
                 <DatePicker
                   selected={dueDate}
                   onChange={(date) => setDueDate(date)}
@@ -228,7 +238,9 @@ function TransactionsTable({ transactions, setTransactions, type }) {
               />
             </div>
             <div>
-              <label className="block mb-1 text-sm text-gray-12">금액(원)</label>
+              <label className="block mb-1 text-sm text-gray-12">
+                금액(원)
+              </label>
               <input
                 type="number"
                 value={amount}
@@ -238,7 +250,9 @@ function TransactionsTable({ transactions, setTransactions, type }) {
               />
             </div>
             <div>
-              <label className="block mb-1 text-sm text-gray-12">지급약정일</label>
+              <label className="block mb-1 text-sm text-gray-12">
+                지급약정일
+              </label>
               <DatePicker
                 selected={dueDate}
                 onChange={(date) => setDueDate(date)}
@@ -250,7 +264,12 @@ function TransactionsTable({ transactions, setTransactions, type }) {
             </div>
           </div>
         )}
-        <Button variant="soft" color="blue" className="w-full" onClick={handleAdd}>
+        <Button
+          variant="soft"
+          color="blue"
+          className="w-full"
+          onClick={handleAdd}
+        >
           <PlusIcon className="mr-1" />
           추가하기
         </Button>
@@ -297,18 +316,26 @@ function TransactionsTable({ transactions, setTransactions, type }) {
                 <>
                   <Table.Cell>{transaction.startDate}</Table.Cell>
                   <Table.Cell>{transaction.endDate}</Table.Cell>
-                  <Table.Cell>{transaction.amount.toLocaleString()}원</Table.Cell>
+                  <Table.Cell>
+                    {transaction.amount.toLocaleString()}원
+                  </Table.Cell>
                   <Table.Cell>{transaction.dueDate}</Table.Cell>
                 </>
               ) : (
                 <>
                   <Table.Cell>{transaction.transactionDate}</Table.Cell>
-                  <Table.Cell>{transaction.amount.toLocaleString()}원</Table.Cell>
+                  <Table.Cell>
+                    {transaction.amount.toLocaleString()}원
+                  </Table.Cell>
                   <Table.Cell>{transaction.dueDate}</Table.Cell>
                 </>
               )}
               <Table.Cell>
-                <Button variant="ghost" color="red" onClick={() => handleDelete(index)}>
+                <Button
+                  variant="ghost"
+                  color="red"
+                  onClick={() => handleDelete(index)}
+                >
                   <Cross2Icon />
                 </Button>
               </Table.Cell>
@@ -340,24 +367,22 @@ function TransactionsSummary({ transactions, type }) {
           {type === "construction" ? (
             <>
               • 기간: {t.startDate} ~ {t.endDate}
-              <br />
-              • 금액: {t.amount.toLocaleString()}원
-              <br />
-              • 지급약정일: {t.dueDate}
+              <br />• 금액: {t.amount.toLocaleString()}원
+              <br />• 지급약정일: {t.dueDate}
             </>
           ) : (
             <>
               • 거래일: {t.transactionDate}
-              <br />
-              • 금액: {t.amount.toLocaleString()}원
-              <br />
-              • 지급약정일: {t.dueDate}
+              <br />• 금액: {t.amount.toLocaleString()}원
+              <br />• 지급약정일: {t.dueDate}
             </>
           )}
           <div className="border-b border-gray-6 my-2"></div>
         </div>
       ))}
-      <div className="font-semibold">총 금액: {totalAmount.toLocaleString()}원</div>
+      <div className="font-semibold">
+        총 금액: {totalAmount.toLocaleString()}원
+      </div>
     </div>
   );
 }
@@ -394,7 +419,8 @@ export default function Chatbot() {
   // 스크롤 하단 이동
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -460,7 +486,9 @@ export default function Chatbot() {
         {
           sender: "bot",
           text: "거래 내역이 입력되었습니다.",
-          component: <TransactionsSummary transactions={transactions} type={caseType} />,
+          component: (
+            <TransactionsSummary transactions={transactions} type={caseType} />
+          ),
         },
         {
           sender: "bot",
@@ -533,14 +561,14 @@ export default function Chatbot() {
         caseType === "loan"
           ? "대여금"
           : caseType === "goods"
-          ? "물품대금"
-          : "공사대금",
+            ? "물품대금"
+            : "공사대금",
       extra_info:
         caseType === "goods"
           ? answers.itemName
           : caseType === "construction"
-          ? answers.location
-          : null,
+            ? answers.location
+            : null,
       total_amount: totalAmount,
       user_id: user.id,
     };
@@ -735,7 +763,10 @@ export default function Chatbot() {
         </div>
 
         {/* 채팅 메세지 목록 */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
           <AnimatePresence>
             {messages.map((msg, index) => (
               <motion.div
@@ -755,7 +786,9 @@ export default function Chatbot() {
                       : "bg-blue-9 text-gray-1 rounded-tr-none"
                   }`}
                 >
-                  <pre className="whitespace-pre-wrap font-sans">{msg.text}</pre>
+                  <pre className="whitespace-pre-wrap font-sans">
+                    {msg.text}
+                  </pre>
                   {msg.component}
                   {msg.showConfirmButtons && (
                     <div className="flex gap-2 mt-3">
@@ -820,7 +853,12 @@ export default function Chatbot() {
 
             {/* 뒤로가기 버튼(하단) */}
             <div className="px-4 pb-4">
-              <Button variant="soft" color="gray" onClick={handleGoBack} className="w-full">
+              <Button
+                variant="soft"
+                color="gray"
+                onClick={handleGoBack}
+                className="w-full"
+              >
                 이전으로 돌아가기
               </Button>
             </div>

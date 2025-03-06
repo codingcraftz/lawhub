@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase"; // 프로젝트별 Supabase 초기화 경로에 맞춰 수정
-import { Button } from "@radix-ui/themes";   // (UI 라이브러리는 원하는 대로 교체 가능)
+import { Button } from "@radix-ui/themes"; // (UI 라이브러리는 원하는 대로 교체 가능)
 import { AiFillStar, AiOutlineStar } from "react-icons/ai"; // react-icons 사용 (별 아이콘)
 import { useDebouncedCallback } from "use-debounce"; // npm install use-debounce
 
@@ -45,7 +45,9 @@ export default function FavoriteStar({ userId, assignmentId }) {
     };
     checkFavorite();
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [userId, assignmentId]);
 
   // 2) 즐겨찾기 등록/해제 토글
@@ -86,7 +88,12 @@ export default function FavoriteStar({ userId, assignmentId }) {
   const disabled = loading || !userId || !assignmentId;
 
   return (
-    <Button variant="ghost" size="2" onClick={handleToggleFavorite} disabled={disabled}>
+    <Button
+      variant="ghost"
+      size="2"
+      onClick={handleToggleFavorite}
+      disabled={disabled}
+    >
       {isFavorite ? (
         <AiFillStar size={20} color="#f5c518" /> // 노란색 별
       ) : (
