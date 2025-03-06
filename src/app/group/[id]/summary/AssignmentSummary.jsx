@@ -7,27 +7,26 @@ import { Box, Text } from "@radix-ui/themes";
 import AssignmentsTable from "@/components/Assignment/AssignmentsTable";
 import { useUser } from "@/hooks/useUser";
 
-
 export default function AssignmentSummary() {
-	const { id: groupId } = useParams();
-	const [assignments, setAssignments] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const { user } = useUser()
-	const isAdmin = user?.role === "admin" || user?.role === "staff"
+  const { id: groupId } = useParams();
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useUser();
+  const isAdmin = user?.role === "admin" || user?.role === "staff";
 
+  useEffect(() => {
+    if (groupId) {
+      fetchAssignments();
+    }
+  }, [groupId]);
 
-	useEffect(() => {
-		if (groupId) {
-			fetchAssignments();
-		}
-	}, [groupId]);
+  const fetchAssignments = async () => {
+    setLoading(true);
 
-	const fetchAssignments = async () => {
-		setLoading(true);
-
-		const { data, error } = await supabase
-			.from("assignments")
-			.select(`
+    const { data, error } = await supabase
+      .from("assignments")
+      .select(
+        `
         id,
         description,
         status,
@@ -51,26 +50,26 @@ export default function AssignmentSummary() {
         ),
         cases ( id, court_name, case_year, case_type, case_number, case_subject, status ),
         enforcements ( id, status, amount, type )
-      `)
-			.eq("assignment_groups.group_id", groupId);
+      `,
+      )
+      .eq("assignment_groups.group_id", groupId);
 
-		if (error) {
-			console.error("의뢰 정보 불러오기 오류:", error);
-		} else {
-			setAssignments(data || []);
-		}
-		setLoading(false);
-	};
+    if (error) {
+      console.error("의뢰 정보 불러오기 오류:", error);
+    } else {
+      setAssignments(data || []);
+    }
+    setLoading(false);
+  };
 
-	if (loading) {
-		return <Text>로딩 중...</Text>;
-	}
+  if (loading) {
+    return <Text>로딩 중...</Text>;
+  }
 
-	return (
-		<Box className="w-full py-4">
-			{/* 받아온 assignments 배열을 하위 컴포넌트에 넘겨줌 */}
-			<AssignmentsTable assignments={assignments} isAdmin={isAdmin} />
-		</Box>
-	);
+  return (
+    <Box className="w-full py-4">
+      {/* 받아온 assignments 배열을 하위 컴포넌트에 넘겨줌 */}
+      <AssignmentsTable assignments={assignments} isAdmin={isAdmin} />
+    </Box>
+  );
 }
-

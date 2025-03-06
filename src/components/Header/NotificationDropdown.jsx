@@ -73,7 +73,7 @@ const NotificationDropdown = ({ user }) => {
             return updated.slice(0, MAX_DISPLAY_COUNT);
           });
           setUnreadCount((prev) => prev + 1);
-        }
+        },
       )
       .subscribe();
 
@@ -95,7 +95,7 @@ const NotificationDropdown = ({ user }) => {
 
     if (!error) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
@@ -158,9 +158,9 @@ const NotificationDropdown = ({ user }) => {
                 `}
               >
                 <div className="flex items-center justify-between">
-									                <div className="font-semibold text-gray-12">
-                  {notification.message}
-                </div>
+                  <div className="font-semibold text-gray-12">
+                    {notification.message}
+                  </div>
                   <span className="ml-4 text-xs text-gray-11 whitespace-nowrap">
                     {new Date(notification.created_at).toLocaleString("ko-KR", {
                       month: "2-digit",
@@ -171,9 +171,9 @@ const NotificationDropdown = ({ user }) => {
                     })}
                   </span>
                 </div>
-								                  <span className="font-medium text-xs text-gray-11">
-                    {notification.title}
-                  </span>
+                <span className="font-medium text-xs text-gray-11">
+                  {notification.title}
+                </span>
                 {notification.description && (
                   <div className="text-gray-11 text-sm break-words">
                     {notification.description}
@@ -182,9 +182,7 @@ const NotificationDropdown = ({ user }) => {
               </div>
             ))
           ) : (
-            <div className="p-4 text-center text-gray-11">
-              알림이 없습니다
-            </div>
+            <div className="p-4 text-center text-gray-11">알림이 없습니다</div>
           )}
         </div>
       )}

@@ -10,24 +10,23 @@ import { useUser } from "@/hooks/useUser";
  * @param {string} redirectPath - 권한이 없을 경우 리디렉션할 경로
  */
 const useRoleRedirect = (
-	requiredRoles = [],
-	allowedEmployeeTypes = [],
-	redirectPath
+  requiredRoles = [],
+  allowedEmployeeTypes = [],
+  redirectPath,
 ) => {
-	const { user } = useUser();
-	const router = useRouter();
+  const { user } = useUser();
+  const router = useRouter();
 
-	useEffect(() => {
-		if (
-			user &&
-			(!requiredRoles.includes(user.role) ||
-				(allowedEmployeeTypes.length > 0 &&
-					!allowedEmployeeTypes.includes(user.employee_type)))
-		) {
-			router.push(redirectPath);
-		}
-	}, [user, requiredRoles, allowedEmployeeTypes, redirectPath, router]);
+  useEffect(() => {
+    if (
+      user &&
+      (!requiredRoles.includes(user.role) ||
+        (allowedEmployeeTypes.length > 0 &&
+          !allowedEmployeeTypes.includes(user.employee_type)))
+    ) {
+      router.push(redirectPath);
+    }
+  }, [user, requiredRoles, allowedEmployeeTypes, redirectPath, router]);
 };
 
 export default useRoleRedirect;
-

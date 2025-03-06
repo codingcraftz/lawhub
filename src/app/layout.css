@@ -217,7 +217,6 @@ html.light .react-datepicker__day--disabled {
   color: var(--gray-12);
 }
 
-
 select {
   width: 100%;
   padding: 0.5rem 2rem 0.5rem 0.5rem; /* 오른쪽에 여유 공간 추가 */
@@ -242,5 +241,3 @@ select {
 select:focus {
   border-color: var(--gray-8);
 }
-
-
