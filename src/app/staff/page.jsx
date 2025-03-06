@@ -6,7 +6,7 @@ import FavoriteAssignmentsPage from './FavoriteAssignmentsPage';
 
 export default function StaffPage() {
   return (
-    <div className='w-full px-4 sm:px-6 md:px-12 py-4'>
+    <div className='w-full py-4 max-w-screen-2xl sm:px-2 md:px-4 lg:px-24'>
       <Tabs.Root defaultValue='assigned' className='w-full'>
         <Tabs.List className='flex border-b'>
           <Tabs.Trigger

@@ -142,7 +142,7 @@ const AssignmentPage = () => {
   const assignees = assignment?.assignment_assignees?.map((a) => a.users.name);
 
   return (
-    <div className='p-4 mx-auto flex flex-col w-full text-gray-12'>
+    <div className='p-4 mx-auto flex flex-col w-full text-gray-12 max-w-screen-2xl sm:px-2 md:px-4 lg:px-24'>
       <div className='flex justify-between mb-4 flex-wrap gap-4'>
         <div className='flex items-center gap-2 flex-wrap'>
           <ArrowLeftIcon className='w-8 h-8 cursor-pointer' onClick={() => router.back()} />
