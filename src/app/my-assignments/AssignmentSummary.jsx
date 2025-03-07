@@ -33,7 +33,6 @@ export default function AssignmentSummary({ clientId }) {
           id,
           description,
 					type,
-					is_favorite,
           status,
           created_at,
           civil_litigation_status,
