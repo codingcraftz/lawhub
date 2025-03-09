@@ -12,6 +12,7 @@ export default function DebtorForm({
 }) {
 	const [formData, setFormData] = useState({
 		name: "",
+		status: "",
 		registration_number: "",
 		phone_number: "",
 		phone_number_2: "",
@@ -26,6 +27,7 @@ export default function DebtorForm({
 		if (initialData) {
 			setFormData({
 				name: initialData.name || "",
+				status: initialData.status || "",
 				registration_number: initialData.registration_number || "",
 				phone_number: initialData.phone_number || "",
 				phone_number_2: initialData.phone_number_2 || "",
@@ -90,6 +92,25 @@ export default function DebtorForm({
 							</Text>
 						)}
 					</Box>
+
+					<Box mb="3">
+						<Text size="2" color="gray" className="mb-1">
+							상태
+						</Text>
+						<input
+							name="status"
+							value={formData.status}
+							onChange={(e) => handleChangeRaw("status", e.target.value)}
+							className="w-full p-2 border border-gray-6 rounded text-gray-12 focus:outline-none focus:border-gray-8"
+							required
+						/>
+						{errors.status && (
+							<Text color="red" size="2">
+								{errors.status}
+							</Text>
+						)}
+					</Box>
+
 
 					{/* 주민등록번호 */}
 					<Box mb="3">
