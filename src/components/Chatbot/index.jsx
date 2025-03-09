@@ -217,77 +217,82 @@ export default function Chatbot() {
 		}
 	};
 
-	const handleSubmitAnswers = async (mode = "submit") => {
-		if (!user) {
-			setMessages((prev) => [
-				...prev,
-				{
-					sender: "bot",
-					text: "로그인이 필요한 서비스입니다. 로그인 후 다시 시도해주세요.",
-				},
-			]);
-			return;
-		}
-		const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
-		const payload = {
-			case_type:
-				caseType === "loan"
-					? "대여금"
-					: caseType === "goods"
-						? "물품대금"
-						: "공사대금",
-			extra_info:
-				caseType === "goods"
-					? answers.itemName
-					: caseType === "construction"
-						? answers.location
-						: null,
-			total_amount: totalAmount,
-			user_id: user.id,
-			status: mode === "temp" ? "임시저장" : "접수신청",
-		};
+const handleSubmitAnswers = async (mode = "submit") => {
+    if (!user) {
+        setMessages((prev) => [
+            ...prev,
+            { sender: "bot", text: "로그인이 필요한 서비스입니다. 로그인 후 다시 시도해주세요." }
+        ]);
+        return;
+    }
 
-		try {
-			const { data: caseData, error: caseError } = await supabase
-				.from("chatbot_cases")
-				.insert([payload])
-				.select()
-				.single();
-			if (caseError) throw caseError;
-			const transactionsPayload = transactions.map((t) => ({
-				case_id: caseData.id,
-				transaction_date: t.transactionDate || null,
-				start_date: t.startDate || null,
-				end_date: t.endDate || null,
-				amount: t.amount,
-				due_date: t.dueDate,
-			}));
-			const { error: transactionsError } = await supabase
-				.from("case_transactions")
-				.insert(transactionsPayload);
-			if (transactionsError) throw transactionsError;
-			setMessages((prev) => [
-				...prev,
-				{
-					sender: "bot",
-					text:
-						mode === "temp"
-							? "임시저장 되었습니다."
-							: "답변 감사합니다. 접수가 완료되었습니다.",
-				},
-			]);
-			setIsSubmitted(true);
-		} catch (err) {
-			console.error("Error:", err);
-			setMessages((prev) => [
-				...prev,
-				{
-					sender: "bot",
-					text: "데이터 저장 중 오류가 발생했습니다. 다시 시도해주세요.",
-				},
-			]);
-		}
-	};
+    // 사건 기본 정보 구성
+    const casePayload = {
+        case_type: caseType === "loan" ? "대여금" : caseType === "goods" ? "물품대금" : "공사대금",
+        extra_info: caseType === "goods" ? answers.itemName : caseType === "construction" ? answers.location : null,
+        user_id: user.id,
+        status: mode === "temp" ? "임시저장" : "접수신청",
+    };
+
+    try {
+        // 1️⃣ 사건 저장 (cases 테이블)
+        const { data: caseData, error: caseError } = await supabase
+            .from("chatbot_cases")
+            .insert([casePayload])
+            .select()
+            .single();
+
+        if (caseError) throw caseError;
+
+        // 2️⃣ 거래 내역 개별 저장 (transactions 테이블)
+        if (transactions.length > 0) {
+            for (const transaction of transactions) {
+                // 기존 데이터 확인
+                const { data: existingTransaction } = await supabase
+                    .from("transactions")
+                    .select("id")
+                    .eq("case_id", caseData.id)
+                    .eq("transaction_date", transaction.transactionDate || null)
+                    .maybeSingle();
+
+                if (!existingTransaction) {
+                    // 새로운 거래 내역 삽입
+                    const { error: transactionError } = await supabase
+                        .from("transactions")
+                        .insert([{
+                            case_id: caseData.id,
+                            transaction_date: transaction.transactionDate || null,
+                            start_date: transaction.startDate || null,
+                            end_date: transaction.endDate || null,
+                            amount: transaction.amount,
+                            due_date: transaction.dueDate || null,
+                        }]);
+
+                    if (transactionError) throw transactionError;
+                }
+            }
+        }
+
+        // 3️⃣ 성공 메시지 및 UI 업데이트
+        setMessages((prev) => [
+            ...prev,
+            {
+                sender: "bot",
+                text: mode === "temp"
+                    ? "임시저장 되었습니다."
+                    : "답변 감사합니다. 접수가 완료되었습니다."
+            }
+        ]);
+        setIsSubmitted(true);
+    } catch (err) {
+        console.error("Error:", err);
+        setMessages((prev) => [
+            ...prev,
+            { sender: "bot", text: "데이터 저장 중 오류가 발생했습니다. 다시 시도해주세요." }
+        ]);
+    }
+};
+
 
 	const resetConversation = () => {
 		setCaseType(null);
