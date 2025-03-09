@@ -53,6 +53,12 @@ const Header = () => {
       roles: ["client"],
       employeeTypes: [],
     },
+        {
+      title: "나의 채권 현황",
+      path: "/my-bonds",
+      roles: ["client", "admin"],
+      employeeTypes: [],
+    },
     {
       title: "공지사항",
       path: "/news",

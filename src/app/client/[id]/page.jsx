@@ -77,7 +77,7 @@ const ClientCasePage = () => {
   }, [clientId]);
 
   return (
-    <Box className='w-full py-4 px-4 sm:px-r md:px-4 lg:px-24 max-w-screen-2xl'>
+    <Box className='w-full py-4 sm:px-2 md:px-4 lg:px-24 max-w-screen-2xl'>
       <header className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4'>
         <div className='flex items-center gap-2'>
           <ArrowLeftIcon className='w-8 h-8 cursor-pointer' onClick={() => router.back()} />
