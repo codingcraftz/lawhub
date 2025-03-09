@@ -1,5 +1,3 @@
-// src/components/Pagination/index.jsx
-
 "use client";
 
 import React from "react";
@@ -38,7 +36,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 					style={{ margin: "0 4px" }}
 				>
 					{i}
-				</Button>,
+				</Button>
 			);
 		}
 
@@ -67,3 +65,4 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 };
 
 export default Pagination;
+
