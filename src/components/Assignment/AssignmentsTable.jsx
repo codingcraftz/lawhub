@@ -149,7 +149,7 @@ export default function AssignmentsTable({ assignments }) {
                     </Table.Cell>
                     {/* 현황 (assignment_timelines 첫 기록) */}
                     <Table.Cell className='text-center whitespace-nowrap'>
-                      {statusText === '진행 상황 없음' ? (
+                      {statusText === '-' ? (
                         <Text>{statusText}</Text>
                       ) : (
                         <Popover.Root>
