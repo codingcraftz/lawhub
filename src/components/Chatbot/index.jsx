@@ -381,7 +381,7 @@ export default function Chatbot() {
 			);
 		}
 		return (
-			<div className="p-4 flex gap-2">
+			<div className="p-4 flex gap-2 items-center">
 				<input
 					type="text"
 					className="flex-1 px-4 py-2 border"
