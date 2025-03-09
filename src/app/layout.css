@@ -241,3 +241,7 @@ select {
 select:focus {
   border-color: var(--gray-8);
 }
+
+.react-datepicker__year-read-view--selected-year, .react-datepicker__month-read-view--selected-month{
+	color: #d1d5db !important
+}
