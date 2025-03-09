@@ -84,7 +84,6 @@ export default function AssignmentsTable({ assignments }) {
 							{isAdmin && <Table.ColumnHeaderCell className='text-center'>관심</Table.ColumnHeaderCell>}
 							<Table.ColumnHeaderCell className='text-center'>상태</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className='text-center'>분류</Table.ColumnHeaderCell>
-							<Table.ColumnHeaderCell className='text-center'>요약</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className='text-center'>당사자</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className='text-center'>현황</Table.ColumnHeaderCell>
 							<Table.ColumnHeaderCell className='text-center'>금액 현황</Table.ColumnHeaderCell>
@@ -132,10 +131,6 @@ export default function AssignmentsTable({ assignments }) {
 											<Badge color={assignment.type === '소송' ? 'indigo' : 'orange'}>
 												{assignment.type === '소송' ? '소송' : '채권'}
 											</Badge>
-										</Table.Cell>
-										<Table.Cell className='text-center whitespace-nowrap'>
-											{assignment.description || "@@@미등록"}
-
 										</Table.Cell>
 
 
