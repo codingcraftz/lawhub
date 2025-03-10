@@ -16,25 +16,32 @@ const COPY_MESSAGE_TEMPLATE = `안녕하십니까, 채권관리 담당자 박준
 원만한 처리를 위해 신속한 회신을 부탁드립니다.
 
 감사합니다.
-`
+`;
 
 export const handleCopy = async (amount) => {
-	const formattedAmount = typeof amount === 'number' ? amount.toLocaleString() : amount;
-	const message = COPY_MESSAGE_TEMPLATE.replace('{금액}', formattedAmount);
-	try {
-		await navigator.clipboard.writeText(message);
-		toast.success("메시지가 복사되었습니다.");
-	} catch (error) {
-		toast.error("메시지 복사에 실패했습니다.");
-	}
+  const formattedAmount = typeof amount === 'number' ? amount.toLocaleString() : amount;
+  const message = COPY_MESSAGE_TEMPLATE.replace('{금액}', formattedAmount);
+  try {
+    await navigator.clipboard.writeText(message);
+    toast.success('메시지가 복사되었습니다.');
+  } catch (error) {
+    toast.error('메시지 복사에 실패했습니다.');
+  }
 };
 
 export const handleCopyName = async (value) => {
-	try {
-		await navigator.clipboard.writeText(value);
-		toast.success("메시지가 복사되었습니다.");
-	} catch (error) {
-		toast.error("메시지 복사에 실패했습니다.");
-	}
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success('메시지가 복사되었습니다.');
+  } catch (error) {
+    toast.error('메시지 복사에 실패했습니다.');
+  }
 };
 
+export const getCurrentDateFormatted = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
+};
