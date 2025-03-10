@@ -15,8 +15,7 @@ const COPY_MESSAGE_TEMPLATE = `안녕하십니까, 채권관리 담당자 박준
 
 원만한 처리를 위해 신속한 회신을 부탁드립니다.
 
-감사합니다.
-`;
+감사합니다.`;
 
 export const handleCopy = async (amount) => {
   const formattedAmount = typeof amount === 'number' ? amount.toLocaleString() : amount;

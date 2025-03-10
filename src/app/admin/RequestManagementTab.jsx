@@ -17,11 +17,11 @@ function Modal({ isOpen, onClose, title, children }) {
 
   if (!isOpen) return null;
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
-      <div className='bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-lg w-full'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black opacity-80'>
+      <div className='p-6 rounded-lg shadow-lg max-w-lg w-full bg-gray-2'>
         <div className='flex justify-between items-center mb-4'>
-          <h2 className='text-xl font-bold text-gray-900 dark:text-white'>{title}</h2>
-          <button onClick={onClose} className='text-2xl text-gray-900 dark:text-white'>
+          <h2 className='text-xl font-bold'>{title}</h2>
+          <button onClick={onClose} className='text-2xl'>
             &times;
           </button>
         </div>
@@ -180,13 +180,13 @@ export default function AdminCaseManagement() {
       </Table.Root>
 
       {/* 상세보기 모달 */}
-      <Modal isOpen={!!selectedCase} onClose={() => setSelectedCase(null)}>
+      <Modal isOpen={!!selectedCase} onClose={() => setSelectedCase(null)} title="의뢰 상세보기">
         {selectedCase && (
           <>
             <div className='mb-4'>
-              <Text className='text-gray-12 font-semibold mb-2'>관리자 메모</Text>
+              <Text className='font-semibold mb-2'>관리자 메모</Text>
               <TextArea
-                className='bg-gray-1 text-gray-12 border border-gray-6 w-full p-3 rounded'
+                className='border border-gray-6 w-full p-3 rounded'
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
                 onBlur={saveAdminNotes}
