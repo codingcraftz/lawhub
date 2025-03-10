@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/utils/supabase';
 import { Table, Text, Button, Box, TextArea } from '@radix-ui/themes';
+import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 
 function Modal({ isOpen, onClose, title, children }) {
   useEffect(() => {
@@ -17,7 +18,7 @@ function Modal({ isOpen, onClose, title, children }) {
 
   if (!isOpen) return null;
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black opacity-80'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black opac'>
       <div className='p-6 rounded-lg shadow-lg max-w-lg w-full bg-gray-2'>
         <div className='flex justify-between items-center mb-4'>
           <h2 className='text-xl font-bold'>{title}</h2>
@@ -37,6 +38,10 @@ export default function AdminCaseManagement() {
   const [selectedCase, setSelectedCase] = useState(null);
   const [usersMap, setUsersMap] = useState({});
   const [adminNotes, setAdminNotes] = useState('');
+  const [sortKey, setSortKey] = useState(null);
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [modalSortKey, setModalSortKey] = useState(null);
+  const [modalSortOrder, setModalSortOrder] = useState('asc');
 
   // 데이터 로드 함수
   const fetchCases = async () => {
@@ -52,6 +57,19 @@ export default function AdminCaseManagement() {
       setLoading(false);
       return;
     }
+
+    // 각 case의 거래 내역을 가져와서 총액 계산
+    const casesWithTransactions = await Promise.all(
+      casesData.map(async (caseItem) => {
+        const { data: transactions } = await supabase.from('transactions').select('amount').eq('case_id', caseItem.id);
+
+        const totalAmount = transactions?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0;
+        return {
+          ...caseItem,
+          total_amount: totalAmount,
+        };
+      })
+    );
 
     const userIds = [...new Set(casesData.map((c) => c.user_id))];
     const { data: usersData, error: usersError } = await supabase
@@ -71,7 +89,7 @@ export default function AdminCaseManagement() {
     }, {});
 
     setUsersMap(usersMap);
-    setCases(casesData);
+    setCases(casesWithTransactions);
     setLoading(false);
   };
 
@@ -101,8 +119,18 @@ export default function AdminCaseManagement() {
       return;
     }
 
+    // 거래 내역의 총액 계산
+    const totalAmount = transactions?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0;
+
     setAdminNotes(caseItem.admin_notes || '');
-    setSelectedCase({ ...caseItem, transactions });
+    setSelectedCase({
+      ...caseItem,
+      transactions,
+      total_amount: totalAmount,
+    });
+
+    // cases 배열에서 해당 case의 총액도 업데이트
+    setCases((prevCases) => prevCases.map((c) => (c.id === caseItem.id ? { ...c, total_amount: totalAmount } : c)));
   };
 
   // 관리자 메모 저장 (자동 저장: TextArea에서 focus가 벗어나면 저장)
@@ -122,6 +150,117 @@ export default function AdminCaseManagement() {
     fetchCases();
   };
 
+  // 정렬 처리 함수
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
+
+  // 정렬 아이콘 렌더링 함수
+  const renderSortIcon = (key) => {
+    if (sortKey === key) {
+      return sortOrder === 'asc' ? <FaSortUp size={16} /> : <FaSortDown size={16} />;
+    }
+    return <FaSort size={16} className='opacity-50' />;
+  };
+
+  // 정렬된 케이스 목록
+  const sortedCases = useMemo(() => {
+    let sorted = [...cases];
+    if (sortKey) {
+      sorted.sort((a, b) => {
+        let aValue, bValue;
+
+        switch (sortKey) {
+          case 'created_at':
+            aValue = new Date(a.created_at);
+            bValue = new Date(b.created_at);
+            return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+          case 'total_amount':
+            aValue = Number(a.total_amount) || 0;
+            bValue = Number(b.total_amount) || 0;
+            return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+          case 'case_type':
+            aValue = a.case_type || '';
+            bValue = b.case_type || '';
+            return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+          case 'user_name':
+            aValue = usersMap[a.user_id]?.name || '';
+            bValue = usersMap[b.user_id]?.name || '';
+            return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+          case 'user_phone':
+            aValue = usersMap[a.user_id]?.phone_number || '';
+            bValue = usersMap[b.user_id]?.phone_number || '';
+            return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+          case 'status':
+            aValue = a.status || '';
+            bValue = b.status || '';
+            return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+          default:
+            return 0;
+        }
+      });
+    }
+    return sorted;
+  }, [cases, sortKey, sortOrder, usersMap]);
+
+  // 날짜 포맷 함수
+  const formatDate = (dateString) => {
+    if (!dateString) return '미등록';
+    const date = new Date(dateString);
+
+    // 1970년 1월 1일인 경우 미등록으로 표시
+    if (date.getFullYear() === 1970 && date.getMonth() === 0 && date.getDate() === 1) {
+      return '미등록';
+    }
+
+    return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  // 모달 내 정렬 처리 함수
+  const handleModalSort = (key) => {
+    if (modalSortKey === key) {
+      setModalSortOrder(modalSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setModalSortKey(key);
+      setModalSortOrder('asc');
+    }
+  };
+
+  // 정렬된 거래 내역
+  const sortedTransactions = useMemo(() => {
+    if (!selectedCase?.transactions) return [];
+
+    let sorted = [...selectedCase.transactions];
+    if (modalSortKey) {
+      sorted.sort((a, b) => {
+        let aValue, bValue;
+
+        switch (modalSortKey) {
+          case 'transaction_date':
+            aValue = new Date(a.transaction_date || '');
+            bValue = new Date(b.transaction_date || '');
+            return modalSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+          case 'amount':
+            aValue = Number(a.amount) || 0;
+            bValue = Number(b.amount) || 0;
+            return modalSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+          case 'due_date':
+            aValue = new Date(a.due_date || '');
+            bValue = new Date(b.due_date || '');
+            return modalSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+          default:
+            return 0;
+        }
+      });
+    }
+    return sorted;
+  }, [selectedCase?.transactions, modalSortKey, modalSortOrder]);
+
   if (loading) return <Text>로딩 중...</Text>;
   if (!cases.length) return <Text>의뢰 내역이 없습니다.</Text>;
 
@@ -130,27 +269,62 @@ export default function AdminCaseManagement() {
       <Table.Root>
         <Table.Header>
           <Table.Row className='bg-gray-4'>
-            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>고객 이름</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>유형</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>총 금액</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>생성일</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>상태</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>처리</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+              <button
+                className='flex items-center justify-center gap-1 w-full'
+                onClick={() => handleSort('created_at')}
+              >
+                생성일 {renderSortIcon('created_at')}
+              </button>
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+              <button className='flex items-center justify-center gap-1 w-full' onClick={() => handleSort('case_type')}>
+                유형 {renderSortIcon('case_type')}
+              </button>
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+              <button
+                className='flex items-center justify-center gap-1 w-full'
+                onClick={() => handleSort('total_amount')}
+              >
+                총 금액 {renderSortIcon('total_amount')}
+              </button>
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+              <button className='flex items-center justify-center gap-1 w-full' onClick={() => handleSort('user_name')}>
+                고객 이름 {renderSortIcon('user_name')}
+              </button>
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+              <button
+                className='flex items-center justify-center gap-1 w-full'
+                onClick={() => handleSort('user_phone')}
+              >
+                고객 번호 {renderSortIcon('user_phone')}
+              </button>
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+              <button className='flex items-center justify-center gap-1 w-full' onClick={() => handleSort('status')}>
+                상태 {renderSortIcon('status')}
+              </button>
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>상세보기</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
 
         <Table.Body>
-          {cases.map((caseItem) => (
+          {sortedCases.map((caseItem) => (
             <Table.Row key={caseItem.id} className='hover:bg-gray-5 transition-colors duration-200'>
-              <Table.Cell className='text-gray-12 py-2 px-4'>
-                {usersMap[caseItem.user_id]?.name || '알 수 없음'}
-              </Table.Cell>
+              <Table.Cell className='text-gray-12 py-2 px-4'>{formatDate(caseItem.created_at)}</Table.Cell>
               <Table.Cell className='text-gray-12 py-2 px-4'>{caseItem.case_type}</Table.Cell>
               <Table.Cell className='text-gray-12 py-2 px-4'>
                 {caseItem.total_amount ? `${Number(caseItem.total_amount).toLocaleString()} 원` : '-'}
               </Table.Cell>
               <Table.Cell className='text-gray-12 py-2 px-4'>
-                {new Date(caseItem.created_at).toLocaleString('ko-KR')}
+                {usersMap[caseItem.user_id]?.name || '알 수 없음'}
+              </Table.Cell>
+              <Table.Cell className='text-gray-12 py-2 px-4'>
+                {usersMap[caseItem.user_id]?.phone_number || '-'}
               </Table.Cell>
               <Table.Cell className='py-2 px-4'>
                 <select
@@ -180,7 +354,7 @@ export default function AdminCaseManagement() {
       </Table.Root>
 
       {/* 상세보기 모달 */}
-      <Modal isOpen={!!selectedCase} onClose={() => setSelectedCase(null)} title="의뢰 상세보기">
+      <Modal isOpen={!!selectedCase} onClose={() => setSelectedCase(null)} title='의뢰 상세보기'>
         {selectedCase && (
           <>
             <div className='mb-4'>
@@ -196,23 +370,73 @@ export default function AdminCaseManagement() {
 
             <div>
               <Text className='font-semibold text-gray-12 mb-2'>거래 내역</Text>
-              {selectedCase.transactions && selectedCase.transactions.length ? (
+              {sortedTransactions.length ? (
                 <Table.Root>
                   <Table.Header>
                     <Table.Row className='bg-gray-4'>
-                      <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>거래일</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>금액</Table.ColumnHeaderCell>
-                      <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>지급약정일</Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+                        <button
+                          className='flex items-center justify-center gap-1 w-full'
+                          onClick={() => handleModalSort('transaction_date')}
+                        >
+                          거래일{' '}
+                          {modalSortKey === 'transaction_date' ? (
+                            modalSortOrder === 'asc' ? (
+                              <FaSortUp size={16} />
+                            ) : (
+                              <FaSortDown size={16} />
+                            )
+                          ) : (
+                            <FaSort size={16} className='opacity-50' />
+                          )}
+                        </button>
+                      </Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+                        <button
+                          className='flex items-center justify-center gap-1 w-full'
+                          onClick={() => handleModalSort('amount')}
+                        >
+                          금액{' '}
+                          {modalSortKey === 'amount' ? (
+                            modalSortOrder === 'asc' ? (
+                              <FaSortUp size={16} />
+                            ) : (
+                              <FaSortDown size={16} />
+                            )
+                          ) : (
+                            <FaSort size={16} className='opacity-50' />
+                          )}
+                        </button>
+                      </Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell className='text-gray-12 py-2 px-4'>
+                        <button
+                          className='flex items-center justify-center gap-1 w-full'
+                          onClick={() => handleModalSort('due_date')}
+                        >
+                          지급약정일{' '}
+                          {modalSortKey === 'due_date' ? (
+                            modalSortOrder === 'asc' ? (
+                              <FaSortUp size={16} />
+                            ) : (
+                              <FaSortDown size={16} />
+                            )
+                          ) : (
+                            <FaSort size={16} className='opacity-50' />
+                          )}
+                        </button>
+                      </Table.ColumnHeaderCell>
                     </Table.Row>
                   </Table.Header>
                   <Table.Body>
-                    {selectedCase.transactions.map((t, index) => (
+                    {sortedTransactions.map((t, index) => (
                       <Table.Row key={index} className='hover:bg-gray-5 transition-colors duration-200'>
-                        <Table.Cell className='text-gray-12 py-2 px-4'>{t.transaction_date || '-'}</Table.Cell>
+                        <Table.Cell className='text-gray-12 py-2 px-4'>
+                          {formatDate(t.transaction_date) || '-'}
+                        </Table.Cell>
                         <Table.Cell className='text-gray-12 py-2 px-4'>
                           {Number(t.amount).toLocaleString()} 원
                         </Table.Cell>
-                        <Table.Cell className='text-gray-12 py-2 px-4'>{t.due_date || '-'}</Table.Cell>
+                        <Table.Cell className='text-gray-12 py-2 px-4'>{formatDate(t.due_date) || '-'}</Table.Cell>
                       </Table.Row>
                     ))}
                   </Table.Body>
