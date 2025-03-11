@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/utils/supabase';
 import { Table, Text, Button, Box, TextArea } from '@radix-ui/themes';
-import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaSort, FaSortUp, FaSortDown, FaCopy } from 'react-icons/fa';
+import { Toaster, toast } from 'react-hot-toast';
 
 function Modal({ isOpen, onClose, title, children }) {
   useEffect(() => {
@@ -61,11 +62,12 @@ export default function AdminCaseManagement() {
     // 각 case의 거래 내역을 가져와서 총액 계산
     const casesWithTransactions = await Promise.all(
       casesData.map(async (caseItem) => {
-        const { data: transactions } = await supabase.from('transactions').select('amount').eq('case_id', caseItem.id);
+        const { data: transactions } = await supabase.from('transactions').select('*').eq('case_id', caseItem.id);
 
         const totalAmount = transactions?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0;
         return {
           ...caseItem,
+          transactions,
           total_amount: totalAmount,
         };
       })
@@ -261,11 +263,98 @@ export default function AdminCaseManagement() {
     return sorted;
   }, [selectedCase?.transactions, modalSortKey, modalSortOrder]);
 
+  // 청구취지 생성 함수
+  const generateClaimText = (transactions) => {
+    if (!transactions || transactions.length === 0) return '';
+
+    // 지급예정일 기준으로 정렬
+    const sortedTransactions = [...transactions].sort((a, b) => {
+      const dateA = new Date(a.due_date || '');
+      const dateB = new Date(b.due_date || '');
+      return dateA - dateB;
+    });
+
+    const totalAmount = sortedTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    if (sortedTransactions.length === 1) {
+      const transaction = sortedTransactions[0];
+      return `1. 피고는 원고에게 ${Number(totalAmount).toLocaleString()}원 및 이에 대하여 ${formatDate(
+        transaction.due_date
+      )}부터 이 사건 소장 부본 송달일까지는 연 6%의, 그 다음날부터 다 갚는 날까지는 연 12%의 비율에 의한 돈을 지급하라.`;
+    }
+
+    const koreanPrefix = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하'];
+    let text = `1. 피고는 원고에게 ${Number(totalAmount).toLocaleString()}원 및 이 중\n`;
+
+    sortedTransactions.forEach((transaction, index) => {
+      const prefix = koreanPrefix[index] + '.';
+      text += ` ${prefix} ${Number(transaction.amount).toLocaleString()}원에 대하여는 ${formatDate(
+        transaction.due_date
+      )}부터,\n`;
+    });
+
+    text +=
+      '이 사건 소장 부본 송달일까지는 연 6%의, 그 다음날부터 다 갚는 날까지는 연 12%의 각 비율에 의한 각 돈을 지급하라.';
+
+    return text;
+  };
+
+  // 청구취지 복사 함수
+  const handleCopyClaimText = (caseItem) => {
+    if (!caseItem) {
+      toast.error('복사할 내용이 없습니다.');
+      return;
+    }
+
+    let textToCopy;
+
+    // 고객이 생성한 청구취지가 있는 경우
+    if (caseItem.claim_text && caseItem.claim_confirmed) {
+      textToCopy = caseItem.claim_text;
+    } else {
+      // 고객이 생성한 청구취지가 없는 경우 시스템에서 생성
+      if (!caseItem.transactions || caseItem.transactions.length === 0) {
+        toast.error('거래 내역이 없어 청구취지를 생성할 수 없습니다.');
+        return;
+      }
+      textToCopy = generateClaimText(caseItem.transactions);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(textToCopy)
+        .then(() => {
+          toast.success(
+            caseItem.claim_confirmed ? '고객 확인 청구취지가 복사되었습니다.' : '시스템 생성 청구취지가 복사되었습니다.'
+          );
+        })
+        .catch(() => {
+          toast.error('복사에 실패했습니다.');
+        });
+    } else {
+      // 대체 복사 방법
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast.success(
+          caseItem.claim_confirmed ? '고객 확인 청구취지가 복사되었습니다.' : '시스템 생성 청구취지가 복사되었습니다.'
+        );
+      } catch (err) {
+        toast.error('복사에 실패했습니다.');
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   if (loading) return <Text>로딩 중...</Text>;
   if (!cases.length) return <Text>의뢰 내역이 없습니다.</Text>;
 
   return (
     <Box className='bg-gray-2 p-8 rounded-lg shadow-md'>
+      <Toaster position='top-right' toastOptions={{ duration: 3000 }} />
       <Table.Root>
         <Table.Header>
           <Table.Row className='bg-gray-4'>
@@ -339,14 +428,24 @@ export default function AdminCaseManagement() {
                 </select>
               </Table.Cell>
               <Table.Cell className='py-2 px-4'>
-                <Button
-                  variant='soft'
-                  color='blue'
-                  onClick={() => openCaseDetails(caseItem)}
-                  className='hover:bg-blue-10 transition-colors duration-200'
-                >
-                  상세보기
-                </Button>
+                <div className='flex gap-2'>
+                  <Button
+                    variant='soft'
+                    color='blue'
+                    onClick={() => openCaseDetails(caseItem)}
+                    className='hover:bg-blue-10 transition-colors duration-200'
+                  >
+                    상세보기
+                  </Button>
+                  <Button
+                    variant='soft'
+                    color='green'
+                    onClick={() => handleCopyClaimText(caseItem)}
+                    className='hover:bg-green-10 transition-colors duration-200'
+                  >
+                    <FaCopy className='mr-1' /> 청구취지
+                  </Button>
+                </div>
               </Table.Cell>
             </Table.Row>
           ))}
@@ -366,6 +465,25 @@ export default function AdminCaseManagement() {
                 onBlur={saveAdminNotes}
                 placeholder='여기에 메모를 입력하세요 (자동 저장됩니다)'
               />
+            </div>
+
+            <div className='mb-4'>
+              <Text className='font-semibold mb-2'>청구취지</Text>
+              {selectedCase.claim_confirmed ? (
+                <>
+                  <Box className='bg-gray-3 p-3 rounded mb-2'>
+                    <pre className='whitespace-pre-wrap'>{selectedCase.claim_text}</pre>
+                  </Box>
+                  <Text className='text-sm text-blue-11 mb-2'>✓ 고객 확인 완료</Text>
+                </>
+              ) : (
+                <>
+                  <Box className='bg-gray-3 p-3 rounded mb-2'>
+                    <pre className='whitespace-pre-wrap'>{generateClaimText(selectedCase.transactions)}</pre>
+                  </Box>
+                  <Text className='text-sm text-yellow-11 mb-2'>⚠️ 고객 미확인 청구취지</Text>
+                </>
+              )}
             </div>
 
             <div>

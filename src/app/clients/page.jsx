@@ -114,7 +114,7 @@ const ClientManagementPage = () => {
   };
 
   return (
-    <Box className='py-4 w-full px-4 sm:px-2 md:px-4 lg:px-24 max-w-screen-2xl'>
+    <Box className='py-4 w-full sm:px-2 md:px-4 lg:px-24 max-w-screen-2xl'>
       <Flex direction='column' gap='4'>
         {/* Header */}
         <Flex className='flex-col md:flex-row justify-between items-start md:items-center gap-4'>
