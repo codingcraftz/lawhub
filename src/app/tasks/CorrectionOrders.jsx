@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Upload, FileText, Calendar, X, Search } from 'lucide-react';
 import { format, differenceInDays, addDays, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -38,9 +38,10 @@ export default function CorrectionOrders({ user }) {
   // 보정명령 목록 불러오기
   useEffect(() => {
     fetchCorrectionOrders();
-  }, [currentPage, activeTab]); // 페이지나 탭이 변경될 때마다 데이터 다시 불러오기
+  }, [currentPage, activeTab, itemsPerPage, fetchCorrectionOrders]); // 페이지나 탭이 변경될 때마다 데이터 다시 불러오기
 
-  const fetchCorrectionOrders = async () => {
+  // fetchCorrectionOrders 함수를 useCallback으로 감싸서 무한 루프 방지
+  const fetchCorrectionOrders = useCallback(async () => {
     // 전체 개수 조회를 위한 쿼리
     let countQuery = supabase.from('correction_orders').select('id', { count: 'exact' });
 
@@ -66,8 +67,8 @@ export default function CorrectionOrders({ user }) {
         assignment:assignments (
           id,
           description,
-          creditor:assignment_creditors (name),
-          debtor:assignment_debtors (name)
+          creditors:assignment_creditors (id, name),
+          debtors:assignment_debtors (id, name)
         ),
         files:correction_order_files (*)
       `
@@ -100,7 +101,7 @@ export default function CorrectionOrders({ user }) {
     }));
 
     setCorrectionOrders(processedData);
-  };
+  }, [currentPage, activeTab, itemsPerPage]);
 
   // 의뢰 검색
   const searchAssignments = async () => {
@@ -296,8 +297,8 @@ export default function CorrectionOrders({ user }) {
         try {
           for (const file of files) {
             const fileExt = file.name.split('.').pop();
+            // 원래 방식대로 랜덤 ID로 파일 저장
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-            // 파일 경로 단순화
             const filePath = `${correctionOrder.id}/${fileName}`;
 
             console.log('파일 업로드 시도:', {
@@ -305,6 +306,7 @@ export default function CorrectionOrders({ user }) {
               filePath,
               fileSize: file.size,
               fileType: file.type,
+              originalName: file.name,
             });
 
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -326,12 +328,27 @@ export default function CorrectionOrders({ user }) {
             const { data: publicUrlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
             console.log('파일 URL:', publicUrlData);
 
+            // 채권자, 채무자 이름 추출 (화면 표시용)
+            const firstCreditorName =
+              selectedAssignment.creditors && selectedAssignment.creditors.length > 0
+                ? selectedAssignment.creditors[0].name
+                : '채권자없음';
+
+            const firstDebtorName =
+              selectedAssignment.debtors && selectedAssignment.debtors.length > 0
+                ? selectedAssignment.debtors[0].name
+                : '채무자없음';
+
+            // 사건번호_채무자이름(채권자이름) 형식의 표시용 이름 생성
+            const displayName = `${caseNumber}_${firstDebtorName}(${firstCreditorName})`;
+
             const { error: fileError } = await supabase.from('correction_order_files').insert({
               correction_order_id: correctionOrder.id,
-              file_name: file.name,
+              file_name: file.name, // 원본 파일 이름 저장
               file_path: filePath,
               file_size: file.size,
               file_type: file.type,
+              display_name: displayName, // 표시용 이름 추가
             });
 
             if (fileError) {
@@ -746,9 +763,17 @@ export default function CorrectionOrders({ user }) {
                   {/* 당사자 정보 */}
                   <div className='flex flex-wrap gap-2 text-sm'>
                     <span className='text-gray-11'>채권자:</span>
-                    <span className='text-gray-12 font-medium'>{order.assignment?.creditor?.name}</span>
+                    <span className='text-gray-12 font-medium'>
+                      {order.assignment?.creditors && order.assignment.creditors.length > 0
+                        ? order.assignment.creditors.map((c) => c.name).join(', ')
+                        : '채권자 정보 없음'}
+                    </span>
                     <span className='text-gray-11'>채무자:</span>
-                    <span className='text-gray-12 font-medium'>{order.assignment?.debtor?.name}</span>
+                    <span className='text-gray-12 font-medium'>
+                      {order.assignment?.debtors && order.assignment.debtors.length > 0
+                        ? order.assignment.debtors.map((d) => d.name).join(', ')
+                        : '채무자 정보 없음'}
+                    </span>
                   </div>
 
                   {/* 사건번호 */}
@@ -777,9 +802,10 @@ export default function CorrectionOrders({ user }) {
                             target='_blank'
                             rel='noopener noreferrer'
                             className='flex items-center gap-1 px-2 py-1 bg-gray-4 hover:bg-gray-5 rounded text-gray-12'
+                            title={file.file_name}
                           >
                             <FileText size={14} />
-                            {file.file_name}
+                            {file.display_name || file.file_name}
                           </a>
                         ))}
                       </div>
@@ -982,11 +1008,6 @@ export default function CorrectionOrders({ user }) {
                   )}
                 </div>
                 {uploadError && <div className='mt-2 text-sm text-red-9'>{uploadError}</div>}
-                <div className='mt-2 text-xs text-gray-11'>
-                  <p>
-                    참고: 파일 업로드를 위해서는 Supabase 대시보드에서 '{STORAGE_BUCKET}' 버킷이 생성되어 있어야 합니다.
-                  </p>
-                </div>
               </div>
 
               {/* 버튼 그룹 */}
