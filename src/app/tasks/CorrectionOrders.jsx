@@ -38,7 +38,7 @@ export default function CorrectionOrders({ user }) {
   // 보정명령 목록 불러오기
   useEffect(() => {
     fetchCorrectionOrders();
-  }, [currentPage, activeTab, itemsPerPage, fetchCorrectionOrders]); // 페이지나 탭이 변경될 때마다 데이터 다시 불러오기
+  }, [currentPage, activeTab, itemsPerPage]); // 페이지나 탭이 변경될 때마다 데이터 다시 불러오기
 
   // fetchCorrectionOrders 함수를 useCallback으로 감싸서 무한 루프 방지
   const fetchCorrectionOrders = useCallback(async () => {
