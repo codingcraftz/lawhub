@@ -1,245 +1,413 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { X, Search } from 'lucide-react';
-import { Button, TextField } from '@radix-ui/themes';
+import React, { useState, useRef } from 'react';
+import { X, Search, Upload, X as XIcon } from 'lucide-react';
 import { supabase } from '@/utils/supabase';
+import FileUploadDropZone from '@/components/FileUploadDropZone';
+import { useUser } from '@/hooks/useUser';
 
 export default function TaskRequestModal({ isOpen, onClose, receiverId }) {
-  const [step, setStep] = useState(1);
+  const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [hasReference, setHasReference] = useState(true);
+  const [files, setFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const fileInputRef = useRef(null);
+
+  // 파일 드롭/선택 처리
+  const handleFileDrop = (droppedFiles) => {
+    setFiles((prevFiles) => [...prevFiles, ...droppedFiles]);
+  };
+
+  // 파일 제거
+  const handleFileRemove = (index) => {
+    setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+    setUploadProgress((prev) => {
+      const newProgress = { ...prev };
+      delete newProgress[index];
+      return newProgress;
+    });
+  };
+
+  // 파일 업로드
+  const uploadFiles = async () => {
+    const uploadedFiles = [];
+
+    for (const [index, file] of files.entries()) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      try {
+        const { error: uploadError, data } = await supabase.storage.from('tasks').upload(filePath, file, {
+          onUploadProgress: (progress) => {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [index]: (progress.loaded / progress.total) * 100,
+            }));
+          },
+        });
+
+        if (uploadError) throw uploadError;
+
+        uploadedFiles.push({
+          name: file.name,
+          path: filePath,
+          type: file.type,
+          size: file.size,
+        });
+      } catch (error) {
+        console.error('파일 업로드 오류:', error);
+        throw error;
+      }
+    }
+
+    return uploadedFiles;
+  };
 
   // 의뢰 검색
-  useEffect(() => {
-    const searchAssignments = async () => {
-      if (!searchTerm.trim()) {
+  const searchAssignments = async () => {
+    if (!searchTerm.trim()) {
+      setAssignments([]);
+      return;
+    }
+
+    setSearchLoading(true);
+
+    try {
+      // 채권자 이름으로 검색
+      const { data: creditorAssignments, error: creditorError } = await supabase
+        .from('assignment_creditors')
+        .select(
+          `
+          id,
+          name,
+          assignment_id
+        `
+        )
+        .ilike('name', `%${searchTerm}%`);
+
+      if (creditorError) throw creditorError;
+
+      // 채무자 이름으로 검색
+      const { data: debtorAssignments, error: debtorError } = await supabase
+        .from('assignment_debtors')
+        .select(
+          `
+          id,
+          name,
+          assignment_id
+        `
+        )
+        .ilike('name', `%${searchTerm}%`);
+
+      if (debtorError) throw debtorError;
+
+      // 의뢰 ID 목록 생성 (중복 제거)
+      const assignmentIds = [
+        ...new Set([
+          ...creditorAssignments.map((c) => c.assignment_id),
+          ...debtorAssignments.map((d) => d.assignment_id),
+        ]),
+      ];
+
+      if (assignmentIds.length === 0) {
         setAssignments([]);
+        setSearchLoading(false);
         return;
       }
 
-      setLoading(true);
+      // 의뢰 정보 조회 (채권자, 채무자 정보 포함)
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('assignments')
+        .select(
+          `
+          id,
+          description,
+          creditors:assignment_creditors(id, name),
+          debtors:assignment_debtors(id, name)
+        `
+        )
+        .in('id', assignmentIds);
 
-      try {
-        // 채권자, 채무자 테이블에서 이름으로 검색
-        const [creditorsResult, debtorsResult] = await Promise.all([
-          supabase.from('assignment_creditors').select('assignment_id, name').ilike('name', `%${searchTerm}%`),
-          supabase.from('assignment_debtors').select('assignment_id, name').ilike('name', `%${searchTerm}%`),
-        ]);
+      if (assignmentsError) throw assignmentsError;
 
-        console.log('Creditors Result:', creditorsResult);
-        console.log('Debtors Result:', debtorsResult);
+      // 검색 결과 가공 (채권자, 채무자 정보 포함)
+      const processedAssignments = assignmentsData.map((assignment) => {
+        const creditorNames = assignment.creditors?.map((c) => c.name).join(', ') || '채권자 정보 없음';
+        const debtorNames = assignment.debtors?.map((d) => d.name).join(', ') || '채무자 정보 없음';
 
-        if (creditorsResult.error) {
-          console.error('Error fetching creditors:', creditorsResult.error);
-        }
-        if (debtorsResult.error) {
-          console.error('Error fetching debtors:', debtorsResult.error);
-        }
+        return {
+          ...assignment,
+          creditorNames,
+          debtorNames,
+        };
+      });
 
-        // 찾은 assignment_id들 모으기
-        const assignmentIds = new Set([
-          ...(creditorsResult.data || []).map((c) => c.assignment_id),
-          ...(debtorsResult.data || []).map((d) => d.assignment_id),
-        ]);
+      setAssignments(processedAssignments);
+    } catch (error) {
+      console.error('의뢰 검색 오류:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
-        console.log('Assignment IDs:', Array.from(assignmentIds));
+  // 검색어 입력 처리
+  const handleSearchTermChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
-        if (assignmentIds.size > 0) {
-          // 그룹 정보 가져오기
-          const { data: groupsData, error: groupsError } = await supabase
-            .from('assignment_groups')
-            .select(
-              `
-              assignment_id,
-              groups (
-                name
-              )
-            `
-            )
-            .in('assignment_id', Array.from(assignmentIds));
+  // 검색 버튼 클릭 처리
+  const handleSearchClick = () => {
+    searchAssignments();
+  };
 
-          if (groupsError) {
-            console.error('Error fetching groups:', groupsError);
-          }
+  // 엔터 키 처리
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      searchAssignments();
+    }
+  };
 
-          console.log('Groups Data:', groupsData);
+  // 업무 요청 전송
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!description.trim() || (hasReference && !selectedAssignment)) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
 
-          // 결과 데이터 구성
-          const assignmentsData = Array.from(assignmentIds).map((id) => {
-            const creditor = creditorsResult.data?.find((c) => c.assignment_id === id);
-            const debtor = debtorsResult.data?.find((d) => d.assignment_id === id);
-            const group = groupsData?.find((g) => g.assignment_id === id);
+    setLoading(true);
 
-            const result = {
-              id: id,
-              creditorName: creditor?.name || '',
-              debtorName: debtor?.name || '',
-              groupName: group?.groups?.name || '',
-            };
-
-            console.log('Assignment Data:', result);
-            return result;
-          });
-
-          setAssignments(assignmentsData);
-        } else {
-          setAssignments([]);
-        }
-      } catch (error) {
-        console.error('Search error:', error);
+    try {
+      let uploadedFiles = [];
+      if (files.length > 0) {
+        uploadedFiles = await uploadFiles();
       }
 
+      const { error } = await supabase.from('tasks').insert({
+        assignment_id: hasReference ? selectedAssignment.id : null,
+        description: description.trim(),
+        assignee_id: receiverId,
+        attachments: uploadedFiles.length > 0 ? uploadedFiles : null,
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      onClose();
+      alert('업무가 요청되었습니다.');
+    } catch (error) {
+      console.error('업무 요청 오류:', error);
+      alert('업무 요청 중 오류가 발생했습니다.');
+    } finally {
       setLoading(false);
-    };
-
-    searchAssignments();
-  }, [searchTerm]);
-
-  // 업무요청 생성
-  const handleSubmit = async () => {
-    if (!title.trim() || !content.trim()) {
-      alert('제목과 내용을 모두 입력해주세요.');
-      return;
     }
+  };
 
-    const { error } = await supabase.from('assignment_tasks').insert({
-      assignment_id: selectedAssignment?.id || null,
-      title: title.trim(),
-      content: content.trim(),
-      status: 'pending',
-      type: 'request',
-      requester_id: supabase.auth.user()?.id,
-      receiver_id: receiverId,
-    });
-
-    if (error) {
-      console.error('Error creating task:', error);
-      alert('업무요청 생성 중 오류가 발생했습니다.');
-      return;
+  // 참조 의뢰 여부 변경 처리
+  const handleReferenceToggle = (e) => {
+    setHasReference(e.target.checked);
+    if (!e.target.checked) {
+      setSelectedAssignment(null);
+      setSearchTerm('');
+      setAssignments([]);
     }
-
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    >
-      <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.95 }}
-        className='bg-gray-2 rounded-lg w-full max-w-lg p-6 relative'
-      >
-        {/* 헤더 */}
+    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+      <div className='bg-gray-2 rounded-lg w-full max-w-lg p-6 relative'>
+        {/* 모달 헤더 */}
         <div className='flex justify-between items-center mb-6'>
-          <h2 className='text-lg font-semibold text-gray-12'>
-            업무 요청 {step === 1 ? '- 의뢰 선택' : '- 요청 내용 작성'}
-          </h2>
+          <h2 className='text-lg font-semibold text-gray-12'>업무 요청</h2>
           <button onClick={onClose} className='text-gray-11 hover:text-gray-12'>
             <X size={20} />
           </button>
         </div>
 
-        {/* 스텝 1: 의뢰 선택 */}
-        {step === 1 && (
-          <div className='space-y-4'>
-            <div className='relative'>
-              <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-11' size={16} />
-              <input
-                type='text'
-                placeholder='의뢰인/채무자 이름으로 검색...'
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className='w-full pl-9 pr-4 py-2 bg-gray-3 border border-gray-6 rounded-lg text-gray-12 placeholder-gray-11'
-              />
-            </div>
-
-            <div className='max-h-60 overflow-y-auto space-y-2'>
-              {loading ? (
-                <div className='text-center text-gray-11'>검색 중...</div>
-              ) : assignments.length > 0 ? (
-                assignments.map((assignment) => (
-                  <button
-                    key={assignment.id}
-                    onClick={() => {
-                      setSelectedAssignment(assignment);
-                      setStep(2);
-                    }}
-                    className='w-full p-3 bg-gray-3 hover:bg-gray-4 rounded-lg text-left transition-colors'
-                  >
-                    <div className='font-medium text-gray-12'>{assignment.groupName}</div>
-                    <div className='text-sm text-gray-11'>
-                      의뢰인: {assignment.creditorName} / 채무자: {assignment.debtorName}
-                    </div>
-                  </button>
-                ))
-              ) : searchTerm ? (
-                <div className='text-center text-gray-11'>검색 결과가 없습니다.</div>
-              ) : null}
-            </div>
-
-            <div className='pt-4 border-t border-gray-6'>
-              <Button onClick={() => setStep(2)} className='w-full' variant='soft'>
-                의뢰 없이 진행하기
-              </Button>
-            </div>
+        {/* 모달 컨텐츠 */}
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          {/* 참조 의뢰 여부 */}
+          <div className='flex items-center gap-2'>
+            <input
+              type='checkbox'
+              id='hasReference'
+              checked={hasReference}
+              onChange={handleReferenceToggle}
+              className='w-4 h-4 text-blue-9 border-gray-6 rounded focus:ring-blue-9'
+            />
+            <label htmlFor='hasReference' className='text-sm font-medium text-gray-12'>
+              참조 의뢰 있음
+            </label>
           </div>
-        )}
 
-        {/* 스텝 2: 요청 내용 작성 */}
-        {step === 2 && (
-          <div className='space-y-4'>
-            {selectedAssignment && (
-              <div className='p-3 bg-gray-3 rounded-lg'>
-                <div className='font-medium text-gray-12'>{selectedAssignment.groupName}</div>
-                <div className='text-sm text-gray-11'>
-                  의뢰인: {selectedAssignment.creditorName} / 채무자: {selectedAssignment.debtorName}
+          {/* 의뢰 검색 (참조 의뢰가 있을 때만 표시) */}
+          {hasReference && (
+            <div>
+              <label className='block text-sm font-medium text-gray-12 mb-1'>
+                의뢰 검색 (채권자/채무자 이름) <span className='text-red-9'>*</span>
+              </label>
+              <div className='relative flex'>
+                <div className='relative flex-grow'>
+                  <input
+                    type='text'
+                    placeholder='이름으로 검색...'
+                    value={searchTerm}
+                    onChange={handleSearchTermChange}
+                    onKeyDown={handleSearchKeyPress}
+                    className='w-full pl-10 pr-4 py-2 bg-gray-3 border border-gray-6 rounded-l-lg text-gray-12 placeholder-gray-11'
+                  />
+                  <div className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-11'>
+                    <Search size={16} />
+                  </div>
+                  {searchLoading && (
+                    <div className='absolute right-3 top-1/2 transform -translate-y-1/2'>
+                      <div className='animate-spin h-4 w-4 border-2 border-blue-9 border-t-transparent rounded-full'></div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type='button'
+                  onClick={handleSearchClick}
+                  disabled={searchLoading || !searchTerm.trim()}
+                  className='px-4 py-2 bg-blue-9 hover:bg-blue-10 disabled:bg-gray-6 text-gray-1 rounded-r-lg transition-colors'
+                >
+                  검색
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 검색 결과 */}
+          {hasReference && assignments.length > 0 && (
+            <div className='max-h-60 overflow-y-auto space-y-2 border border-gray-6 rounded-lg p-2'>
+              {assignments.map((assignment) => (
+                <button
+                  key={assignment.id}
+                  type='button'
+                  onClick={() => {
+                    setSelectedAssignment(assignment);
+                    setSearchTerm('');
+                    setAssignments([]);
+                  }}
+                  className='w-full p-3 text-left hover:bg-gray-4 rounded-lg transition-colors border border-gray-5'
+                >
+                  <div className='flex flex-col gap-1'>
+                    <div className='font-medium text-gray-12'>
+                      <span className='text-gray-11'>채권자:</span> {assignment.creditorNames}
+                    </div>
+                    <div className='font-medium text-gray-12'>
+                      <span className='text-gray-11'>채무자:</span> {assignment.debtorNames}
+                    </div>
+                  </div>
+                  {assignment.description && (
+                    <div className='text-sm text-gray-11 mt-1 line-clamp-2'>{assignment.description}</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {hasReference && searchTerm && assignments.length === 0 && !searchLoading && (
+            <div className='p-3 bg-gray-3 rounded-lg text-gray-11 text-center'>검색 결과가 없습니다.</div>
+          )}
+
+          {/* 선택된 의뢰 표시 */}
+          {hasReference && selectedAssignment && (
+            <div className='p-3 bg-gray-3 rounded-lg border border-blue-9'>
+              <div className='flex flex-col gap-1'>
+                <div className='font-medium text-gray-12'>
+                  <span className='text-gray-11'>채권자:</span> {selectedAssignment.creditorNames}
+                </div>
+                <div className='font-medium text-gray-12'>
+                  <span className='text-gray-11'>채무자:</span> {selectedAssignment.debtorNames}
                 </div>
               </div>
-            )}
-
-            <div>
-              <label className='block text-sm font-medium text-gray-12 mb-1'>제목</label>
-              <input
-                type='text'
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className='w-full px-4 py-2 bg-gray-3 border border-gray-6 rounded-lg text-gray-12 placeholder-gray-11'
-                placeholder='업무 요청 제목을 입력하세요'
-              />
+              {selectedAssignment.description && (
+                <div className='text-sm text-gray-11 mt-1'>{selectedAssignment.description}</div>
+              )}
             </div>
+          )}
 
-            <div>
-              <label className='block text-sm font-medium text-gray-12 mb-1'>요청 내용</label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className='w-full h-32 px-4 py-2 bg-gray-3 border border-gray-6 rounded-lg text-gray-12 placeholder-gray-11 resize-none'
-                placeholder='업무 요청 내용을 상세히 입력해주세요'
-              />
-            </div>
+          {/* 업무 내용 */}
+          <div>
+            <label className='block text-sm font-medium text-gray-12 mb-1'>
+              업무 내용 <span className='text-red-9'>*</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder='업무 내용을 입력하세요'
+              rows={4}
+              className='w-full px-4 py-2 bg-gray-3 border border-gray-6 rounded-lg text-gray-12 placeholder-gray-11'
+            />
+          </div>
 
-            <div className='flex gap-2 pt-4'>
-              <Button onClick={() => setStep(1)} variant='soft' color='gray' className='flex-1'>
-                이전
-              </Button>
-              <Button onClick={handleSubmit} variant='solid' className='flex-1'>
-                요청하기
-              </Button>
+          {/* 파일 첨부 */}
+          <div>
+            <label className='block text-sm font-medium text-gray-12 mb-1'>파일 첨부</label>
+            <div className='space-y-2'>
+              <FileUploadDropZone onDrop={handleFileDrop} />
+              {files.length > 0 && (
+                <div className='space-y-2 mt-2'>
+                  {files.map((file, index) => (
+                    <div
+                      key={index}
+                      className='flex items-center justify-between p-2 bg-gray-3 border border-gray-6 rounded-lg'
+                    >
+                      <span className='text-sm text-gray-12 truncate flex-1 mr-2'>{file.name}</span>
+                      <div className='flex items-center gap-2 flex-shrink-0'>
+                        {uploadProgress[index] && (
+                          <div className='flex items-center gap-2'>
+                            <div className='h-1 w-16 bg-gray-6 rounded-full overflow-hidden'>
+                              <div
+                                className='h-full bg-blue-9 transition-all duration-300'
+                                style={{ width: `${Math.round(uploadProgress[index])}%` }}
+                              />
+                            </div>
+                            <span className='text-xs text-gray-11 w-8'>{Math.round(uploadProgress[index])}%</span>
+                          </div>
+                        )}
+                        <button
+                          type='button'
+                          onClick={() => handleFileRemove(index)}
+                          className='text-gray-11 hover:text-gray-12 p-1 hover:bg-gray-4 rounded'
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </motion.div>
-    </motion.div>
+
+          {/* 버튼 그룹 */}
+          <div className='flex justify-end gap-3 pt-4'>
+            <button
+              type='button'
+              onClick={onClose}
+              className='px-4 py-2 bg-gray-4 hover:bg-gray-5 text-gray-12 rounded-md transition-colors'
+            >
+              취소
+            </button>
+            <button
+              type='submit'
+              disabled={loading || !description.trim() || (hasReference && !selectedAssignment)}
+              className='px-4 py-2 bg-blue-9 hover:bg-blue-10 text-gray-1 rounded-md transition-colors disabled:opacity-50'
+            >
+              {loading ? '요청 중...' : '요청'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
