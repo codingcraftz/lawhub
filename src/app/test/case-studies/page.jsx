@@ -43,14 +43,7 @@ import {
 } from '@radix-ui/themes';
 
 // 목 데이터 import
-import {
-  caseStudies,
-  recoveryStatistics,
-  clientTestimonials,
-  legalReferences,
-  recoveryKnowhow,
-  legalInformation,
-} from './mockData';
+import { caseStudies, recoveryStatistics, legalReferences, recoveryKnowhow, legalInformation } from './mockData';
 
 // 금액 형식화 함수
 const formatAmount = (amount) => {
@@ -612,7 +605,7 @@ const CaseStudiesPage = () => {
                         <div className='p-6 border border-gray-6 rounded-lg'>
                           <div className='flex flex-col gap-4'>
                             <div className='bg-gray-2 p-4 rounded-lg italic text-gray-11'>
-                              "{selectedCase?.clientReview.content}"
+                              &ldquo;{selectedCase?.clientReview.content}&rdquo;
                             </div>
 
                             <div className='flex justify-between items-end'>
@@ -639,28 +632,30 @@ const CaseStudiesPage = () => {
 
                       <div>
                         <h3 className='text-lg font-bold mb-2 text-gray-12'>유사 사례 후기</h3>
-                        {clientTestimonials
+                        {caseStudies
                           .filter(
-                            (review) =>
-                              review.caseType === selectedCase?.category && review.id !== selectedCase?.clientReview.id
+                            (caseItem) =>
+                              caseItem.category === selectedCase?.category && caseItem.id !== selectedCase?.id
                           )
                           .slice(0, 2)
-                          .map((review) => (
-                            <div key={review.id} className='p-4 border border-gray-6 rounded-lg mb-3'>
+                          .map((caseItem) => (
+                            <div key={caseItem.id} className='p-4 border border-gray-6 rounded-lg mb-3'>
                               <div className='flex flex-col gap-3'>
-                                <p className='text-sm italic text-gray-11'>"{review.content}"</p>
+                                <p className='text-sm italic text-gray-11'>
+                                  &ldquo;{caseItem.clientReview.content}&rdquo;
+                                </p>
 
                                 <div className='flex justify-between items-center'>
                                   <div className='flex items-center gap-2'>
                                     <div className='w-8 h-8 rounded-full bg-gray-3 flex items-center justify-center font-bold text-sm text-gray-11'>
-                                      {review.name.charAt(0)}
+                                      {caseItem.clientReview.name.charAt(0)}
                                     </div>
                                     <p className='text-sm font-medium text-gray-11'>
-                                      {review.name}, {review.company}
+                                      {caseItem.clientReview.name}, {caseItem.clientReview.company}
                                     </p>
                                   </div>
 
-                                  <StarRating rating={review.rating} />
+                                  <StarRating rating={caseItem.clientReview.rating} />
                                 </div>
                               </div>
                             </div>
