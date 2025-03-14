@@ -54,6 +54,30 @@ const Header = () => {
       roles: ['admin', 'staff', 'client'],
       employeeTypes: [],
     },
+    {
+      title: '채권현황(Beta)',
+      path: '/test/my-bonds',
+      roles: ['admin'],
+      employeeTypes: [],
+    },
+    {
+      title: '회수 사례(Beta)',
+      path: '/test/case-studies',
+      roles: ['admin'],
+      employeeTypes: [],
+    },
+    {
+      title: '법률 캘린더(Beta)',
+      path: '/test/legal-calendar',
+      roles: ['admin'],
+      employeeTypes: [],
+    },
+    {
+      title: '서류 요약(Beta)',
+      path: '/test',
+      roles: ['admin'],
+      employeeTypes: [],
+    },
   ];
 
   const handleLogout = async () => {
