@@ -5,17 +5,17 @@
 - 컴포넌트는 '*.jsx'로 만들어주세요.
 - 백엔드: supabase를 사용해주세요.
 - 백엔드: 테이블 수정 sqleditor에 입력할 쿼리만 제공, 테이블을 만들떄는 'test_테이블명' 제작
-- 테이블 수정 있을때마다, '@/src/data/table_info.md' 파일에 저장해주세요.
+- 테이블 수정 있을때마다, '@/data/table_info.md' 파일에 저장해주세요.
 - style: tailwindcss 사용해주세요.
 - 아이콘은 Lucide React 사용해주세요.
 
 ### ShadCn components
 - 모든 UI컴포넌트는 ShadCn사용 
-- 컴포넌트 사용전 설치여부 확인해주세요 path: '@/src/components/ui/'
+- 컴포넌트 사용전 설치여부 확인해주세요 path: '@/components/ui/'
 - 컴포넌트 설치 명령어 사용 'pnpm dlx shadcn@latest add [component-name]'
 
 ### 그 외
 - 여러곳에서 사용될법한 컴포넌트는 재사용가능하도록 설계
 - 유저정보는 '@/contexts/UserContext.jsx'에서 훅으로 가져오고있어요.
-- db는 '@/sql/table_info.md'에 정보가 있어요.
+- db는 '@/data/table_info.md'에 정보가 있어요.
 - 우리 사이트는 민사, 채권을 관리하는 웹사이트 입니다.

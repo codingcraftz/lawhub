@@ -62,6 +62,7 @@ export default function RecoveryActivityModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileToUpload, setFileToUpload] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [caseDetails, setCaseDetails] = useState(null);
 
   // 모달이 열릴 때 데이터 초기화
   useEffect(() => {
@@ -90,8 +91,36 @@ export default function RecoveryActivityModal({
       setFileToUpload(null);
       setFilePreview(null);
       setFormErrors({});
+
+      // 사건 정보 불러오기
+      fetchCaseDetails();
     }
   }, [open, isEditing, activity]);
+
+  // 사건 정보 불러오기
+  const fetchCaseDetails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("test_cases")
+        .select(
+          `
+          *,
+          clients:test_case_clients(
+            individual_id(id, name, email),
+            organization_id(id, name)
+          ),
+          parties:test_case_parties(*)
+        `
+        )
+        .eq("id", caseId)
+        .single();
+
+      if (error) throw error;
+      setCaseDetails(data);
+    } catch (error) {
+      console.error("사건 정보 불러오기 실패:", error);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData({
@@ -205,7 +234,160 @@ export default function RecoveryActivityModal({
     }
   };
 
+  // 회수 활동 유형별 알림 메시지 생성
+  const getActivityMessage = (activityType, amount, status) => {
+    const statusText = status === "predicted" ? "예정되어 있습니다" : "진행되었습니다";
+
+    switch (activityType) {
+      case "call":
+        return `전화 연락이 ${statusText}.`;
+      case "visit":
+        return `방문 상담이 ${statusText}.`;
+      case "payment":
+        if (amount) {
+          const formattedAmount = new Intl.NumberFormat("ko-KR", {
+            style: "currency",
+            currency: "KRW",
+          }).format(amount);
+          return `${formattedAmount} 납부가 ${statusText}.`;
+        }
+        return `납부가 ${statusText}.`;
+      case "letter":
+        return `통지서가 발송되었습니다.`;
+      case "legal":
+        return `법적 조치가 ${statusText}.`;
+      default:
+        return `회수 활동이 ${statusText}.`;
+    }
+  };
+
   // 알림 생성 함수
+  const createNotification = async (activityData, actionType, oldStatus = null) => {
+    if (!caseDetails) return;
+
+    try {
+      // 채권자(의뢰인)와 채무자 찾기
+      let creditor = null;
+      let debtor = null;
+
+      if (caseDetails.parties) {
+        caseDetails.parties.forEach((party) => {
+          if (["creditor", "plaintiff", "applicant"].includes(party.party_type)) {
+            creditor = party;
+          } else if (["debtor", "defendant", "respondent"].includes(party.party_type)) {
+            debtor = party;
+          }
+        });
+      }
+
+      if (!creditor || !debtor) return;
+
+      // 알림 생성 여부 결정
+      let shouldCreateNotification = true;
+
+      // 수정일 때 상태 변경 시에만 알림 생성
+      if (actionType === "update") {
+        shouldCreateNotification = oldStatus !== activityData.status;
+      }
+
+      if (!shouldCreateNotification) return;
+
+      // 알림 제목 및 내용 구성
+      const creditorName =
+        creditor.party_entity_type === "individual" ? creditor.name : creditor.company_name;
+
+      const debtorName =
+        debtor.party_entity_type === "individual" ? debtor.name : debtor.company_name;
+
+      const title = `채권자 ${creditorName} | 채무자 ${debtorName}`;
+      const message = getActivityMessage(
+        activityData.activity_type,
+        activityData.amount,
+        activityData.status
+      );
+
+      // 모든 의뢰인 정보를 수집하기 위한 작업 배열
+      const clientFetchPromises = [];
+      const clientIds = new Set(); // 중복 방지를 위해 Set 사용
+
+      // 개인 및 법인/그룹 의뢰인 모두 처리
+      if (caseDetails.clients) {
+        caseDetails.clients.forEach((client) => {
+          if (client.individual_id) {
+            // 개인 의뢰인
+            clientIds.add(client.individual_id.id);
+          } else if (client.organization_id) {
+            // 조직 의뢰인인 경우 조직 멤버 조회 작업 추가
+            const promise = supabase
+              .from("test_organization_members")
+              .select("user_id")
+              .eq("organization_id", client.organization_id.id)
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error(`조직 ${client.organization_id.id} 멤버 조회 실패:`, error);
+                  return [];
+                }
+                return data || [];
+              });
+
+            clientFetchPromises.push(promise);
+          }
+        });
+      }
+
+      // 모든 조직 멤버 조회 작업 실행
+      const orgMembersResults = await Promise.all(clientFetchPromises);
+
+      // 조직 멤버 ID 추가
+      orgMembersResults.forEach((members) => {
+        members.forEach((member) => {
+          if (member.user_id) {
+            clientIds.add(member.user_id);
+          }
+        });
+      });
+
+      // Set을 배열로 변환
+      const uniqueClientIds = Array.from(clientIds);
+
+      if (uniqueClientIds.length === 0) return;
+
+      // 각 클라이언트에 대한 알림 생성
+      const notificationPromises = uniqueClientIds.map(async (clientId) => {
+        const notification = {
+          user_id: clientId,
+          case_id: caseId,
+          title: title,
+          message: message,
+          notification_type: "recovery_activity",
+          is_read: false,
+          related_entity: "recovery_activity",
+          related_id: activityData.id,
+        };
+
+        try {
+          const { error } = await supabase.from("test_notifications").insert(notification);
+
+          if (error) {
+            console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);
+            return { success: false, clientId, error };
+          } else {
+            return { success: true, clientId };
+          }
+        } catch (err) {
+          console.error(`클라이언트 ${clientId}에 대한 알림 생성 중 예외 발생:`, err);
+          return { success: false, clientId, error: err };
+        }
+      });
+
+      await Promise.all(notificationPromises);
+      console.log("회수 활동 알림이 생성되었습니다");
+    } catch (error) {
+      console.error("알림 생성 실패:", error);
+    }
+  };
+
+  // 알림 생성 함수 (기존 test_case_notifications 테이블용 - 호환성 유지)
   const createNotificationForClients = async (caseId, activity) => {
     try {
       // 해당 사건의 의뢰인 목록 조회
@@ -316,6 +498,7 @@ export default function RecoveryActivityModal({
 
       // 알림 생성
       await createNotificationForClients(caseId, data[0]);
+      await createNotification(data[0], "create");
 
       toast.success("회수 활동이 추가되었습니다", {
         description: "회수 활동이 성공적으로 추가되었습니다.",
@@ -389,6 +572,9 @@ export default function RecoveryActivityModal({
       if (statusChanged) {
         await createNotificationForClients(caseId, data[0]);
       }
+
+      // 새로운 알림 시스템에도 알림 생성
+      await createNotification(data[0], "update", oldActivityData.status);
 
       toast.success("회수 활동이 수정되었습니다", {
         description: "회수 활동이 성공적으로 수정되었습니다.",

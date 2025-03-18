@@ -28,9 +28,11 @@ import {
   Bell,
   Scale,
   CalendarRange,
+  Building2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
+import NotificationCenter from "@/components/NotificationCenter";
 
 export default function Navbar() {
   const { user, loading, signOut, isAdmin, isStaff, isClient } = useUser();
@@ -126,6 +128,25 @@ export default function Navbar() {
             </Button>
           </Link>
 
+          {/* 나의 의뢰 - 클라이언트만 접근 가능 */}
+          {(isClient() || isAdmin()) && (
+            <Link href="/my-cases">
+              <Button
+                variant={isActive("/my-cases") ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "flex items-center rounded-lg transition-all",
+                  isActive("/my-cases")
+                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                나의 의뢰
+              </Button>
+            </Link>
+          )}
+
           {/* 클라이언트 관리 - 관리자와 직원만 접근 가능 */}
           {(isAdmin() || isStaff()) && (
             <Link href="/clients">
@@ -141,6 +162,25 @@ export default function Navbar() {
               >
                 <Users className="mr-2 h-4 w-4" />
                 고객 관리
+              </Button>
+            </Link>
+          )}
+
+          {/* 조직 관리 - 관리자만 접근 가능 */}
+          {isAdmin() && (
+            <Link href="/organizations">
+              <Button
+                variant={isActive("/organizations") ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "flex items-center rounded-lg transition-all",
+                  isActive("/organizations")
+                    ? "bg-teal-500 hover:bg-teal-600 text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+              >
+                <Building2 className="mr-2 h-4 w-4" />
+                조직 관리
               </Button>
             </Link>
           )}
@@ -168,12 +208,7 @@ export default function Navbar() {
           <ThemeToggle />
 
           {/* 알림 버튼 */}
-          {user && (
-            <Button variant="ghost" size="icon" className="rounded-full w-9 h-9 relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-            </Button>
-          )}
+          {user && <NotificationCenter />}
 
           {/* 사용자 메뉴 */}
           {!loading && user ? (
@@ -311,6 +346,22 @@ export default function Navbar() {
                   </Button>
                 </Link>
 
+                {/* 모바일 - 나의 의뢰 - 클라이언트만 접근 가능 */}
+                {isClient() && (
+                  <Link href="/my-cases" onClick={closeMenu}>
+                    <Button
+                      variant={isActive("/my-cases") ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start",
+                        isActive("/my-cases") ? "bg-blue-500 hover:bg-blue-600 text-white" : ""
+                      )}
+                    >
+                      <FileText className="mr-2 h-5 w-5" />
+                      나의 의뢰
+                    </Button>
+                  </Link>
+                )}
+
                 {(isAdmin() || isStaff()) && (
                   <Link href="/clients" onClick={closeMenu}>
                     <Button
@@ -326,12 +377,30 @@ export default function Navbar() {
                   </Link>
                 )}
 
+                {/* 모바일 - 조직 관리 - 관리자만 접근 가능 */}
+                {isAdmin() && (
+                  <Link href="/organizations" onClick={closeMenu}>
+                    <Button
+                      variant={isActive("/organizations") ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start",
+                        isActive("/organizations") ? "bg-teal-500 hover:bg-teal-600 text-white" : ""
+                      )}
+                    >
+                      <Building2 className="mr-2 h-5 w-5" />
+                      조직 관리
+                    </Button>
+                  </Link>
+                )}
+
                 <Link href="/calendar" onClick={closeMenu}>
                   <Button
                     variant={isActive("/calendar") ? "default" : "ghost"}
                     className={cn(
                       "w-full justify-start",
-                      isActive("/calendar") ? "bg-amber-500 hover:bg-amber-600 text-white" : ""
+                      isActive("/calendar")
+                        ? "bg-amber-500 hover:bg-amber-600 text-white"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
                     )}
                   >
                     <CalendarRange className="mr-2 h-5 w-5" />

@@ -65,20 +65,71 @@ export default function AddSubmissionModal({
   const [formErrors, setFormErrors] = useState({});
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [fileToUpload, setFileToUpload] = useState(null);
+  const [caseDetails, setCaseDetails] = useState(null);
+  const [lawsuitDetails, setLawsuitDetails] = useState(null);
 
-  // 모달이 열릴 때 폼 데이터 초기화
+  // 모달이 열릴 때 폼 데이터 초기화 및 사건/소송 정보 가져오기
   useEffect(() => {
-    if (open && !editingSubmission) {
-      setFormData({
-        submission_type: "",
-        document_type: "",
-        submission_date: new Date(),
-        description: "",
-      });
-      setFileToUpload(null);
-      setFormErrors({});
+    if (open) {
+      if (!editingSubmission) {
+        setFormData({
+          submission_type: "",
+          document_type: "",
+          submission_date: new Date(),
+          description: "",
+        });
+        setFileToUpload(null);
+        setFormErrors({});
+      }
+
+      // 사건 및 소송 정보 로드
+      fetchCaseAndLawsuitDetails();
     }
   }, [open, editingSubmission]);
+
+  // 사건 및 소송 정보 가져오기
+  const fetchCaseAndLawsuitDetails = async () => {
+    try {
+      // 사건 정보 가져오기
+      const { data: caseData, error: caseError } = await supabase
+        .from("test_cases")
+        .select(
+          `
+          *,
+          clients:test_case_clients(
+            individual_id(id, name, email),
+            organization_id(id, name)
+          ),
+          parties:test_case_parties(*)
+        `
+        )
+        .eq("id", caseId)
+        .single();
+
+      if (caseError) throw caseError;
+      setCaseDetails(caseData);
+
+      // 소송 정보 가져오기
+      const { data: lawsuitData, error: lawsuitError } = await supabase
+        .from("test_case_lawsuits")
+        .select(
+          `
+          *,
+          test_lawsuit_parties!inner(
+            *,
+            party:party_id(*)
+          )
+        `
+        )
+        .eq("id", lawsuitId)
+        .single();
+
+      if (lawsuitError) throw lawsuitError;
+      setLawsuitDetails(lawsuitData);
+    } catch (error) {
+      console.error("사건/소송 정보 로드 실패:", error);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData({
@@ -127,6 +178,121 @@ export default function AddSubmissionModal({
     return Object.keys(errors).length === 0;
   };
 
+  // 알림 생성 함수
+  const createNotification = async (actionType, submissionData) => {
+    if (!caseDetails || !lawsuitDetails) return;
+
+    try {
+      // 채권자와 채무자 찾기
+      let creditor = null;
+      let debtor = null;
+
+      // 소송 당사자 정보에서 원고(채권자)와 피고(채무자) 구분
+      lawsuitDetails.test_lawsuit_parties.forEach((lp) => {
+        if (["plaintiff", "creditor", "applicant"].includes(lp.party_type)) {
+          creditor = lp.party;
+        } else if (["defendant", "debtor", "respondent"].includes(lp.party_type)) {
+          debtor = lp.party;
+        }
+      });
+
+      if (!creditor || !debtor) return;
+
+      // 알림 제목 및 내용 구성
+      const creditorName =
+        creditor.party_entity_type === "individual" ? creditor.name : creditor.company_name;
+
+      const debtorName =
+        debtor.party_entity_type === "individual" ? debtor.name : debtor.company_name;
+
+      let title = `채권자 ${creditorName} | 채무자 ${debtorName}`;
+
+      let message = "";
+      if (formData.submission_type === "송달문서") {
+        message = `${formData.document_type}을(를) 송달 받았습니다.`;
+      } else {
+        message = `${formData.document_type}을(를) 제출했습니다.`;
+      }
+
+      // 모든 의뢰인 정보를 수집하기 위한 작업 배열
+      const clientFetchPromises = [];
+      const clientIds = new Set(); // 중복 방지를 위해 Set 사용
+
+      // 개인 및 법인/그룹 의뢰인 모두 처리
+      caseDetails.clients.forEach((client) => {
+        if (client.individual_id) {
+          // 개인 의뢰인
+          clientIds.add(client.individual_id.id);
+        } else if (client.organization_id) {
+          // 조직 의뢰인인 경우 조직 멤버 조회 작업 추가
+          const promise = supabase
+            .from("test_organization_members")
+            .select("user_id")
+            .eq("organization_id", client.organization_id.id)
+            .then(({ data, error }) => {
+              if (error) {
+                console.error(`조직 ${client.organization_id.id} 멤버 조회 실패:`, error);
+                return [];
+              }
+              return data || [];
+            });
+
+          clientFetchPromises.push(promise);
+        }
+      });
+
+      // 모든 조직 멤버 조회 작업 실행
+      const orgMembersResults = await Promise.all(clientFetchPromises);
+
+      // 조직 멤버 ID 추가
+      orgMembersResults.forEach((members) => {
+        members.forEach((member) => {
+          if (member.user_id) {
+            clientIds.add(member.user_id);
+          }
+        });
+      });
+
+      // Set을 배열로 변환
+      const uniqueClientIds = Array.from(clientIds);
+
+      if (uniqueClientIds.length === 0) return;
+
+      // 각 클라이언트에 대한 알림 생성
+      const notificationPromises = uniqueClientIds.map(async (clientId) => {
+        const notification = {
+          user_id: clientId,
+          case_id: caseId,
+          title: title,
+          message: message,
+          notification_type: "lawsuit_update",
+          is_read: false,
+          related_entity: "submission",
+          related_id: submissionData.id,
+        };
+
+        try {
+          const { data, error } = await supabase.from("test_notifications").insert(notification);
+
+          if (error) {
+            console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);
+            return { success: false, clientId, error };
+          } else {
+            return { success: true, clientId };
+          }
+        } catch (err) {
+          console.error(`클라이언트 ${clientId}에 대한 알림 생성 중 예외 발생:`, err);
+          return { success: false, clientId, error: err };
+        }
+      });
+
+      await Promise.all(notificationPromises);
+      console.log("알림이 생성되었습니다");
+    } catch (error) {
+      console.error("알림 생성 실패:", error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -162,9 +328,11 @@ export default function AddSubmissionModal({
         }
       }
 
+      let submissionData;
+
       if (isEditMode) {
         // 수정 모드
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("test_lawsuit_submissions")
           .update({
             submission_type: formData.submission_type,
@@ -174,27 +342,46 @@ export default function AddSubmissionModal({
             file_url: fileUrl,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", editingSubmission.id);
+          .eq("id", editingSubmission.id)
+          .select();
 
         if (error) throw error;
+        submissionData = data[0];
 
         toast.success("송달/제출 내역이 수정되었습니다");
+
+        // 문서 유형이나 제출 유형이 변경된 경우에만 알림 생성
+        if (
+          formData.submission_type !== editingSubmission.submission_type ||
+          formData.document_type !== editingSubmission.document_type
+        ) {
+          await createNotification("update", submissionData);
+        }
       } else {
         // 추가 모드
-        const { error } = await supabase.from("test_lawsuit_submissions").insert({
-          lawsuit_id: lawsuitId,
-          submission_type: formData.submission_type,
-          document_type: formData.document_type,
-          submission_date: formData.submission_date.toISOString().split("T")[0],
-          description: formData.description,
-          file_url: fileUrl,
-          created_by: JSON.parse(localStorage.getItem("supabase.auth.token"))?.currentSession?.user
-            ?.id,
-        });
+        const currentUser = JSON.parse(localStorage.getItem("supabase.auth.token"))?.currentSession
+          ?.user?.id;
+
+        const { data, error } = await supabase
+          .from("test_lawsuit_submissions")
+          .insert({
+            lawsuit_id: lawsuitId,
+            submission_type: formData.submission_type,
+            document_type: formData.document_type,
+            submission_date: formData.submission_date.toISOString().split("T")[0],
+            description: formData.description,
+            file_url: fileUrl,
+            created_by: currentUser,
+          })
+          .select();
 
         if (error) throw error;
+        submissionData = data[0];
 
         toast.success("송달/제출 내역이 추가되었습니다");
+
+        // 알림 생성
+        await createNotification("create", submissionData);
       }
 
       // 성공 콜백 호출

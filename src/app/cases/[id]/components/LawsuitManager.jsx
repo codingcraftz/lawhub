@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, RefreshCw, Trash2, Edit, Download, Calendar, File } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 // 모달 컴포넌트 가져오기
 import AddSubmissionModal from "./modals/AddSubmissionModal";
@@ -215,8 +216,10 @@ export default function LawsuitManager({ caseId }) {
   };
 
   const handleAddLawsuit = () => {
+    console.log("소송 등록 버튼 클릭됨");
     setEditingLawsuit(null);
     setShowAddLawsuitModal(true);
+    console.log("showAddLawsuitModal 상태:", true);
   };
 
   const handleEditLawsuit = (lawsuit) => {
@@ -351,6 +354,16 @@ export default function LawsuitManager({ caseId }) {
           <Button variant="outline" onClick={handleAddLawsuit}>
             <Plus className="mr-2 h-4 w-4" /> 소송 등록하기
           </Button>
+        )}
+        {showAddLawsuitModal && (
+          <AddLawsuitModal
+            open={showAddLawsuitModal}
+            onOpenChange={setShowAddLawsuitModal}
+            onSuccess={handleLawsuitSuccess}
+            caseId={caseId}
+            parties={parties}
+            editingLawsuit={editingLawsuit}
+          />
         )}
       </div>
     );

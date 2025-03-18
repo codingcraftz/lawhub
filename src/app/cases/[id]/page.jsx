@@ -47,7 +47,6 @@ import CaseNotifications from "./components/CaseNotifications";
 import CaseDashboard from "./components/CaseDashboard";
 import LawsuitManager from "./components/LawsuitManager";
 import CaseDocuments from "./components/CaseDocuments";
-import { LawsuitModal, DocumentModal, RecoveryActivityModal } from "./components/modals";
 
 export default function CasePage() {
   const pathname = usePathname();
@@ -62,7 +61,6 @@ export default function CasePage() {
   const [clients, setClients] = useState([]);
 
   // 모달 상태 관리
-  const [showLawsuitModal, setShowLawsuitModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
 
@@ -90,14 +88,31 @@ export default function CasePage() {
       // 의뢰인 정보 가져오기
       const { data: clientsData, error: clientsError } = await supabase
         .from("test_case_clients")
-        .select("*")
+        .select(
+          `
+          *,
+          individual_id(id, name),
+          organization_id(id, name, representative_name)
+        `
+        )
         .eq("case_id", caseId);
 
       if (clientsError) throw clientsError;
 
+      // 의뢰인 정보 가공
+      const processedClients = clientsData.map((client) => {
+        return {
+          ...client,
+          client_type: client.individual_id ? "individual" : "organization",
+          individual_name: client.individual_id?.name,
+          organization_name: client.organization_id?.name,
+          representative_name: client.organization_id?.representative_name,
+        };
+      });
+
       setCaseData(caseData);
       setParties(partiesData || []);
-      setClients(clientsData || []);
+      setClients(processedClients || []);
     } catch (error) {
       console.error("케이스 정보 가져오기 실패:", error);
       toast.error("케이스 정보 가져오기 실패", {
@@ -150,22 +165,6 @@ export default function CasePage() {
       </div>
     );
   }
-
-  // 모달 성공시 콜백
-  const handleLawsuitSuccess = () => {
-    fetchCaseDetails();
-    setActiveTab("lawsuits");
-  };
-
-  const handleDocumentSuccess = () => {
-    fetchCaseDetails();
-    setActiveTab("documents");
-  };
-
-  const handleRecoverySuccess = () => {
-    fetchCaseDetails();
-    setActiveTab("recovery");
-  };
 
   // 상태에 따른 배지 색상 매핑
   const getStatusColor = (status) => {
@@ -316,8 +315,15 @@ export default function CasePage() {
                         className="text-sm bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg"
                       >
                         <span className="font-medium text-blue-600 dark:text-blue-400">
-                          {client.user_name || "이름 없음"}
+                          {client.client_type === "individual"
+                            ? client.individual_name || "개인 의뢰인"
+                            : client.organization_name || "법인/단체 의뢰인"}
                         </span>
+                        {client.client_type === "organization" && client.representative_name && (
+                          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                            (대표: {client.representative_name})
+                          </span>
+                        )}
                       </div>
                     ))}
                     {clients.length === 0 && (
