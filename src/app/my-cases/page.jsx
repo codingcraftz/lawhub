@@ -416,6 +416,10 @@ export default function MyCasesPage() {
     debtCategories: [],
   });
 
+  // 월별 회수 통계를 위한 상태 추가
+  const [monthlyRecoveryStats, setMonthlyRecoveryStats] = useState([]);
+  const [monthlyStatsLoading, setMonthlyStatsLoading] = useState(false);
+
   // 사건 정보에 당사자 정보 추가
   const enrichCasesWithPartyInfo = async (cases) => {
     if (!cases || cases.length === 0) return [];
@@ -697,6 +701,84 @@ export default function MyCasesPage() {
       fetchNotifications();
     }
   }, [user]);
+
+  // 월별 회수 통계 가져오기
+  useEffect(() => {
+    if (selectedTab && (personalCases.length > 0 || organizationCases.length > 0)) {
+      fetchMonthlyRecoveryStats();
+    }
+  }, [selectedTab, selectedOrg, personalCases, organizationCases]);
+
+  // 월별 회수 통계를 가져오는 함수
+  const fetchMonthlyRecoveryStats = async () => {
+    try {
+      setMonthlyStatsLoading(true);
+      const currentCases = selectedTab === "personal" ? personalCases : organizationCases;
+      const caseIds = currentCases.map((c) => c.id);
+
+      if (caseIds.length === 0) {
+        setMonthlyRecoveryStats([]);
+        setMonthlyStatsLoading(false);
+        return;
+      }
+
+      // 최근 6개월간의 데이터를 가져오기 위한 날짜 계산
+      const today = new Date();
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(today.getMonth() - 5);
+      sixMonthsAgo.setDate(1);
+      sixMonthsAgo.setHours(0, 0, 0, 0);
+
+      // 월별 통계를 위한 객체 초기화
+      const monthlyStats = {};
+      for (let i = 0; i < 6; i++) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        monthlyStats[yearMonth] = {
+          name: `${d.getMonth() + 1}월`,
+          회수금액: 0,
+          회수건수: 0,
+          yearMonth, // 정렬용
+        };
+      }
+
+      // 회수 활동 정보 가져오기
+      const { data: recoveryData, error: recoveryError } = await supabase
+        .from("test_recovery_activities")
+        .select("case_id, amount, activity_type, created_at")
+        .in("case_id", caseIds)
+        .gte("created_at", sixMonthsAgo.toISOString())
+        .eq("activity_type", "payment");
+
+      if (recoveryError) throw recoveryError;
+
+      if (recoveryData && recoveryData.length > 0) {
+        // 월별로 데이터 집계
+        recoveryData.forEach((recovery) => {
+          const date = new Date(recovery.created_at);
+          const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+          if (monthlyStats[yearMonth]) {
+            monthlyStats[yearMonth].회수금액 += parseFloat(recovery.amount || 0);
+            monthlyStats[yearMonth].회수건수 += 1;
+          }
+        });
+      }
+
+      // 월별 배열로 변환하고 정렬
+      const sortedStats = Object.values(monthlyStats).sort((a, b) =>
+        a.yearMonth.localeCompare(b.yearMonth)
+      );
+
+      setMonthlyRecoveryStats(sortedStats);
+    } catch (error) {
+      console.error("월별 회수 통계 가져오기 실패:", error);
+      setMonthlyRecoveryStats([]);
+    } finally {
+      setMonthlyStatsLoading(false);
+    }
+  };
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -1621,66 +1703,27 @@ export default function MyCasesPage() {
                           </div>
                         </div>
 
-                        <div className="min-h-[220px]">
+                        <div className="min-h-[220px] relative">
                           <h4 className="text-sm font-medium mb-2">월별 회수 금액</h4>
                           <ResponsiveContainer width="100%" height={220}>
                             <BarChart
-                              data={[
-                                // 현재 월을 기준으로 지난 6개월의 데이터를 보여주는 예시 데이터
-                                // 실제로는 API에서 받아온 월별 회수 데이터를 사용해야 함
-                                {
-                                  name:
-                                    new Date(
-                                      new Date().setMonth(new Date().getMonth() - 5)
-                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
-                                  회수금액: 1200000,
-                                  회수건수: 3,
-                                },
-                                {
-                                  name:
-                                    new Date(
-                                      new Date().setMonth(new Date().getMonth() - 4)
-                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
-                                  회수금액: 2500000,
-                                  회수건수: 5,
-                                },
-                                {
-                                  name:
-                                    new Date(
-                                      new Date().setMonth(new Date().getMonth() - 3)
-                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
-                                  회수금액: 1800000,
-                                  회수건수: 2,
-                                },
-                                {
-                                  name:
-                                    new Date(
-                                      new Date().setMonth(new Date().getMonth() - 2)
-                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
-                                  회수금액: 3200000,
-                                  회수건수: 4,
-                                },
-                                {
-                                  name:
-                                    new Date(
-                                      new Date().setMonth(new Date().getMonth() - 1)
-                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
-                                  회수금액: 2100000,
-                                  회수건수: 3,
-                                },
-                                {
-                                  name:
-                                    new Date().toLocaleDateString("ko-KR", { month: "numeric" }) +
-                                    "월",
-                                  회수금액: 2800000,
-                                  회수건수: 6,
-                                },
-                              ]}
+                              data={monthlyRecoveryStats}
                               margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                             >
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="name" />
-                              <YAxis yAxisId="left" orientation="left" stroke="#10b981" />
+                              <YAxis
+                                yAxisId="left"
+                                orientation="left"
+                                stroke="#10b981"
+                                tickFormatter={(value) =>
+                                  value >= 1000000
+                                    ? `${(value / 1000000).toFixed(1)}백만`
+                                    : value >= 1000
+                                    ? `${(value / 1000).toFixed(0)}천`
+                                    : value
+                                }
+                              />
                               <YAxis yAxisId="right" orientation="right" stroke="#6366f1" />
                               <Tooltip
                                 formatter={(value, name) => {
@@ -1704,6 +1747,25 @@ export default function MyCasesPage() {
                               />
                             </BarChart>
                           </ResponsiveContainer>
+
+                          {monthlyStatsLoading ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
+                              <div className="flex flex-col items-center">
+                                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mb-2"></div>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                  회수 데이터 불러오는 중...
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            monthlyRecoveryStats.length === 0 && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                  회수 데이터가 없습니다
+                                </p>
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
                     </CardContent>
