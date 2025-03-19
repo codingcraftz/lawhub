@@ -71,7 +71,7 @@ export default function Navbar() {
             <Scale className="h-5 w-5" />
           </div>
           <span className="font-bold text-xl bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
-            로허브
+            LawHub
           </span>
         </Link>
 
@@ -111,7 +111,7 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* 채권 관리 - 모든 사용자 접근 가능 */}
+          {/* 채권 관리 - 모든 사용자 접근 가능
           <Link href="/debts">
             <Button
               variant={isActive("/debts") ? "default" : "ghost"}
@@ -126,7 +126,7 @@ export default function Navbar() {
               <Briefcase className="mr-2 h-4 w-4" />
               채권 관리
             </Button>
-          </Link>
+          </Link> */}
 
           {/* 나의 의뢰 - 클라이언트만 접근 가능 */}
           {(isClient() || isAdmin()) && (
@@ -147,7 +147,7 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* 클라이언트 관리 - 관리자와 직원만 접근 가능 */}
+          {/* 클라이언트 관리 - 관리자와 직원만 접근 가능
           {(isAdmin() || isStaff()) && (
             <Link href="/clients">
               <Button
@@ -164,7 +164,7 @@ export default function Navbar() {
                 고객 관리
               </Button>
             </Link>
-          )}
+          )} */}
 
           {/* 조직 관리 - 관리자만 접근 가능 */}
           {isAdmin() && (
@@ -185,7 +185,7 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* 일정 관리 - 모든 사용자 접근 가능 */}
+          {/* 일정 관리 - 모든 사용자 접근 가능
           <Link href="/calendar">
             <Button
               variant={isActive("/calendar") ? "default" : "ghost"}
@@ -200,7 +200,7 @@ export default function Navbar() {
               <CalendarRange className="mr-2 h-4 w-4" />
               일정 관리
             </Button>
-          </Link>
+          </Link> */}
         </div>
 
         {/* 우측 기능 버튼들 */}

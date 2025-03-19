@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
-import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,7 +42,6 @@ export default function LoginPage() {
   if (isRedirecting) {
     return (
       <>
-        <Navbar />
         <div className="container mx-auto py-20 text-center">
           <Card className="max-w-md mx-auto">
             <CardHeader>
@@ -63,7 +61,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <Navbar />
       <div className="container mx-auto py-20">
         <Card className="max-w-md mx-auto">
           <CardHeader className="text-center">

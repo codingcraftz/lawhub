@@ -20,10 +20,16 @@ import {
   Plus,
   CalendarPlus,
   Scale,
+  Edit,
+  User,
+  Building2,
+  Trash2,
+  Search,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { toast } from "sonner";
+import { differenceInDays } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -39,14 +45,36 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ScrollArea,
+  ScrollBar,
+  ScrollViewport,
+  ScrollCorner,
+  ScrollThumb,
+} from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-import CaseDetailHeader from "./components/CaseDetailHeader";
 import CaseProgressTimeline from "./components/CaseProgressTimeline";
 import RecoveryActivities from "./components/RecoveryActivities";
 import CaseNotifications from "./components/CaseNotifications";
 import CaseDashboard from "./components/CaseDashboard";
 import LawsuitManager from "./components/LawsuitManager";
 import CaseDocuments from "./components/CaseDocuments";
+
+// 모달 컴포넌트 import
+import ClientDetailModal from "./components/modals/ClientDetailModal";
+import PartyDetailModal from "./components/modals/PartyDetailModal";
+import ClientManageModal from "./components/modals/ClientManageModal";
+import StatusChangeModal from "./components/modals/StatusChangeModal";
+import PartyManageModal from "./components/modals/PartyManageModal";
+import DebtDetailModal from "./components/modals/DebtDetailModal";
 
 export default function CasePage() {
   const pathname = usePathname();
@@ -63,6 +91,39 @@ export default function CasePage() {
   // 모달 상태 관리
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [showPartyModal, setShowPartyModal] = useState(false);
+  const [showClientDetailModal, setShowClientDetailModal] = useState(false);
+  const [showPartyDetailModal, setShowPartyDetailModal] = useState(false);
+  const [showDebtDetailModal, setShowDebtDetailModal] = useState(false);
+
+  // 추가 상태 관리
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [userSearchLoading, setUserSearchLoading] = useState(false);
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [orgSearchTerm, setOrgSearchTerm] = useState("");
+  const [orgSearchLoading, setOrgSearchLoading] = useState(false);
+  const [orgSearchResults, setOrgSearchResults] = useState([]);
+
+  // 상태 변수 추가
+  const [partyType, setPartyType] = useState("plaintiff");
+  const [entityType, setEntityType] = useState("individual");
+  const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [representative, setRepresentative] = useState("");
+  const [businessNumber, setBusinessNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+
+  // 당사자 수정 관련 상태 변수
+  const [editMode, setEditMode] = useState(false);
+  const [editPartyId, setEditPartyId] = useState(null);
+  const [residentNumber, setResidentNumber] = useState("");
+  const [corporateNumber, setCorporateNumber] = useState("");
+  const [position, setPosition] = useState("");
 
   // 케이스 정보 가져오기
   const fetchCaseDetails = async () => {
@@ -99,6 +160,22 @@ export default function CasePage() {
 
       if (clientsError) throw clientsError;
 
+      // 이자 정보 가져오기
+      const { data: interestsData, error: interestsError } = await supabase
+        .from("test_case_interests")
+        .select("*")
+        .eq("case_id", caseId);
+
+      if (interestsError) throw interestsError;
+
+      // 비용 정보 가져오기
+      const { data: expensesData, error: expensesError } = await supabase
+        .from("test_case_expenses")
+        .select("*")
+        .eq("case_id", caseId);
+
+      if (expensesError) throw expensesError;
+
       // 의뢰인 정보 가공
       const processedClients = clientsData.map((client) => {
         return {
@@ -110,7 +187,37 @@ export default function CasePage() {
         };
       });
 
-      setCaseData(caseData);
+      // 이자 정보 처리 - 사용자 화면에 표시할 이자 금액 계산 추가
+      const processedInterests = interestsData.map((interest) => {
+        let amount = 0;
+        if (
+          interest.start_date &&
+          interest.end_date &&
+          interest.rate &&
+          caseData.principal_amount
+        ) {
+          const days = differenceInDays(new Date(interest.end_date), new Date(interest.start_date));
+          if (days > 0) {
+            // 일할 계산: 원금 * 이자율 * (일수 / 365)
+            amount = Math.round(
+              Number(caseData.principal_amount) * (Number(interest.rate) / 100) * (days / 365)
+            );
+          }
+        }
+        return {
+          ...interest,
+          amount: amount.toString(),
+        };
+      });
+
+      // caseData에 이자와 비용 정보 포함
+      const enrichedCaseData = {
+        ...caseData,
+        interests: processedInterests || [],
+        expenses: expensesData || [],
+      };
+
+      setCaseData(enrichedCaseData);
       setParties(partiesData || []);
       setClients(processedClients || []);
     } catch (error) {
@@ -196,6 +303,567 @@ export default function CasePage() {
     return typeMap[type] || "text-gray-600";
   };
 
+  // 의뢰인 관리 함수
+  const handleRemoveClient = async (clientId) => {
+    if (!confirm("이 의뢰인을 삭제하시겠습니까?")) return;
+
+    try {
+      const { error } = await supabase.from("test_case_clients").delete().eq("id", clientId);
+
+      if (error) throw error;
+
+      // 의뢰인 목록 갱신
+      setClients(clients.filter((client) => client.id !== clientId));
+      toast.success("의뢰인이 삭제되었습니다");
+    } catch (error) {
+      console.error("의뢰인 삭제 실패:", error);
+      toast.error("의뢰인 삭제 실패", {
+        description: error.message,
+      });
+    }
+  };
+
+  const handleUserSearch = async () => {
+    if (!userSearchTerm) {
+      toast.warning("검색어를 입력해주세요");
+      return;
+    }
+
+    try {
+      setUserSearchLoading(true);
+      const { data, error } = await supabase
+        .from("test_users")
+        .select("*")
+        .or(`name.ilike.%${userSearchTerm}%,email.ilike.%${userSearchTerm}%`)
+        .limit(10);
+
+      if (error) {
+        if (error.code === "42P01") {
+          // 테이블이 존재하지 않는 경우
+          toast.error("사용자 테이블이 존재하지 않습니다 (test_users)", {
+            description: "관리자에게 문의하세요",
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        setUserSearchResults(data || []);
+        if (data && data.length === 0) {
+          toast.info("검색 결과가 없습니다");
+        }
+      }
+    } catch (error) {
+      console.error("사용자 검색 실패:", error);
+      toast.error("사용자 검색에 실패했습니다");
+    } finally {
+      setUserSearchLoading(false);
+    }
+  };
+
+  const handleOrgSearch = async () => {
+    if (!orgSearchTerm) {
+      toast.warning("검색어를 입력해주세요");
+      return;
+    }
+
+    try {
+      setOrgSearchLoading(true);
+      const { data, error } = await supabase
+        .from("test_organizations")
+        .select("*")
+        .ilike("name", `%${orgSearchTerm}%`)
+        .limit(10);
+
+      if (error) {
+        if (error.code === "42P01") {
+          // 테이블이 존재하지 않는 경우
+          toast.error("조직 테이블이 존재하지 않습니다 (test_organizations)", {
+            description: "관리자에게 문의하세요",
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        setOrgSearchResults(data || []);
+        if (data && data.length === 0) {
+          toast.info("검색 결과가 없습니다");
+        }
+      }
+    } catch (error) {
+      console.error("조직 검색 실패:", error);
+      toast.error("조직 검색에 실패했습니다");
+    } finally {
+      setOrgSearchLoading(false);
+    }
+  };
+
+  const handleAddUserClient = async (userId) => {
+    try {
+      // 이미 등록된 의뢰인인지 확인
+      const isAlreadyClient = clients.some(
+        (client) => client.client_type === "individual" && client.individual_id?.id === userId
+      );
+
+      if (isAlreadyClient) {
+        toast.info("이미 등록된 의뢰인입니다");
+        return;
+      }
+
+      const newClient = {
+        case_id: caseId,
+        individual_id: userId,
+        organization_id: null,
+        position: "",
+      };
+
+      const { data, error } = await supabase
+        .from("test_case_clients")
+        .insert(newClient)
+        .select(
+          `
+          *,
+          individual_id(id, name),
+          organization_id(id, name, representative_name)
+        `
+        )
+        .single();
+
+      if (error) throw error;
+
+      // 클라이언트 객체 가공
+      const processedClient = {
+        ...data,
+        client_type: "individual",
+        individual_name: data.individual_id?.name,
+      };
+
+      // 의뢰인 목록 갱신
+      setClients([...clients, processedClient]);
+
+      toast.success("의뢰인이 추가되었습니다");
+      setShowClientModal(false);
+    } catch (error) {
+      console.error("의뢰인 추가 실패:", error);
+      toast.error("의뢰인 추가 실패", {
+        description: error.message,
+      });
+    }
+  };
+
+  const handleAddOrgClient = async (orgId) => {
+    try {
+      // 이미 등록된 의뢰인인지 확인
+      const isAlreadyClient = clients.some(
+        (client) => client.client_type === "organization" && client.organization_id?.id === orgId
+      );
+
+      if (isAlreadyClient) {
+        toast.info("이미 등록된 의뢰인입니다");
+        return;
+      }
+
+      const newClient = {
+        case_id: caseId,
+        individual_id: null,
+        organization_id: orgId,
+        position: "",
+      };
+
+      const { data, error } = await supabase
+        .from("test_case_clients")
+        .insert(newClient)
+        .select(
+          `
+          *,
+          individual_id(id, name),
+          organization_id(id, name, representative_name)
+        `
+        )
+        .single();
+
+      if (error) throw error;
+
+      // 클라이언트 객체 가공
+      const processedClient = {
+        ...data,
+        client_type: "organization",
+        organization_name: data.organization_id?.name,
+        representative_name: data.organization_id?.representative_name,
+      };
+
+      // 의뢰인 목록 갱신
+      setClients([...clients, processedClient]);
+
+      toast.success("의뢰인이 추가되었습니다");
+      setShowClientModal(false);
+    } catch (error) {
+      console.error("의뢰인 추가 실패:", error);
+      toast.error("의뢰인 추가 실패", {
+        description: error.message,
+      });
+    }
+  };
+
+  // 당사자 관리 함수
+  const handleEditParty = async (partyId, partyData) => {
+    try {
+      setLoading(true);
+
+      const {
+        partyType,
+        entityType,
+        name,
+        companyName,
+        phone,
+        email,
+        address,
+        residentNumber,
+        corporateNumber,
+        position,
+      } = partyData;
+
+      // 필수 필드 검증
+      if (!partyType) {
+        toast.error("당사자 유형을 선택해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      if (!entityType) {
+        toast.error("개인/법인 구분을 선택해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      if (entityType === "individual" && !name) {
+        toast.error("이름을 입력해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      if (entityType === "corporation" && !companyName) {
+        toast.error("법인/단체명을 입력해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      // 당사자 수정
+      const { error } = await supabase
+        .from("test_case_parties")
+        .update({
+          party_type: partyType,
+          entity_type: entityType,
+          name,
+          company_name: companyName,
+          phone,
+          email,
+          address,
+          resident_number: residentNumber,
+          corporate_number: corporateNumber,
+          position,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", partyId);
+
+      if (error) {
+        console.error("Error updating party:", error);
+        toast.error("당사자 수정 중 오류가 발생했습니다.");
+        setLoading(false);
+        return;
+      }
+
+      // 성공적으로 당사자가 수정되면 목록 새로고침
+      fetchCaseDetails();
+      setEditMode(false);
+      setEditPartyId(null);
+      setShowPartyModal(false);
+      toast.success("당사자 정보가 수정되었습니다.");
+    } catch (error) {
+      console.error("Error in handleEditParty:", error);
+      toast.error("당사자 수정 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 당사자 수정 모달 열기
+  const openEditPartyModal = (party) => {
+    setEditMode(true);
+    setEditPartyId(party.id);
+    setPartyType(party.party_type);
+    setEntityType(party.entity_type || "individual");
+    setName(party.name || "");
+    setCompanyName(party.company_name || "");
+    setPhone(party.phone || "");
+    setEmail(party.email || "");
+    setAddress(party.address || "");
+    setResidentNumber(party.resident_number || "");
+    setCorporateNumber(party.corporate_number || "");
+    setPosition(party.position || "");
+    setShowPartyModal(true);
+  };
+
+  const handleRemoveParty = async (partyId) => {
+    if (!confirm("이 당사자를 삭제하시겠습니까?")) return;
+
+    try {
+      const { error } = await supabase.from("test_case_parties").delete().eq("id", partyId);
+
+      if (error) throw error;
+
+      // 당사자 목록 갱신
+      setParties(parties.filter((party) => party.id !== partyId));
+      toast.success("당사자가 삭제되었습니다");
+    } catch (error) {
+      console.error("당사자 삭제 실패:", error);
+      toast.error("당사자 삭제 실패", {
+        description: error.message,
+      });
+    }
+  };
+
+  // 상태 관리 함수
+  const handleStatusChange = (value) => {
+    setSelectedStatus(value);
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!selectedStatus) {
+      toast.error("상태를 선택해주세요");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("test_cases")
+        .update({ status: selectedStatus })
+        .eq("id", caseId);
+
+      if (error) throw error;
+
+      // 케이스 정보 갱신
+      setCaseData({
+        ...caseData,
+        status: selectedStatus,
+      });
+
+      toast.success("상태가 변경되었습니다");
+      setShowStatusModal(false);
+    } catch (error) {
+      console.error("상태 변경 실패:", error);
+      toast.error("상태 변경 실패", {
+        description: error.message,
+      });
+    }
+  };
+
+  // 당사자 관리 함수에 추가
+  const handleAddParty = async (partyData) => {
+    try {
+      setLoading(true);
+
+      const {
+        partyType,
+        entityType,
+        name,
+        companyName,
+        phone,
+        email,
+        address,
+        residentNumber,
+        corporateNumber,
+        position,
+      } = partyData;
+
+      // 필수 필드 검증
+      if (!partyType) {
+        toast.error("당사자 유형을 선택해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      if (!entityType) {
+        toast.error("개인/법인 구분을 선택해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      if (entityType === "individual" && !name) {
+        toast.error("이름을 입력해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      if (entityType === "corporation" && !companyName) {
+        toast.error("법인/단체명을 입력해주세요.");
+        setLoading(false);
+        return;
+      }
+
+      // 당사자 추가
+      const { data: newParty, error } = await supabase
+        .from("test_case_parties")
+        .insert([
+          {
+            case_id: caseId,
+            party_type: partyType,
+            entity_type: entityType,
+            name,
+            company_name: companyName,
+            phone,
+            email,
+            address,
+            resident_number: residentNumber,
+            corporate_number: corporateNumber,
+            position,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("Error adding party:", error);
+        toast.error("당사자 추가 중 오류가 발생했습니다.");
+        setLoading(false);
+        return;
+      }
+
+      // 성공적으로 당사자가 추가되면 목록 새로고침
+      fetchCaseDetails();
+      setShowPartyModal(false);
+      resetPartyForm();
+      toast.success("당사자가 추가되었습니다.");
+    } catch (error) {
+      console.error("Error in handleAddParty:", error);
+      toast.error("당사자 추가 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 당사자 폼 상태 초기화 함수
+  const resetPartyForm = () => {
+    setEditMode(false);
+    setEditPartyId(null);
+    setPartyType("");
+    setEntityType("individual");
+    setName("");
+    setCompanyName("");
+    setPhone("");
+    setEmail("");
+    setAddress("");
+    setResidentNumber("");
+    setCorporateNumber("");
+    setPosition("");
+  };
+
+  // 모달 닫기 시 상태 초기화
+  const handlePartyModalOpenChange = (open) => {
+    if (!open) {
+      resetPartyForm();
+    }
+    setShowPartyModal(open);
+  };
+
+  // 채권금액 상세 정보 업데이트 핸들러
+  const handleUpdateDebtInfo = async (debtInfo) => {
+    try {
+      setLoading(true);
+
+      // 1. 사건의 principal_amount 필드만 업데이트
+      const { error: caseError } = await supabase
+        .from("test_cases")
+        .update({
+          principal_amount: debtInfo.principal_amount,
+        })
+        .eq("id", caseId);
+
+      if (caseError) throw caseError;
+
+      // 2. 기존 이자 정보 모두 삭제하고 다시 저장
+      const { error: deleteInterestsError } = await supabase
+        .from("test_case_interests")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (deleteInterestsError) throw deleteInterestsError;
+
+      // 3. 이자 정보가 있으면 새로 저장
+      if (debtInfo.interests && debtInfo.interests.length > 0) {
+        const interestsToInsert = debtInfo.interests.map((interest) => ({
+          case_id: caseId,
+          start_date: interest.start_date,
+          end_date: interest.end_date,
+          rate: interest.rate,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+
+        const { error: insertInterestsError } = await supabase
+          .from("test_case_interests")
+          .insert(interestsToInsert);
+
+        if (insertInterestsError) throw insertInterestsError;
+      }
+
+      // 4. 기존 비용 정보 모두 삭제하고 다시 저장
+      const { error: deleteExpensesError } = await supabase
+        .from("test_case_expenses")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (deleteExpensesError) throw deleteExpensesError;
+
+      // 5. 비용 정보가 있으면 새로 저장
+      if (debtInfo.expenses && debtInfo.expenses.length > 0) {
+        const expensesToInsert = debtInfo.expenses.map((expense) => ({
+          case_id: caseId,
+          expense_type:
+            expense.expense_type === "기타" && expense.custom_type
+              ? expense.custom_type
+              : expense.expense_type,
+          amount: expense.amount,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+
+        const { error: insertExpensesError } = await supabase
+          .from("test_case_expenses")
+          .insert(expensesToInsert);
+
+        if (insertExpensesError) throw insertExpensesError;
+      }
+
+      // 데이터 새로고침
+      await fetchCaseDetails();
+      toast.success("채권 정보가 업데이트되었습니다");
+    } catch (error) {
+      console.error("채권 정보 업데이트 실패:", error);
+      toast.error("채권 정보 업데이트에 실패했습니다", {
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 사용자 검색 시 엔터키 처리
+  const handleUserSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleUserSearch();
+    }
+  };
+
+  // 조직 검색 시 엔터키 처리
+  const handleOrgSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleOrgSearch();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
       <div className="container p-6 mx-auto">
@@ -209,24 +877,16 @@ export default function CasePage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             돌아가기
           </Button>
-          <CaseDetailHeader caseData={caseData} onRefresh={fetchCaseDetails} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* 사이드바 */}
           <div className="md:col-span-1">
             <Card className="shadow-lg border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden transition-all hover:shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 pb-4">
+              <CardHeader className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 py-4 flex items-center justify-center">
                 <CardTitle className="text-lg font-semibold">사건 정보</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5 pt-5">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">사건 번호</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">
-                    {caseData.case_number || "번호 없음"}
-                  </p>
-                </div>
-
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">상태</p>
                   {caseData.status_info?.color ? (
@@ -247,16 +907,58 @@ export default function CasePage() {
                         ? "진행중"
                         : caseData.status === "closed"
                         ? "종결"
+                        : caseData.status === "pending"
+                        ? "대기중"
+                        : caseData.status === "filed"
+                        ? "접수완료"
+                        : caseData.status === "in_progress"
+                        ? "진행중"
+                        : caseData.status === "decision"
+                        ? "결정"
+                        : caseData.status === "completed"
+                        ? "완료"
+                        : caseData.status === "appeal"
+                        ? "항소"
                         : caseData.status || "미정"}
                     </Badge>
+                  )}
+                  {user && (user.role === "admin" || user.role === "staff") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-2 h-7 px-2"
+                      onClick={() => setShowStatusModal(true)}
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
                   )}
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">금액</p>
-                  <p className="font-medium text-gray-800 dark:text-gray-200 text-lg">
-                    {formatCurrency(caseData.amount || caseData.principal_amount)}
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">채권금액</p>
+                  <div className="flex items-center">
+                    <p className="font-medium text-gray-800 dark:text-gray-200 text-lg">
+                      {formatCurrency(
+                        Number(caseData.principal_amount || 0) +
+                          caseData.interests?.reduce(
+                            (sum, interest) => sum + Number(interest.amount || 0),
+                            0
+                          ) +
+                          caseData.expenses?.reduce(
+                            (sum, expense) => sum + Number(expense.amount || 0),
+                            0
+                          )
+                      )}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-2 h-7 px-2 text-blue-500"
+                      onClick={() => setShowDebtDetailModal(true)}
+                    >
+                      상세보기
+                    </Button>
+                  </div>
                 </div>
 
                 <div>
@@ -269,103 +971,125 @@ export default function CasePage() {
                 <Separator className="my-2 bg-gray-200 dark:bg-gray-700" />
 
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 font-medium">
-                    당사자
-                  </p>
-                  <div className="space-y-3">
-                    {parties.map((party) => (
-                      <div
-                        key={party.id}
-                        className="text-sm flex justify-between bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg"
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">의뢰인</p>
+                    {user && (user.role === "admin" || user.role === "staff") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() => setShowClientModal(true)}
                       >
-                        <span className={cn("font-medium", getPartyTypeColor(party.party_type))}>
-                          {party.party_type === "plaintiff"
-                            ? "원고"
-                            : party.party_type === "defendant"
-                            ? "피고"
-                            : party.party_type === "creditor"
-                            ? "채권자"
-                            : party.party_type === "debtor"
-                            ? "채무자"
-                            : party.party_type}
-                        </span>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          {party.name || party.company_name || "이름 없음"}
-                        </span>
-                      </div>
-                    ))}
-                    {parties.length === 0 && (
-                      <div className="text-center py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                        <p className="text-sm text-gray-400 dark:text-gray-500">
-                          등록된 당사자 없음
-                        </p>
-                      </div>
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {clients.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        등록된 의뢰인이 없습니다
+                      </p>
+                    ) : (
+                      clients.slice(0, 3).map((client, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          {client.client_type === "individual" ? (
+                            <User className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <Building2 className="h-4 w-4 text-amber-500" />
+                          )}
+                          <span className="font-medium truncate">
+                            {client.client_type === "individual"
+                              ? client.individual_name
+                              : client.organization_name}
+                          </span>
+                        </div>
+                      ))
+                    )}
+
+                    {clients.length > 3 && (
+                      <p className="text-xs text-muted-foreground">외 {clients.length - 3}명</p>
+                    )}
+
+                    {clients.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => setShowClientDetailModal(true)}
+                      >
+                        의뢰인 상세보기
+                      </Button>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 font-medium">
-                    의뢰인
-                  </p>
-                  <div className="space-y-3">
-                    {clients.map((client) => (
-                      <div
-                        key={client.id}
-                        className="text-sm bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg"
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">당사자</p>
+                    {user && (user.role === "admin" || user.role === "staff") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() => setShowPartyModal(true)}
                       >
-                        <span className="font-medium text-blue-600 dark:text-blue-400">
-                          {client.client_type === "individual"
-                            ? client.individual_name || "개인 의뢰인"
-                            : client.organization_name || "법인/단체 의뢰인"}
-                        </span>
-                        {client.client_type === "organization" && client.representative_name && (
-                          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                            (대표: {client.representative_name})
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {parties.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        등록된 당사자가 없습니다
+                      </p>
+                    ) : (
+                      parties.slice(0, 3).map((party, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={cn("text-xs", getPartyTypeColor(party.party_type))}
+                          >
+                            {party.party_type === "plaintiff"
+                              ? "원고"
+                              : party.party_type === "defendant"
+                              ? "피고"
+                              : party.party_type === "creditor"
+                              ? "채권자"
+                              : party.party_type === "debtor"
+                              ? "채무자"
+                              : party.party_type === "applicant"
+                              ? "신청인"
+                              : party.party_type === "respondent"
+                              ? "피신청인"
+                              : party.party_type}
+                          </Badge>
+                          <span className="font-medium truncate">
+                            {party.name || party.company_name}
                           </span>
-                        )}
-                      </div>
-                    ))}
-                    {clients.length === 0 && (
-                      <div className="text-center py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                        <p className="text-sm text-gray-400 dark:text-gray-500">
-                          등록된 의뢰인 없음
-                        </p>
-                      </div>
+                        </div>
+                      ))
+                    )}
+
+                    {parties.length > 3 && (
+                      <p className="text-xs text-muted-foreground">외 {parties.length - 3}명</p>
+                    )}
+
+                    {parties.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => setShowPartyDetailModal(true)}
+                      >
+                        당사자 상세보기
+                      </Button>
                     )}
                   </div>
                 </div>
 
                 <Separator className="my-2 bg-gray-200 dark:bg-gray-700" />
-
-                {user && (user.role === "staff" || user.role === "admin") && (
-                  <div className="space-y-3 pt-2">
-                    <Button
-                      className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md hover:shadow-lg transition-all border-0 flex items-center gap-2"
-                      data-open-add-lawsuit
-                      onClick={() => setShowLawsuitModal(true)}
-                    >
-                      <Scale size={16} className="text-blue-100" />
-                      소송 등록
-                    </Button>
-
-                    <Button
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transition-all border-0 flex items-center gap-2"
-                      onClick={() => setShowRecoveryModal(true)}
-                    >
-                      <CalendarPlus size={16} className="text-emerald-100" />
-                      회수활동 등록
-                    </Button>
-
-                    <Button
-                      className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-md hover:shadow-lg transition-all border-0 flex items-center gap-2"
-                      onClick={() => setShowDocumentModal(true)}
-                    >
-                      <FileUp size={16} className="text-amber-100" />
-                      문서 업로드
-                    </Button>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -384,13 +1108,6 @@ export default function CasePage() {
                       대시보드
                     </TabsTrigger>
                     <TabsTrigger
-                      value="progress"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:font-medium data-[state=active]:shadow-none rounded-none px-5 py-3 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 transition-all"
-                    >
-                      <History className="h-4 w-4 mr-2" />
-                      진행상황
-                    </TabsTrigger>
-                    <TabsTrigger
                       value="lawsuits"
                       className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:font-medium data-[state=active]:shadow-none rounded-none px-5 py-3 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 transition-all"
                     >
@@ -404,20 +1121,6 @@ export default function CasePage() {
                       <Clock className="h-4 w-4 mr-2" />
                       회수활동
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="documents"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:font-medium data-[state=active]:shadow-none rounded-none px-5 py-3 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 transition-all"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      문서
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="notifications"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:font-medium data-[state=active]:shadow-none rounded-none px-5 py-3 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 transition-all"
-                    >
-                      <Bell className="h-4 w-4 mr-2" />
-                      알림
-                    </TabsTrigger>
                   </TabsList>
 
                   <div className="p-5">
@@ -430,10 +1133,6 @@ export default function CasePage() {
                       />
                     </TabsContent>
 
-                    <TabsContent value="progress" className="mt-0">
-                      <CaseProgressTimeline caseId={caseId} />
-                    </TabsContent>
-
                     <TabsContent value="lawsuits" className="mt-0">
                       <LawsuitManager caseId={caseId} parties={parties} viewMode={true} />
                     </TabsContent>
@@ -441,20 +1140,95 @@ export default function CasePage() {
                     <TabsContent value="recovery" className="mt-0">
                       <RecoveryActivities caseId={caseId} />
                     </TabsContent>
-
-                    <TabsContent value="documents" className="mt-0">
-                      <CaseDocuments caseId={caseId} />
-                    </TabsContent>
-
-                    <TabsContent value="notifications" className="mt-0">
-                      <CaseNotifications caseId={caseId} />
-                    </TabsContent>
                   </div>
                 </Tabs>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* 모달 컴포넌트 사용 */}
+        <ClientDetailModal
+          open={showClientDetailModal}
+          onOpenChange={setShowClientDetailModal}
+          clients={clients}
+          onRemoveClient={handleRemoveClient}
+          user={user}
+        />
+
+        <PartyDetailModal
+          open={showPartyDetailModal}
+          onOpenChange={setShowPartyDetailModal}
+          parties={parties}
+          onEditParty={openEditPartyModal}
+          onRemoveParty={handleRemoveParty}
+          user={user}
+          getPartyTypeColor={getPartyTypeColor}
+        />
+
+        <ClientManageModal
+          open={showClientModal}
+          onOpenChange={setShowClientModal}
+          userSearchTerm={userSearchTerm}
+          setUserSearchTerm={setUserSearchTerm}
+          userSearchLoading={userSearchLoading}
+          userSearchResults={userSearchResults}
+          orgSearchTerm={orgSearchTerm}
+          setOrgSearchTerm={setOrgSearchTerm}
+          orgSearchLoading={orgSearchLoading}
+          orgSearchResults={orgSearchResults}
+          handleUserSearch={handleUserSearch}
+          handleOrgSearch={handleOrgSearch}
+          handleAddUserClient={handleAddUserClient}
+          handleAddOrgClient={handleAddOrgClient}
+          handleUserSearchKeyDown={handleUserSearchKeyDown}
+          handleOrgSearchKeyDown={handleOrgSearchKeyDown}
+        />
+
+        <StatusChangeModal
+          open={showStatusModal}
+          onOpenChange={setShowStatusModal}
+          defaultStatus={caseData.status}
+          selectedStatus={selectedStatus}
+          handleStatusChange={handleStatusChange}
+          handleUpdateStatus={handleUpdateStatus}
+        />
+
+        <PartyManageModal
+          open={showPartyModal}
+          onOpenChange={handlePartyModalOpenChange}
+          partyType={partyType}
+          setPartyType={setPartyType}
+          entityType={entityType}
+          setEntityType={setEntityType}
+          name={name}
+          setName={setName}
+          companyName={companyName}
+          setCompanyName={setCompanyName}
+          representative={representative}
+          setRepresentative={setRepresentative}
+          businessNumber={businessNumber}
+          setBusinessNumber={setBusinessNumber}
+          phone={phone}
+          setPhone={setPhone}
+          email={email}
+          setEmail={setEmail}
+          address={address}
+          setAddress={setAddress}
+          handleAddParty={handleAddParty}
+          handleEditParty={handleEditParty}
+          editMode={editMode}
+          editPartyId={editPartyId}
+        />
+
+        {/* 채권금액 상세보기 모달 */}
+        <DebtDetailModal
+          open={showDebtDetailModal}
+          onOpenChange={setShowDebtDetailModal}
+          caseData={caseData}
+          user={user}
+          onUpdateDebtInfo={handleUpdateDebtInfo}
+        />
       </div>
     </div>
   );

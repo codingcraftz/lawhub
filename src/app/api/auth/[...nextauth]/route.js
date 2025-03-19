@@ -31,9 +31,7 @@ const authOptions = {
         session.user.kakao_account = token.kakao_account;
       }
 
-      // Supabase에서 사용자 조회 또는 생성
       try {
-        // 사용자가 이미 있는지 확인 (카카오 ID를 기준으로)
         const { data: existingUser, error: findError } = await supabaseAdmin
           .from("users")
           .select("*")

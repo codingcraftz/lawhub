@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { supabase } from "@/utils/supabase";
@@ -10,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import CalendarView from "@/components/Calendar";
 import {
   AlertCircle,
   ChevronRight,
@@ -18,28 +26,125 @@ import {
   TrendingUp,
   Gavel,
   FileText,
-  Calendar,
+  Calendar as CalendarIcon,
   RefreshCw,
   ArrowUpRight,
+  Bell,
+  Clock,
+  Activity,
+  Users,
+  PieChart,
+  CreditCard,
+  DollarSign,
+  Percent,
+  BarChart3,
+  ChevronLeft,
+  ChevronUp,
+  MoreHorizontal,
+  Info,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ko } from "date-fns/locale";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  subMonths,
+  isSameDay,
+  parseISO,
+  isToday,
+} from "date-fns";
 
 export default function CaseDashboard({ caseId, caseData, parties, clients }) {
   const [lawsuits, setLawsuits] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loadingLawsuits, setLoadingLawsuits] = useState(true);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [recoveryData, setRecoveryData] = useState({
     principalAmount: caseData?.principal_amount || 0,
-    totalAmount: 0, // 원리금 (수임원금 + 이자 + 비용)
+    totalAmount: 0, // 원리금 (채권원금 + 이자 + 비용)
     recoveredAmount: 0, // 회수금액
     recoveryRate: 0, // 회수율
     isLoading: true,
   });
 
+  // 달력 관련 상태 추가
+  const [schedules, setSchedules] = useState([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
   useEffect(() => {
     fetchLawsuits();
+    fetchNotifications();
     calculateRecoveryData();
+    fetchSchedules();
   }, [caseId]);
+
+  // 월 변경 시 해당 월의 일정 가져오기
+  useEffect(() => {
+    fetchSchedules();
+  }, [currentMonth]);
+
+  // 일정 정보 가져오기
+  const fetchSchedules = async () => {
+    setLoadingSchedules(true);
+    try {
+      const startDate = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        1
+      ).toISOString();
+      const endDate = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth() + 1,
+        0,
+        23,
+        59,
+        59
+      ).toISOString();
+
+      const { data, error } = await supabase
+        .from("test_schedules")
+        .select("*")
+        .eq("case_id", caseId)
+        .gte("event_date", startDate)
+        .lte("event_date", endDate)
+        .order("event_date", { ascending: true });
+
+      if (error) throw error;
+      setSchedules(data || []);
+    } catch (error) {
+      console.error("일정 정보 조회 실패:", error);
+      toast.error("일정 정보 조회에 실패했습니다");
+    } finally {
+      setLoadingSchedules(false);
+    }
+  };
+
+  // 알림 정보 가져오기
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const { data, error } = await supabase
+        .from("test_notifications")
+        .select("*")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (error) {
+      console.error("알림 정보 조회 실패:", error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
   // 소송 정보 가져오기
   const fetchLawsuits = async () => {
@@ -128,6 +233,27 @@ export default function CaseDashboard({ caseId, caseData, parties, clients }) {
     }
   };
 
+  // 일정 관련 처리 함수
+  const handleAddSchedule = (date) => {
+    // 일정 추가 모달 열기 로직 (후에 구현)
+    toast.info("일정 추가 기능은 준비 중입니다");
+  };
+
+  const handleEditSchedule = (schedule) => {
+    // 일정 수정 모달 열기 로직 (후에 구현)
+    toast.info("일정 수정 기능은 준비 중입니다");
+  };
+
+  const handleDeleteSchedule = (schedule) => {
+    // 일정 삭제 확인 및 처리 로직 (후에 구현)
+    toast.info("일정 삭제 기능은 준비 중입니다");
+  };
+
+  const handleRefreshSchedules = (month) => {
+    setCurrentMonth(month);
+    fetchSchedules();
+  };
+
   // 소송 유형 텍스트
   const getLawsuitTypeText = (type) => {
     switch (type) {
@@ -154,7 +280,7 @@ export default function CaseDashboard({ caseId, caseData, parties, clients }) {
       case "pending":
         return (
           <Badge className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-800/50 border border-amber-200 dark:border-amber-800/50">
-            <Calendar className="w-3 h-3 mr-1" />
+            <CalendarIcon className="w-3 h-3 mr-1" />
             대기
           </Badge>
         );
@@ -201,225 +327,421 @@ export default function CaseDashboard({ caseId, caseData, parties, clients }) {
     }
   };
 
+  // 알림 유형에 따른 아이콘 가져오기
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "lawsuit_update":
+        return <Gavel className="w-4 h-4 text-purple-500" />;
+      case "recovery_activity":
+        return <CreditCard className="w-4 h-4 text-green-500" />;
+      case "deadline":
+        return <CalendarIcon className="w-4 h-4 text-red-500" />;
+      case "document":
+        return <FileText className="w-4 h-4 text-blue-500" />;
+      default:
+        return <Bell className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  // 알림 생성 시간 포맷팅
+  const formatNotificationTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffDay > 0) {
+      return `${diffDay}일 전`;
+    } else if (diffHour > 0) {
+      return `${diffHour}시간 전`;
+    } else if (diffMin > 0) {
+      return `${diffMin}분 전`;
+    } else {
+      return "방금 전";
+    }
+  };
+
+  // 날짜에 표시할 일정 점 렌더링
+  const renderDateScheduleIndicator = (day) => {
+    const eventsOnDay = schedules.filter((event) => isSameDay(parseISO(event.event_date), day));
+
+    if (eventsOnDay.length === 0) return null;
+
+    // 일정이 3개 이하면 모두 표시, 3개 초과면 3개까지만 표시하고 +로 표시
+    const displayedEvents = eventsOnDay.slice(0, 3);
+    const hasMoreEvents = eventsOnDay.length > 3;
+
+    return (
+      <div className="flex flex-col items-center mt-1 space-y-1">
+        <div className="flex space-x-1">
+          {displayedEvents.map((event, i) => (
+            <div key={i} className={`w-2 h-2 rounded-full ${getEventColor(event.event_type)}`} />
+          ))}
+          {hasMoreEvents && (
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              +{eventsOnDay.length - 3}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
-      {/* 요약 정보 대시보드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* 회수 현황 카드 */}
-        <Card className="border-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden rounded-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-xl text-blue-800 dark:text-blue-300">
-              <CircleDollarSign className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-              회수 현황
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recoveryData.isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-2 w-full" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">수임 원금</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(recoveryData.principalAmount)}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">원리금 합계</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(recoveryData.totalAmount)}
-                    </p>
-                  </div>
+      {/* 채권 회수 현황 요약 */}
+      <Card className="border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+          <CardTitle className="text-xl font-bold flex items-center">
+            <BarChart3 className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+            채권 회수 현황
+          </CardTitle>
+          <CardDescription>이 사건의 채권 원금, 회수 금액 및 회수율을 보여줍니다.</CardDescription>
+        </CardHeader>
+        <CardContent className="py-4">
+          {recoveryData.isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">회수 진행률</p>
-                    <p className="text-sm font-medium">{recoveryData.recoveryRate.toFixed(1)}%</p>
-                  </div>
-                  <div className="mt-2 relative h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950/60">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 rounded-full"
-                      style={{ width: `${Math.min(recoveryData.recoveryRate, 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mt-1 text-sm">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      {formatCurrency(recoveryData.recoveredAmount)}
-                    </p>
-                    <p className="text-gray-500 dark:text-gray-400">
-                      {formatCurrency(recoveryData.totalAmount)}
-                    </p>
-                  </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center mb-2">
+                  <DollarSign className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    채권 원금
+                  </span>
                 </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
-                  onClick={calculateRecoveryData}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                  새로고침
-                </Button>
+                <div className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(recoveryData.principalAmount)}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* 당사자 정보 카드 */}
-        <Card className="border-0 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden rounded-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-xl text-emerald-800 dark:text-emerald-300">
-              <Scale className="mr-2 h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center mb-2">
+                  <PieChart className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    총 채권액
+                  </span>
+                </div>
+                <div className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(recoveryData.totalAmount)}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center mb-2">
+                  <CreditCard className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    회수 금액
+                  </span>
+                </div>
+                <div className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(recoveryData.recoveredAmount)}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center mb-2">
+                  <Percent className="w-5 h-5 mr-2 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    회수율
+                  </span>
+                </div>
+                <div className="font-bold text-gray-900 dark:text-white">
+                  {recoveryData.recoveryRate.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="pt-0 pb-4">
+          <div className="w-full mt-2">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">회수 진행률</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {recoveryData.recoveryRate.toFixed(1)}%
+              </p>
+            </div>
+            <div className="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 rounded-full"
+                style={{ width: `${Math.min(recoveryData.recoveryRate, 100)}%` }}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900"
+              onClick={calculateRecoveryData}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              새로고침
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+
+      {/* 일정 달력 - 새 컴포넌트 사용 */}
+      <CalendarView
+        schedules={schedules}
+        onAddSchedule={handleAddSchedule}
+        onEditSchedule={handleEditSchedule}
+        onDeleteSchedule={handleDeleteSchedule}
+        isLoading={loadingSchedules}
+        onRefresh={handleRefreshSchedules}
+        title="사건 일정 달력"
+        description="소송 기일, 분납 일정 등을 달력 형태로 확인할 수 있습니다."
+      />
+
+      {/* 주요 정보 그리드 - 당사자 정보와 최근 활동 알림 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 당사자 정보 */}
+        <Card className="border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+            <CardTitle className="text-lg font-bold flex items-center">
+              <Users className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
               당사자 정보
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 max-h-[400px] overflow-y-auto">
             {parties.length === 0 ? (
-              <div className="py-6 text-center">
+              <div className="py-8 text-center">
                 <p className="text-gray-500 dark:text-gray-400">등록된 당사자가 없습니다</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {parties.slice(0, 4).map((party) => (
+              <div className="space-y-2">
+                {parties.map((party) => (
                   <div
                     key={party.id}
-                    className="p-3 rounded-lg bg-white/60 dark:bg-emerald-900/20 border border-green-100 dark:border-emerald-900/30 flex justify-between items-center"
+                    className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 hover:border-green-200 dark:hover:border-green-900/50 transition-colors cursor-pointer"
                   >
-                    <div>
-                      <Badge
-                        className={cn(
-                          "mb-1",
-                          party.party_type === "plaintiff" || party.party_type === "creditor"
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-900/50"
-                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-900/50"
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <Badge
+                          className={cn(
+                            "mb-1",
+                            party.party_type === "plaintiff" || party.party_type === "creditor"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-900/50"
+                              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-900/50"
+                          )}
+                        >
+                          {party.party_type === "plaintiff"
+                            ? "원고"
+                            : party.party_type === "defendant"
+                            ? "피고"
+                            : party.party_type === "creditor"
+                            ? "채권자"
+                            : party.party_type === "debtor"
+                            ? "채무자"
+                            : party.party_type}
+                        </Badge>
+                        <div className="flex items-center">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {party.entity_type === "individual"
+                              ? party.name
+                              : party.company_name || "미입력"}
+                          </p>
+                          <Badge className="ml-2 text-xs" variant="outline">
+                            {party.entity_type === "individual" ? "개인" : "법인"}
+                          </Badge>
+                        </div>
+                        {party.phone && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {party.phone}
+                          </p>
                         )}
-                      >
-                        {party.party_type === "plaintiff"
-                          ? "원고"
-                          : party.party_type === "defendant"
-                          ? "피고"
-                          : party.party_type === "creditor"
-                          ? "채권자"
-                          : party.party_type === "debtor"
-                          ? "채무자"
-                          : party.party_type}
-                      </Badge>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {party.name || party.company_name || "무명"}
-                      </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
                 ))}
-
-                {parties.length > 4 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                  >
-                    더보기 ({parties.length - 4})
-                  </Button>
-                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* 소송 정보 카드 */}
-        <Card className="border-0 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/40 dark:to-violet-950/40 shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden rounded-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-xl text-purple-800 dark:text-purple-300">
-              <Gavel className="mr-2 h-5 w-5 text-purple-600 dark:text-purple-400" />
-              소송 정보
+        {/* 최근 알림 및 활동 */}
+        <Card className="border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+          <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+            <CardTitle className="text-lg font-bold flex items-center">
+              <Activity className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+              최근 알림 및 활동
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {loadingLawsuits ? (
+          <CardContent className="p-4 max-h-[400px] overflow-y-auto">
+            {loadingNotifications ? (
               <div className="space-y-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex space-x-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : lawsuits.length === 0 ? (
-              <div className="py-6 text-center">
-                <p className="text-gray-500 dark:text-gray-400">등록된 소송이 없습니다</p>
+            ) : notifications.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-gray-500 dark:text-gray-400">아직 알림이 없습니다</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {lawsuits.slice(0, 3).map((lawsuit) => (
+                {notifications.map((notification) => (
                   <div
-                    key={lawsuit.id}
-                    className="p-3 rounded-lg bg-white/60 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-900/30 hover:border-purple-200 dark:hover:border-purple-800/50 transition-colors cursor-pointer"
+                    key={notification.id}
+                    className={`p-3 rounded-lg border ${
+                      notification.is_read
+                        ? "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700"
+                        : "bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
+                    }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="mb-1">
-                        <span className="font-medium text-purple-700 dark:text-purple-300">
-                          {getLawsuitTypeText(lawsuit.type)}
-                        </span>
-                        {lawsuit.court && (
-                          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                            {lawsuit.court}
-                          </span>
-                        )}
+                    <div className="flex items-start">
+                      <div className="rounded-full bg-white dark:bg-slate-700 p-2 mr-3">
+                        {getNotificationIcon(notification.notification_type)}
                       </div>
-                      {getLawsuitStatusBadge(lawsuit.status)}
+                      <div className="flex-1">
+                        <h4
+                          className={`text-sm font-medium ${
+                            notification.is_read
+                              ? "text-gray-900 dark:text-gray-100"
+                              : "text-blue-700 dark:text-blue-300"
+                          }`}
+                        >
+                          {notification.title}
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center mt-2 text-xs text-gray-400">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {formatNotificationTime(notification.created_at)}
+                        </div>
+                      </div>
                     </div>
-                    <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-                      {lawsuit.title || lawsuit.case_number || "제목 없음"}
-                    </p>
-                    {lawsuit.filing_date && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        소제기일: {formatDate(lawsuit.filing_date)}
-                      </p>
-                    )}
                   </div>
                 ))}
-
-                {lawsuits.length > 3 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/30"
-                  >
-                    더보기 ({lawsuits.length - 3})
-                  </Button>
-                )}
               </div>
             )}
           </CardContent>
+          <CardFooter className="pt-0 pb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900"
+              onClick={fetchNotifications}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              알림 새로고침
+            </Button>
+          </CardFooter>
         </Card>
       </div>
 
-      {/* 최근 활동 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 회수 활동 */}
-        <Card className="border-0 bg-white/80 dark:bg-slate-900/80 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
-          <CardHeader className="pb-3 border-b border-gray-100 dark:border-gray-800 mb-2">
-            <CardTitle className="text-xl font-semibold">최근 회수 활동</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 max-h-[400px] overflow-y-auto">
-            <RecoveryActivities caseId={caseId} limit={5} compact={true} />
-          </CardContent>
-        </Card>
+      {/* 소송 정보 */}
+      <Card className="border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+        <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+          <CardTitle className="text-lg font-bold flex items-center">
+            <Gavel className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" />
+            소송 정보
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          {loadingLawsuits ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              ))}
+            </div>
+          ) : lawsuits.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-gray-500 dark:text-gray-400">등록된 소송이 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {lawsuits.map((lawsuit) => (
+                <div
+                  key={lawsuit.id}
+                  className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-900/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-purple-700 dark:text-purple-300">
+                      {getLawsuitTypeText(lawsuit.lawsuit_type)}
+                    </span>
+                    {getLawsuitStatusBadge(lawsuit.status)}
+                  </div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 mb-2">
+                    {lawsuit.case_number ? `사건번호: ${lawsuit.case_number}` : "사건번호 미입력"}
+                  </p>
+                  {lawsuit.court_name && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      법원: {lawsuit.court_name}
+                    </p>
+                  )}
+                  {lawsuit.filing_date && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      소제기일: {formatDate(lawsuit.filing_date)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="pt-0 pb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900"
+            onClick={fetchLawsuits}
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            소송 정보 새로고침
+          </Button>
+        </CardFooter>
+      </Card>
 
-        {/* 알림 */}
-        <Card className="border-0 bg-white/80 dark:bg-slate-900/80 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
-          <CardHeader className="pb-3 border-b border-gray-100 dark:border-gray-800 mb-2">
-            <CardTitle className="text-xl font-semibold">최근 알림</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 max-h-[400px] overflow-y-auto">
-            <CaseNotifications caseId={caseId} limit={5} compact={true} />
-          </CardContent>
-        </Card>
-      </div>
+      {/* 회수 활동 탭 */}
+      <Card className="border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+        <CardHeader className="pb-0 border-b-0">
+          <Tabs defaultValue="recovery" className="w-full">
+            <div className="flex justify-between items-center mb-4">
+              <CardTitle className="text-lg font-bold">상세 활동 내역</CardTitle>
+              <TabsList>
+                <TabsTrigger value="recovery" className="text-sm">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  회수 활동
+                </TabsTrigger>
+                <TabsTrigger value="notifications" className="text-sm">
+                  <Bell className="w-4 h-4 mr-2" />
+                  알림 내역
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="recovery" className="mt-0 pt-0">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                <RecoveryActivities caseId={caseId} limit={10} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="notifications" className="mt-0 pt-0">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                <CaseNotifications caseId={caseId} limit={10} />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardHeader>
+      </Card>
     </div>
   );
 }

@@ -77,9 +77,9 @@ const getLawsuitTypeText = (type) => {
 export default function AddLawsuitModal({
   open,
   onOpenChange,
+  parties = [],
   onSuccess,
   caseId,
-  parties = [],
   editingLawsuit = null,
 }) {
   const { user } = useUser();
@@ -181,7 +181,7 @@ export default function AddLawsuitModal({
   useEffect(() => {
     if (searchTerm) {
       const filtered = parties.filter((party) => {
-        const name = party.party_entity_type === "individual" ? party.name : party.company_name;
+        const name = party.entity_type === "individual" ? party.name : party.company_name;
         return name.toLowerCase().includes(searchTerm.toLowerCase());
       });
       setFilteredParties(filtered);
@@ -298,12 +298,12 @@ export default function AddLawsuitModal({
 
       // 알림 제목 및 내용 구성
       const creditorName =
-        creditor.party_entity_type === "individual" ? creditor.name : creditor.company_name;
+        creditor.entity_type === "individual" ? creditor.name : creditor.company_name;
 
-      const debtorName =
-        debtor.party_entity_type === "individual" ? debtor.name : debtor.company_name;
+      const debtorName = debtor.entity_type === "individual" ? debtor.name : debtor.company_name;
 
-      let title = `채권자 ${creditorName} | 채무자 ${debtorName}`;
+      // 알림 제목 형식 변경: "사건번호(원고(채권자)이름|피고(채무자)이름)"
+      let title = `${formData.case_number}(${creditorName}|${debtorName})`;
 
       let message = "";
       const lawsuitTypeText = getLawsuitTypeText(formData.lawsuit_type);
@@ -525,10 +525,16 @@ export default function AddLawsuitModal({
 
   // 소송 유형에 따른 당사자 유형 옵션
   const getPartyTypeOptions = () => {
-    if (formData.lawsuit_type === "civil" || formData.lawsuit_type === "payment_order") {
+    if (formData.lawsuit_type === "civil") {
       return [
         { value: "plaintiff", label: "원고" },
         { value: "defendant", label: "피고" },
+      ];
+    } else if (formData.lawsuit_type === "payment_order" || formData.lawsuit_type === "execution") {
+      // 지급명령과 강제집행은 채권자 / 채무자
+      return [
+        { value: "creditor", label: "채권자" },
+        { value: "debtor", label: "채무자" },
       ];
     } else if (formData.lawsuit_type === "property_disclosure") {
       return [
@@ -537,8 +543,8 @@ export default function AddLawsuitModal({
       ];
     } else {
       return [
-        { value: "creditor", label: "채권자" },
-        { value: "debtor", label: "채무자" },
+        { value: "plaintiff", label: "원고" },
+        { value: "defendant", label: "피고" },
       ];
     }
   };
@@ -708,7 +714,7 @@ export default function AddLawsuitModal({
                       <CardContent className="p-3">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center space-x-3">
-                            {party.party_entity_type === "individual" ? (
+                            {party.entity_type === "individual" ? (
                               <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
                             ) : (
                               <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
@@ -731,7 +737,7 @@ export default function AddLawsuitModal({
                                   </SelectContent>
                                 </Select>
                                 <span className="font-medium">
-                                  {party.party_entity_type === "individual"
+                                  {party.entity_type === "individual"
                                     ? party.name
                                     : party.company_name}
                                 </span>
@@ -806,7 +812,7 @@ export default function AddLawsuitModal({
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            {party.party_entity_type === "individual" ? (
+                            {party.entity_type === "individual" ? (
                               <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
                             ) : (
                               <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
@@ -817,7 +823,7 @@ export default function AddLawsuitModal({
                                   {getPartyTypeText(party.party_type)}
                                 </Badge>
                                 <span className="font-medium">
-                                  {party.party_entity_type === "individual"
+                                  {party.entity_type === "individual"
                                     ? party.name
                                     : party.company_name}
                                 </span>

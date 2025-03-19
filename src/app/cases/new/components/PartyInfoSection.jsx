@@ -162,7 +162,7 @@ export default function PartyInfoSection({ formData, setFormData }) {
         ...prev.parties,
         {
           party_type: prev.case_type === "lawsuit" ? "plaintiff" : "creditor",
-          party_entity_type: "individual",
+          entity_type: "individual",
           name: "",
           resident_number: "",
           unknown_resident_number: false,
@@ -323,12 +323,12 @@ export default function PartyInfoSection({ formData, setFormData }) {
 
               <Badge
                 className={`border-0 ${
-                  party.party_entity_type === "individual"
+                  party.entity_type === "individual"
                     ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200"
                     : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 hover:bg-amber-200"
                 }`}
               >
-                {party.party_entity_type === "individual" ? (
+                {party.entity_type === "individual" ? (
                   <>
                     <User className="mr-1 h-3 w-3" />
                     개인
@@ -409,8 +409,8 @@ export default function PartyInfoSection({ formData, setFormData }) {
                   <span className="text-red-500 ml-1">*</span>
                 </Label>
                 <Select
-                  value={party.party_entity_type}
-                  onValueChange={(value) => handlePartyChange(index, "party_entity_type", value)}
+                  value={party.entity_type}
+                  onValueChange={(value) => handlePartyChange(index, "entity_type", value)}
                 >
                   <SelectTrigger className="bg-white dark:bg-gray-800">
                     <SelectValue placeholder="구분 선택" />
@@ -425,7 +425,7 @@ export default function PartyInfoSection({ formData, setFormData }) {
                         개인
                       </div>
                     </SelectItem>
-                    <SelectItem value="organization">
+                    <SelectItem value="corporation">
                       <div className="flex items-center">
                         <Badge className="mr-2 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 hover:bg-amber-200 border-0">
                           <Building2 className="mr-1 h-3 w-3" />
@@ -439,7 +439,7 @@ export default function PartyInfoSection({ formData, setFormData }) {
               </div>
             </div>
 
-            {party.party_entity_type === "individual" ? (
+            {party.entity_type === "individual" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <Label
@@ -606,9 +606,9 @@ export default function PartyInfoSection({ formData, setFormData }) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">법인번호</Label>
+                  <Label className="text-sm font-medium">법인등록번호</Label>
                   <Input
-                    placeholder="법인번호를 입력하세요"
+                    placeholder="법인등록번호를 입력하세요"
                     value={party.corporate_number}
                     onChange={(e) => handlePartyChange(index, "corporate_number", e.target.value)}
                     maxLength={14}
@@ -627,7 +627,7 @@ export default function PartyInfoSection({ formData, setFormData }) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">직위</Label>
+                  <Label className="text-sm font-medium">담당자 직위</Label>
                   <Input
                     placeholder="직위를 입력하세요"
                     value={party.position}

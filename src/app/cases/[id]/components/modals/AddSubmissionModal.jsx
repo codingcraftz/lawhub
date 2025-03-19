@@ -14,14 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { FileCheck, Upload, X, Calendar } from "lucide-react";
+import { FileCheck, Upload, X, Calendar, ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -32,15 +25,11 @@ import { cn } from "@/lib/utils";
 // 스토리지 버킷 이름을 정의합니다
 const BUCKET_NAME = "case-files";
 
-// 문서 유형 목록
-const DOCUMENT_TYPES = [
-  { value: "소장", label: "소장" },
-  { value: "답변서", label: "답변서" },
-  { value: "준비서면", label: "준비서면" },
-  { value: "결정문", label: "결정문" },
-  { value: "판결문", label: "판결문" },
-  { value: "기타", label: "기타" },
-];
+// 문서 유형 예시
+const DOCUMENT_TYPE_EXAMPLES = {
+  송달문서: ["소장", "준비서면", "석명준비명령", "변론기일통지서", "결정문", "판결문"],
+  제출문서: ["답변서", "준비서면", "증거신청서", "사실조회신청서", "항소장", "상고장"],
+};
 
 export default function AddSubmissionModal({
   open,
@@ -48,12 +37,13 @@ export default function AddSubmissionModal({
   onSuccess,
   caseId,
   lawsuitId,
+  parties = [],
+  lawsuitType,
   editingSubmission = null,
 }) {
   const isEditMode = !!editingSubmission;
-
   const [formData, setFormData] = useState({
-    submission_type: editingSubmission?.submission_type || "",
+    submission_type: editingSubmission?.submission_type || "송달문서",
     document_type: editingSubmission?.document_type || "",
     submission_date: editingSubmission?.submission_date
       ? new Date(editingSubmission.submission_date)
@@ -68,12 +58,18 @@ export default function AddSubmissionModal({
   const [caseDetails, setCaseDetails] = useState(null);
   const [lawsuitDetails, setLawsuitDetails] = useState(null);
 
+  // 송달/제출 유형 상수
+  const submissionTypes = [
+    { value: "송달문서", label: "송달문서", icon: ArrowDown },
+    { value: "제출문서", label: "제출문서", icon: ArrowUp },
+  ];
+
   // 모달이 열릴 때 폼 데이터 초기화 및 사건/소송 정보 가져오기
   useEffect(() => {
     if (open) {
       if (!editingSubmission) {
         setFormData({
-          submission_type: "",
+          submission_type: "송달문서",
           document_type: "",
           submission_date: new Date(),
           description: "",
@@ -171,7 +167,7 @@ export default function AddSubmissionModal({
     const errors = {};
 
     if (!formData.submission_type) errors.submission_type = "유형을 선택해주세요";
-    if (!formData.document_type) errors.document_type = "문서 유형을 선택해주세요";
+    if (!formData.document_type) errors.document_type = "문서 유형을 입력해주세요";
     if (!formData.submission_date) errors.submission_date = "송달/제출일을 선택해주세요";
 
     setFormErrors(errors);
@@ -179,46 +175,64 @@ export default function AddSubmissionModal({
   };
 
   // 알림 생성 함수
-  const createNotification = async (actionType, submissionData) => {
-    if (!caseDetails || !lawsuitDetails) return;
+  const createNotification = async (actionType) => {
+    if (!caseDetails || !lawsuitDetails) {
+      console.error("사건/소송 정보가 없습니다.", { caseDetails, lawsuitDetails });
+      return;
+    }
 
     try {
-      // 채권자와 채무자 찾기
-      let creditor = null;
-      let debtor = null;
+      const LAWSUIT_TYPES = {
+        civil: { label: "민사소송", variant: "default" },
+        payment_order: { label: "지급명령", variant: "secondary" },
+        property_disclosure: { label: "재산명시", variant: "outline" },
+        execution: { label: "강제집행", variant: "destructive" },
+      };
 
-      // 소송 당사자 정보에서 원고(채권자)와 피고(채무자) 구분
-      lawsuitDetails.test_lawsuit_parties.forEach((lp) => {
-        if (["plaintiff", "creditor", "applicant"].includes(lp.party_type)) {
-          creditor = lp.party;
-        } else if (["defendant", "debtor", "respondent"].includes(lp.party_type)) {
-          debtor = lp.party;
-        }
-      });
+      const lawsuitTypeLabel = LAWSUIT_TYPES[lawsuitType]?.label || lawsuitType;
 
-      if (!creditor || !debtor) return;
+      const creditorsApplicants = parties
+        .filter((party) => ["plaintiff", "creditor", "applicant"].includes(party.party_type))
+        .map((party) => (party.entity_type === "individual" ? party.name : party.company_name));
 
-      // 알림 제목 및 내용 구성
-      const creditorName =
-        creditor.party_entity_type === "individual" ? creditor.name : creditor.company_name;
+      console.log("parties", parties);
 
-      const debtorName =
-        debtor.party_entity_type === "individual" ? debtor.name : debtor.company_name;
+      const debtorsRespondents = parties
+        .filter((party) => ["defendant", "debtor", "respondent"].includes(party.party_type))
+        .map((party) => (party.entity_type === "individual" ? party.name : party.company_name));
 
-      let title = `채권자 ${creditorName} | 채무자 ${debtorName}`;
+      // 쉼표로 연결
+      const plaintiffFormatted = creditorsApplicants.join(", ");
+      const defendantFormatted = debtorsRespondents.join(", ");
+
+      // 원고 & 피고 그룹이 없으면 알림 생성 X
+      if (!plaintiffFormatted || !defendantFormatted) return;
+
+      // 알림 제목 형식: [타입] 사건번호_원고(피고)
+      let title = `[${lawsuitTypeLabel}] ${lawsuitDetails.case_number}`;
 
       let message = "";
       if (formData.submission_type === "송달문서") {
-        message = `${formData.document_type}을(를) 송달 받았습니다.`;
+        message = `${formData.document_type}_${plaintiffFormatted}(${defendantFormatted})을(를) 송달 받았습니다.`;
       } else {
-        message = `${formData.document_type}을(를) 제출했습니다.`;
+        message = `${formData.document_type}_${plaintiffFormatted}(${defendantFormatted})을(를) 제출했습니다.`;
       }
+
+      console.log("생성할 알림:", {
+        title,
+        message,
+      });
 
       // 모든 의뢰인 정보를 수집하기 위한 작업 배열
       const clientFetchPromises = [];
       const clientIds = new Set(); // 중복 방지를 위해 Set 사용
 
       // 개인 및 법인/그룹 의뢰인 모두 처리
+      if (!caseDetails.clients || caseDetails.clients.length === 0) {
+        console.warn("의뢰인 정보가 없습니다:", caseDetails);
+        return;
+      }
+
       caseDetails.clients.forEach((client) => {
         if (client.individual_id) {
           // 개인 의뢰인
@@ -256,10 +270,37 @@ export default function AddSubmissionModal({
       // Set을 배열로 변환
       const uniqueClientIds = Array.from(clientIds);
 
-      if (uniqueClientIds.length === 0) return;
+      if (uniqueClientIds.length === 0) {
+        console.warn("알림을 받을 의뢰인이 없습니다.");
+        return;
+      }
+
+      console.log("알림을 받을 의뢰인:", uniqueClientIds);
 
       // 각 클라이언트에 대한 알림 생성
       const notificationPromises = uniqueClientIds.map(async (clientId) => {
+        // 생성된 제출 정보의 ID 가져오기
+        let submissionId = null;
+
+        if (isEditMode && editingSubmission) {
+          submissionId = editingSubmission.id;
+        } else {
+          // 최근 생성된 제출 정보 가져오기
+          const { data: latestSubmission, error: latestError } = await supabase
+            .from("test_lawsuit_submissions")
+            .select("id")
+            .eq("lawsuit_id", lawsuitId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (latestError) {
+            console.error("최근 생성된 제출 정보 조회 실패:", latestError);
+          } else if (latestSubmission) {
+            submissionId = latestSubmission.id;
+          }
+        }
+
         const notification = {
           user_id: clientId,
           case_id: caseId,
@@ -268,7 +309,7 @@ export default function AddSubmissionModal({
           notification_type: "lawsuit_update",
           is_read: false,
           related_entity: "submission",
-          related_id: submissionData.id,
+          related_id: submissionId,
         };
 
         try {
@@ -286,8 +327,12 @@ export default function AddSubmissionModal({
         }
       });
 
-      await Promise.all(notificationPromises);
-      console.log("알림이 생성되었습니다");
+      const results = await Promise.all(notificationPromises);
+      console.log("알림 생성 결과:", results);
+
+      // 성공/실패 카운트
+      const successCount = results.filter((r) => r.success).length;
+      console.log(`알림 생성 완료: ${successCount}/${results.length} 성공`);
     } catch (error) {
       console.error("알림 생성 실패:", error);
     }
@@ -328,11 +373,9 @@ export default function AddSubmissionModal({
         }
       }
 
-      let submissionData;
-
       if (isEditMode) {
         // 수정 모드
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("test_lawsuit_submissions")
           .update({
             submission_type: formData.submission_type,
@@ -342,46 +385,40 @@ export default function AddSubmissionModal({
             file_url: fileUrl,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", editingSubmission.id)
-          .select();
+          .eq("id", editingSubmission.id);
 
         if (error) throw error;
-        submissionData = data[0];
 
-        toast.success("송달/제출 내역이 수정되었습니다");
+        toast.success("타임라인 항목이 수정되었습니다");
 
         // 문서 유형이나 제출 유형이 변경된 경우에만 알림 생성
         if (
           formData.submission_type !== editingSubmission.submission_type ||
           formData.document_type !== editingSubmission.document_type
         ) {
-          await createNotification("update", submissionData);
+          await createNotification("update");
         }
       } else {
         // 추가 모드
         const currentUser = JSON.parse(localStorage.getItem("supabase.auth.token"))?.currentSession
           ?.user?.id;
 
-        const { data, error } = await supabase
-          .from("test_lawsuit_submissions")
-          .insert({
-            lawsuit_id: lawsuitId,
-            submission_type: formData.submission_type,
-            document_type: formData.document_type,
-            submission_date: formData.submission_date.toISOString().split("T")[0],
-            description: formData.description,
-            file_url: fileUrl,
-            created_by: currentUser,
-          })
-          .select();
+        const { error } = await supabase.from("test_lawsuit_submissions").insert({
+          lawsuit_id: lawsuitId,
+          submission_type: formData.submission_type,
+          document_type: formData.document_type,
+          submission_date: formData.submission_date.toISOString().split("T")[0],
+          description: formData.description.trim() || null,
+          file_url: fileUrl,
+          created_by: currentUser,
+        });
 
         if (error) throw error;
-        submissionData = data[0];
 
-        toast.success("송달/제출 내역이 추가되었습니다");
+        toast.success("타임라인 항목이 추가되었습니다");
 
         // 알림 생성
-        await createNotification("create", submissionData);
+        await createNotification("create");
       }
 
       // 성공 콜백 호출
@@ -390,8 +427,8 @@ export default function AddSubmissionModal({
       // 모달 닫기
       onOpenChange(false);
     } catch (error) {
-      console.error("송달/제출 내역 저장 실패:", error);
-      toast.error("송달/제출 내역 저장 실패", {
+      console.error("타임라인 항목 저장 실패:", error);
+      toast.error("타임라인 항목 저장 실패", {
         description: error.message,
       });
     } finally {
@@ -399,52 +436,70 @@ export default function AddSubmissionModal({
     }
   };
 
+  // 현재 타입에 따른 문서 유형 예시 가져오기
+  const getDocumentTypeExamples = () => {
+    return DOCUMENT_TYPE_EXAMPLES[formData.submission_type] || [];
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "송달/제출 내역 수정" : "송달/제출 내역 추가"}</DialogTitle>
+          <DialogTitle>{isEditMode ? "타임라인 항목 수정" : "타임라인 항목 추가"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="submission_type">유형</Label>
-            <Select
-              value={formData.submission_type}
-              onValueChange={(value) => handleInputChange("submission_type", value)}
-            >
-              <SelectTrigger className={formErrors.submission_type ? "border-red-500" : ""}>
-                <SelectValue placeholder="유형 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="송달문서">송달문서</SelectItem>
-                <SelectItem value="제출문서">제출문서</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>문서 유형</Label>
+            <div className="flex gap-2">
+              {submissionTypes.map((type) => {
+                const Icon = type.icon;
+                return (
+                  <Button
+                    key={type.value}
+                    type="button"
+                    variant={formData.submission_type === type.value ? "default" : "outline"}
+                    className={cn("flex items-center gap-1 flex-1")}
+                    onClick={() => handleInputChange("submission_type", type.value)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{type.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
             {formErrors.submission_type && (
               <p className="text-xs text-red-500">{formErrors.submission_type}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="document_type">문서 유형</Label>
-            <Select
+            <Label htmlFor="document_type">문서 종류</Label>
+            <Input
+              id="document_type"
               value={formData.document_type}
-              onValueChange={(value) => handleInputChange("document_type", value)}
-            >
-              <SelectTrigger className={formErrors.document_type ? "border-red-500" : ""}>
-                <SelectValue placeholder="문서 유형 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {DOCUMENT_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(e) => handleInputChange("document_type", e.target.value)}
+              placeholder="문서 종류를 입력하세요"
+              className={formErrors.document_type ? "border-red-500" : ""}
+            />
             {formErrors.document_type && (
               <p className="text-xs text-red-500">{formErrors.document_type}</p>
+            )}
+            {getDocumentTypeExamples().length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {getDocumentTypeExamples().map((example) => (
+                  <Button
+                    key={example}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs px-2 py-1 h-auto"
+                    onClick={() => handleInputChange("document_type", example)}
+                  >
+                    {example}
+                  </Button>
+                ))}
+              </div>
             )}
           </div>
 
@@ -490,7 +545,7 @@ export default function AddSubmissionModal({
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="내용을 입력하세요"
+              placeholder="문서에 대한 설명을 입력하세요"
               className="min-h-[100px]"
             />
           </div>
@@ -539,7 +594,7 @@ export default function AddSubmissionModal({
                     <p className="text-sm text-muted-foreground">
                       {editingSubmission?.file_url
                         ? "새 파일을 업로드하여 기존 파일 교체"
-                        : "파일을 여기에 끌어다 놓거나 클릭하여 업로드하세요"}
+                        : "클릭하여 파일 업로드"}
                     </p>
                     <input
                       type="file"

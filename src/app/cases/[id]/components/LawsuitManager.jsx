@@ -5,7 +5,6 @@ import { supabase } from "@/utils/supabase";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,11 +22,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, RefreshCw, Trash2, Edit, Download, Calendar, File } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 // 모달 컴포넌트 가져오기
 import AddSubmissionModal from "./modals/AddSubmissionModal";
 import AddLawsuitModal from "./modals/AddLawsuitModal";
+// CaseTimeline 컴포넌트 가져오기
+import CaseTimeline from "./LawsuitSubmissions";
 
 const LAWSUIT_TYPES = {
   civil: { label: "민사소송", variant: "default" },
@@ -43,6 +43,15 @@ const LAWSUIT_STATUS = {
   decision: { label: "결정", variant: "success" },
   completed: { label: "완료", variant: "destructive" },
   appeal: { label: "항소", variant: "warning" },
+};
+
+const PARTY_ORDER = {
+  plaintiff: 1, // 원고
+  creditor: 2, // 채권자
+  applicant: 3, // 신청인
+  defendant: 4, // 피고
+  debtor: 5, // 채무자
+  respondent: 6, // 피신청인
 };
 
 export default function LawsuitManager({ caseId }) {
@@ -176,50 +185,28 @@ export default function LawsuitManager({ caseId }) {
     setShowAddSubmissionModal(true);
   };
 
-  const handleDeleteSubmission = async (submissionId) => {
-    try {
-      // 첨부파일 정보 조회
-      const { data: submissionData, error: fetchError } = await supabase
-        .from("test_lawsuit_submissions")
-        .select("file_url")
-        .eq("id", submissionId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // 파일이 있으면 삭제
-      if (submissionData.file_url) {
-        const { error: storageError } = await supabase.storage
-          .from(BUCKET_NAME)
-          .remove([submissionData.file_url]);
-
-        if (storageError) {
-          console.error("파일 삭제 실패:", storageError);
-        }
-      }
-
-      // 내역 삭제
-      const { error } = await supabase
-        .from("test_lawsuit_submissions")
-        .delete()
-        .eq("id", submissionId);
-
-      if (error) throw error;
-
-      // 목록 업데이트
-      setSubmissions(submissions.filter((item) => item.id !== submissionId));
-      toast.success("송달/제출 내역이 삭제되었습니다");
-    } catch (error) {
-      console.error("송달/제출 내역 삭제 실패:", error);
-      toast.error("송달/제출 내역 삭제에 실패했습니다");
+  const getPartyTypeLabel = (partyType) => {
+    switch (partyType) {
+      case "plaintiff":
+        return "원고";
+      case "defendant":
+        return "피고";
+      case "creditor":
+        return "채권자";
+      case "debtor":
+        return "채무자";
+      case "applicant":
+        return "신청인";
+      case "respondent":
+        return "피신청인";
+      default:
+        return "기타";
     }
   };
 
   const handleAddLawsuit = () => {
-    console.log("소송 등록 버튼 클릭됨");
     setEditingLawsuit(null);
     setShowAddLawsuitModal(true);
-    console.log("showAddLawsuitModal 상태:", true);
   };
 
   const handleEditLawsuit = (lawsuit) => {
@@ -229,7 +216,34 @@ export default function LawsuitManager({ caseId }) {
 
   const handleDeleteLawsuit = async (lawsuitId) => {
     try {
-      // 소송 삭제 (관련 송달/제출 내역도 cascade로 함께 삭제됨)
+      // 1. 먼저 소송에 속한 모든 제출 내역의 ID를 가져옵니다
+      const { data: submissionsData, error: submissionsError } = await supabase
+        .from("test_lawsuit_submissions")
+        .select("id")
+        .eq("lawsuit_id", lawsuitId);
+
+      if (submissionsError) {
+        console.error("소송 관련 제출 내역 조회 실패:", submissionsError);
+      } else if (submissionsData && submissionsData.length > 0) {
+        // 모든 제출 내역 ID 추출
+        const submissionIds = submissionsData.map((submission) => submission.id);
+
+        // 2. 관련된 모든 알림 삭제
+        const { data: notificationsData, error: notificationsError } = await supabase
+          .from("test_notifications")
+          .delete()
+          .in("related_id", submissionIds)
+          .eq("related_entity", "submission")
+          .select("id");
+
+        if (notificationsError) {
+          console.error("관련 알림 삭제 실패:", notificationsError);
+        } else {
+          console.log(`소송 관련 ${notificationsData.length}개의 알림이 함께 삭제되었습니다.`);
+        }
+      }
+
+      // 3. 소송 삭제 (관련 송달/제출 내역도 cascade로 함께 삭제됨)
       const { error } = await supabase.from("test_case_lawsuits").delete().eq("id", lawsuitId);
 
       if (error) throw error;
@@ -322,13 +336,147 @@ export default function LawsuitManager({ caseId }) {
 
   const handleSubmissionSuccess = () => {
     if (activeTab) {
-      fetchSubmissions(activeTab);
+      // 타임라인이 업데이트되었음을 알림
+      toast.success("타임라인 항목이 업데이트되었습니다");
+      // CaseTimeline 컴포넌트가 자체적으로 최신 데이터를 로드하도록 함
     }
   };
 
-  const handleLawsuitSuccess = () => {
-    fetchLawsuits();
-    fetchParties();
+  const handleLawsuitSuccess = (addedLawsuit) => {
+    fetchLawsuits(); // 소송 목록 다시 가져오기
+    // setActiveTab(addedLawsuit.id); // 새로 추가/수정된 소송으로 탭 전환
+  };
+
+  const renderLawsuitInfo = (lawsuit) => {
+    if (!lawsuit) return null;
+
+    const getLawsuitType = (type) => {
+      return LAWSUIT_TYPES[type] || { label: type, variant: "default" };
+    };
+
+    const getStatusBadge = (status) => {
+      const statusInfo = LAWSUIT_STATUS[status] || { label: status, variant: "default" };
+      return (
+        <Badge variant={statusInfo.variant} className="ml-2">
+          {statusInfo.label}
+        </Badge>
+      );
+    };
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "미지정";
+      return format(new Date(dateStr), "yyyy년 MM월 dd일", { locale: ko });
+    };
+
+    const { label: typeLabel } = getLawsuitType(lawsuit.lawsuit_type);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-semibold">
+              {typeLabel} - {lawsuit.case_number}
+              {getStatusBadge(lawsuit.status)}
+            </h3>
+            <p className="text-muted-foreground">{lawsuit.court_name}</p>
+          </div>
+
+          {user && (user.role === "admin" || user.role === "staff") && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => handleEditLawsuit(lawsuit)}>
+                <Edit className="h-4 w-4 mr-1" />
+                수정
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-red-500">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    삭제
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>소송 삭제</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      이 소송을 정말로 삭제하시겠습니까? 관련된 모든 송달/제출 내역도 함께
+                      삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>취소</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDeleteLawsuit(lawsuit.id)}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      삭제
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </div>
+
+        <div>
+          {lawsuit.description && (
+            <p className="whitespace-pre-line text-gray-400">{lawsuit.description}</p>
+          )}
+          {lawsuit.test_lawsuit_parties && lawsuit.test_lawsuit_parties.length > 0 ? (
+            (() => {
+              // lawsuit 내부에서 실시간으로 데이터 그룹화
+              const groupedParties = lawsuit.test_lawsuit_parties.reduce((acc, partyRel) => {
+                const party = parties.find((p) => p.id === partyRel.party_id);
+                if (!party) return acc;
+
+                const label = getPartyTypeLabel(partyRel.party_type);
+                if (!acc[label]) acc[label] = [];
+                acc[label].push(party.name);
+                return acc;
+              }, {});
+
+              // 정렬된 키 리스트
+              const sortedPartyTypes = Object.keys(groupedParties).sort(
+                (a, b) => (PARTY_ORDER[a] || 99) - (PARTY_ORDER[b] || 99)
+              );
+
+              return (
+                <div className="space-y-2">
+                  {sortedPartyTypes.map((partyType) => (
+                    <p key={partyType} className="text-sm">
+                      <span className="font-medium">{partyType}:</span>{" "}
+                      {groupedParties[partyType].join(", ")}
+                    </p>
+                  ))}
+                </div>
+              );
+            })()
+          ) : (
+            <p className="text-sm text-muted-foreground">등록된 당사자가 없습니다.</p>
+          )}
+        </div>
+
+        {/* CaseTimeline 컴포넌트 사용 - AddSubmissionModal과 연결 */}
+        <div className="border-t pt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-medium">소송 진행 타임라인</h3>
+            {user && (user.role === "admin" || user.role === "staff") && (
+              <Button size="sm" onClick={handleAddSubmission}>
+                <Plus className="h-4 w-4 mr-1" />
+                내역 추가
+              </Button>
+            )}
+          </div>
+          <CaseTimeline
+            lawsuit={lawsuits.find((l) => l.id === activeTab)}
+            viewOnly={!(user && (user.role === "admin" || user.role === "staff"))}
+            onSuccess={() => {
+              toast.success("타임라인이 업데이트되었습니다");
+            }}
+            onEdit={handleEditSubmission}
+          />
+        </div>
+      </div>
+    );
   };
 
   // 로딩 상태 표시
@@ -374,10 +522,6 @@ export default function LawsuitManager({ caseId }) {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">소송 관리</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchLawsuits}>
-            <RefreshCw className="mr-1 h-4 w-4" />
-            새로고침
-          </Button>
           {user && (user.role === "admin" || user.role === "staff") && (
             <Button size="sm" onClick={handleAddLawsuit}>
               <Plus className="mr-1 h-4 w-4" />
@@ -389,219 +533,72 @@ export default function LawsuitManager({ caseId }) {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 w-full flex flex-wrap h-auto bg-background border">
-          {lawsuits.map((lawsuit) => {
-            const typeInfo = LAWSUIT_TYPES[lawsuit.lawsuit_type] || {
-              label: "기타",
-              variant: "outline",
-            };
-            const statusInfo = LAWSUIT_STATUS[lawsuit.status] || {
-              label: "상태없음",
-              variant: "outline",
-            };
+          {loading ? (
+            <div className="w-full p-2">
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : lawsuits.length === 0 ? (
+            <div className="w-full p-4 text-center">
+              <p className="text-muted-foreground">등록된 소송이 없습니다</p>
+            </div>
+          ) : (
+            lawsuits.map((lawsuit) => {
+              const type = LAWSUIT_TYPES[lawsuit.lawsuit_type] || {
+                label: lawsuit.lawsuit_type,
+                variant: "default",
+              };
+              const status = LAWSUIT_STATUS[lawsuit.status] || {
+                label: lawsuit.status,
+                variant: "default",
+              };
 
-            return (
-              <TabsTrigger
-                key={lawsuit.id}
-                value={lawsuit.id}
-                className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-              >
-                <div className="flex flex-col items-start text-left gap-1 px-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
-                    <span className="font-medium">{lawsuit.case_number}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={statusInfo.variant} className="text-xs">
-                      {statusInfo.label}
+              return (
+                <TabsTrigger
+                  key={lawsuit.id}
+                  value={lawsuit.id}
+                  className="flex-none h-auto py-2 px-4"
+                >
+                  <div className="flex flex-col items-start space-y-1">
+                    <div className="flex items-center">
+                      <span>{type.label}</span>
+                      <span className="mx-1">-</span>
+                      <span className="font-mono">{lawsuit.case_number}</span>
+                    </div>
+                    <Badge variant={status.variant} className="text-xs">
+                      {status.label}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">{lawsuit.court_name}</span>
                   </div>
-                </div>
-              </TabsTrigger>
-            );
-          })}
+                </TabsTrigger>
+              );
+            })
+          )}
         </TabsList>
 
-        {lawsuits.map((lawsuit) => (
-          <TabsContent key={lawsuit.id} value={lawsuit.id} className="border rounded-md p-4">
-            <div className="space-y-4">
-              {/* 소송 기본 정보 */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm">
-                      접수일:{" "}
-                      <span className="font-medium">
-                        {format(new Date(lawsuit.filing_date), "yyyy년 MM월 dd일", { locale: ko })}
-                      </span>
-                    </p>
-                  </div>
-
-                  {lawsuit.description && <p className="text-sm mb-2">{lawsuit.description}</p>}
-                </div>
-
-                {user && (user.role === "admin" || user.role === "staff") && (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEditLawsuit(lawsuit)}>
-                      <Edit className="h-4 w-4 mr-1" />
-                      수정
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="text-red-500">
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          삭제
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>소송 삭제</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            이 소송을 정말로 삭제하시겠습니까? 관련된 모든 송달/제출 내역도 함께
-                            삭제됩니다. 이 작업은 되돌릴 수 없습니다.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteLawsuit(lawsuit.id)}
-                            className="bg-red-500 hover:bg-red-600"
-                          >
-                            삭제
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">송달/제출 내역</h3>
-                  {user && (user.role === "admin" || user.role === "staff") && (
-                    <Button size="sm" onClick={handleAddSubmission}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      내역 추가
-                    </Button>
-                  )}
-                </div>
-
-                {loadingSubmissions ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-20 w-full" />
-                    ))}
-                  </div>
-                ) : submissions.length === 0 ? (
-                  <div className="text-center py-8 bg-muted/20 rounded-md">
-                    <File className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">등록된 송달/제출 내역이 없습니다</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {submissions.map((submission) => (
-                      <Card key={submission.id} className="overflow-hidden">
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant={
-                                    submission.submission_type === "송달문서"
-                                      ? "default"
-                                      : "secondary"
-                                  }
-                                >
-                                  {submission.submission_type}
-                                </Badge>
-                                <span className="font-medium">{submission.document_type}</span>
-                              </div>
-
-                              <p className="text-sm text-muted-foreground">
-                                {submission.submission_date
-                                  ? format(
-                                      new Date(submission.submission_date),
-                                      "yyyy년 MM월 dd일",
-                                      { locale: ko }
-                                    )
-                                  : format(new Date(submission.created_at), "yyyy년 MM월 dd일", {
-                                      locale: ko,
-                                    })}
-                                {submission.created_by_user?.name &&
-                                  ` · ${submission.created_by_user.name}`}
-                              </p>
-
-                              {submission.description && (
-                                <p className="text-sm">{submission.description}</p>
-                              )}
-
-                              {submission.file_url && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleDownloadFile(
-                                      submission.file_url,
-                                      submission.document_type
-                                    )
-                                  }
-                                  className="mt-2"
-                                >
-                                  <Download className="h-4 w-4 mr-1" />
-                                  첨부파일
-                                </Button>
-                              )}
-                            </div>
-
-                            {user && (user.role === "admin" || user.role === "staff") && (
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditSubmission(submission)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>송달/제출 내역 삭제</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        이 내역을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수
-                                        없습니다.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>취소</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteSubmission(submission.id)}
-                                        className="bg-red-500 hover:bg-red-600"
-                                      >
-                                        삭제
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-        ))}
+        {loading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-[200px] w-full" />
+            <Skeleton className="h-[100px] w-full" />
+            <Skeleton className="h-[150px] w-full" />
+          </div>
+        ) : lawsuits.length === 0 ? (
+          <div className="text-center py-10">
+            <File className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">등록된 소송이 없습니다</h3>
+            <p className="text-muted-foreground mb-4">소송 정보를 추가하면 이 곳에 표시됩니다.</p>
+            {user && (user.role === "admin" || user.role === "staff") && (
+              <Button onClick={handleAddLawsuit}>
+                <Plus className="mr-1 h-4 w-4" />
+                소송 등록하기
+              </Button>
+            )}
+          </div>
+        ) : (
+          lawsuits.map((lawsuit) => (
+            <TabsContent key={lawsuit.id} value={lawsuit.id}>
+              <div className="space-y-6">{renderLawsuitInfo(lawsuit)}</div>
+            </TabsContent>
+          ))
+        )}
       </Tabs>
 
       {/* 송달/제출 내역 추가/수정 모달 */}
@@ -610,9 +607,11 @@ export default function LawsuitManager({ caseId }) {
           open={showAddSubmissionModal}
           onOpenChange={setShowAddSubmissionModal}
           onSuccess={handleSubmissionSuccess}
+          parties={parties}
           caseId={caseId}
           lawsuitId={activeTab}
           editingSubmission={editingSubmission}
+          lawsuitType={lawsuits.find((l) => l.id === activeTab)?.lawsuit_type}
         />
       )}
 

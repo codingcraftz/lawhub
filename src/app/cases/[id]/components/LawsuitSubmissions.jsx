@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from "date-fns";
+import { format, isSameDay, isBefore, isAfter } from "date-fns";
 import { ko } from "date-fns/locale";
 import {
   Table,
@@ -55,6 +55,8 @@ import {
   Edit,
   Scale,
   Gavel,
+  Circle,
+  ArrowRight,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -73,7 +75,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
-export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSuccess }) {
+export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onEdit }) {
   const router = useRouter();
   const { user } = useUser();
 
@@ -88,8 +90,6 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
     submission_type: "송달문서",
     document_type: "",
     submission_date: new Date(),
-    from_entity: "",
-    to_entity: "",
     description: "",
   });
 
@@ -105,33 +105,18 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
       { value: "준비서면", label: "준비서면" },
       { value: "석명준비명령", label: "석명준비명령" },
       { value: "변론기일통지서", label: "변론기일통지서" },
-      { value: "증인출석요구서", label: "증인출석요구서" },
-      { value: "감정촉탁결정", label: "감정촉탁결정" },
-      { value: "화해권고결정", label: "화해권고결정" },
       { value: "결정문", label: "결정문" },
       { value: "판결문", label: "판결문" },
-      { value: "기타", label: "기타" },
     ],
     제출문서: [
-      { value: "소장", label: "소장" },
       { value: "답변서", label: "답변서" },
       { value: "준비서면", label: "준비서면" },
       { value: "증거신청서", label: "증거신청서" },
       { value: "사실조회신청서", label: "사실조회신청서" },
-      { value: "기일변경신청서", label: "기일변경신청서" },
-      { value: "이의신청서", label: "이의신청서" },
       { value: "항소장", label: "항소장" },
       { value: "상고장", label: "상고장" },
-      { value: "기타", label: "기타" },
     ],
   };
-
-  const entityTypes = [
-    { value: "법원", label: "법원" },
-    { value: "본인", label: "본인" },
-    { value: "상대방", label: "상대방" },
-    { value: "제3자", label: "제3자" },
-  ];
 
   // 소송 유형 표시
   const getLawsuitTypeText = (type) => {
@@ -167,8 +152,8 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
       if (error) throw error;
       setSubmissions(data || []);
     } catch (error) {
-      console.error("송달/제출 내역 조회 실패:", error);
-      toast.error("송달/제출 내역 조회 실패", {
+      console.error("타임라인 조회 실패:", error);
+      toast.error("타임라인 조회 실패", {
         description: error.message,
       });
     } finally {
@@ -187,27 +172,6 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
         ...formErrors,
         [field]: null,
       });
-    }
-
-    // 송달문서/제출문서에 따라 발신자/수신자 기본값 설정
-    if (field === "submission_type") {
-      if (value === "송달문서") {
-        setFormData({
-          ...formData,
-          submission_type: value,
-          from_entity: "법원",
-          to_entity: "본인",
-          document_type: "",
-        });
-      } else {
-        setFormData({
-          ...formData,
-          submission_type: value,
-          from_entity: "본인",
-          to_entity: "법원",
-          document_type: "",
-        });
-      }
     }
   };
 
@@ -242,10 +206,6 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
     if (!formData.submission_type) errors.submission_type = "유형을 선택해주세요";
     if (!formData.document_type) errors.document_type = "문서 종류를 선택해주세요";
     if (!formData.submission_date) errors.submission_date = "날짜를 선택해주세요";
-    if (!formData.from_entity) errors.from_entity = "발신 주체를 선택해주세요";
-    if (!formData.to_entity) errors.to_entity = "수신 주체를 선택해주세요";
-    if (formData.from_entity === formData.to_entity)
-      errors.to_entity = "발신 주체와 수신 주체는 서로 다르게 선택해주세요";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -274,7 +234,7 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
 
     if (!user || (user.role !== "admin" && user.role !== "staff")) {
       toast.error("권한이 없습니다", {
-        description: "관리자 또는 직원만 송달/제출 내역을 추가할 수 있습니다",
+        description: "관리자 또는 직원만 타임라인을 추가할 수 있습니다",
       });
       return;
     }
@@ -294,8 +254,8 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
         submission_type: formData.submission_type,
         document_type: formData.document_type,
         submission_date: formData.submission_date.toISOString(),
-        from_entity: formData.from_entity,
-        to_entity: formData.to_entity,
+        from_entity: formData.submission_type === "송달문서" ? "법원" : "본인",
+        to_entity: formData.submission_type === "송달문서" ? "본인" : "법원",
         description: formData.description.trim() || null,
         file_url: fileUrl,
         created_by: user.id,
@@ -308,7 +268,7 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
 
       if (error) throw error;
 
-      toast.success("송달/제출 내역이 추가되었습니다", {
+      toast.success("타임라인에 추가되었습니다", {
         description: "내역이 성공적으로 추가되었습니다.",
       });
 
@@ -324,8 +284,8 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
       // 새로운 송달/제출 내역 목록 가져오기
       fetchSubmissions();
     } catch (error) {
-      console.error("송달/제출 내역 추가 실패:", error);
-      toast.error("송달/제출 내역 추가 실패", {
+      console.error("타임라인 추가 실패:", error);
+      toast.error("타임라인 추가 실패", {
         description: error.message,
       });
     } finally {
@@ -336,12 +296,30 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
   const handleDelete = async (submissionId) => {
     if (!user || (user.role !== "admin" && user.role !== "staff")) {
       toast.error("권한이 없습니다", {
-        description: "관리자 또는 직원만 송달/제출 내역을 삭제할 수 있습니다",
+        description: "관리자 또는 직원만 타임라인을 삭제할 수 있습니다",
       });
       return;
     }
 
     try {
+      // 1. 먼저 관련된 알림 삭제
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from("test_notifications")
+        .delete()
+        .match({
+          related_entity: "submission",
+          related_id: submissionId,
+        })
+        .select("id");
+
+      if (notificationsError) {
+        console.error("알림 삭제 실패:", notificationsError);
+        // 알림 삭제 실패 시에도 타임라인 항목은 삭제 진행
+      } else {
+        console.log(`${notificationsData.length}개의 관련 알림이 함께 삭제되었습니다.`);
+      }
+
+      // 2. 타임라인 항목 삭제
       const { error } = await supabase
         .from("test_lawsuit_submissions")
         .delete()
@@ -349,15 +327,15 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
 
       if (error) throw error;
 
-      toast.success("송달/제출 내역이 삭제되었습니다", {
+      toast.success("타임라인 항목이 삭제되었습니다", {
         description: "내역이 성공적으로 삭제되었습니다.",
       });
 
       // 업데이트된 목록 가져오기
       fetchSubmissions();
     } catch (error) {
-      console.error("송달/제출 내역 삭제 실패:", error);
-      toast.error("송달/제출 내역 삭제 실패", {
+      console.error("타임라인 삭제 실패:", error);
+      toast.error("타임라인 삭제 실패", {
         description: error.message,
       });
     }
@@ -368,8 +346,6 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
       submission_type: "송달문서",
       document_type: "",
       submission_date: new Date(),
-      from_entity: "법원",
-      to_entity: "본인",
       description: "",
     });
     setFileToUpload(null);
@@ -387,241 +363,184 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
     return <Icon className="h-4 w-4" />;
   };
 
-  // 송달/제출 내역 행 렌더링
-  const renderSubmissionRow = (submission) => (
-    <TableRow key={submission.id}>
-      <TableCell>
-        <Badge
-          variant={submission.submission_type === "송달문서" ? "outline" : "secondary"}
-          className="flex items-center gap-1 w-fit"
-        >
-          {getSubmissionTypeIcon(submission.submission_type)}
-          <span>{submission.submission_type}</span>
-        </Badge>
-      </TableCell>
-      <TableCell>{submission.document_type}</TableCell>
-      <TableCell>
-        {format(new Date(submission.submission_date), "yyyy-MM-dd", { locale: ko })}
-      </TableCell>
-      <TableCell>
-        <Badge variant="outline" className="w-fit">
-          {submission.from_entity}
-        </Badge>
-        <ArrowRight className="h-3 w-3 inline mx-2" />
-        <Badge variant="outline" className="w-fit">
-          {submission.to_entity}
-        </Badge>
-      </TableCell>
-      <TableCell>{submission.description || "-"}</TableCell>
-      <TableCell>
-        {submission.file_url ? (
-          <a
-            href={submission.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-          >
-            <FileText className="h-4 w-4" />
-            <span>보기</span>
-          </a>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        {user && (user.role === "admin" || user.role === "staff") && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Trash2 size={16} />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>송달/제출 내역 삭제</AlertDialogTitle>
-                <AlertDialogDescription>
-                  이 송달/제출 내역을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleDelete(submission.id)}>
-                  삭제
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </TableCell>
-    </TableRow>
-  );
+  // 타임라인 항목 배경색 설정
+  const getTimelineItemBg = (type) => {
+    if (type === "송달문서")
+      return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+    return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800";
+  };
 
-  // 등록 폼 렌더링
-  const renderSubmissionForm = () => (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>송달/제출 유형</Label>
-        <div className="flex gap-4">
-          {submissionTypes.map((type) => {
-            const Icon = type.icon;
-            return (
-              <div
-                key={type.value}
-                className={cn(
-                  "flex items-center gap-2 p-3 border rounded-md cursor-pointer hover:bg-accent",
-                  formData.submission_type === type.value
-                    ? "border-primary bg-primary/10"
-                    : "border-muted"
-                )}
-                onClick={() => handleInputChange("submission_type", type.value)}
-              >
-                <Icon className="h-5 w-5" />
-                <div className="font-medium">{type.label}</div>
+  // 타임라인 항목 아이콘 배경색 설정
+  const getTimelineIconBg = (type) => {
+    if (type === "송달문서") return "bg-blue-500 dark:bg-blue-600";
+    return "bg-green-500 dark:bg-green-600";
+  };
+
+  // 날짜 그룹으로 타임라인 항목 정렬
+  const groupSubmissionsByDate = (submissions) => {
+    const sorted = [...submissions].sort(
+      (a, b) => new Date(b.submission_date) - new Date(a.submission_date)
+    );
+
+    const groups = {};
+    sorted.forEach((submission) => {
+      const date = format(new Date(submission.submission_date), "yyyy-MM-dd");
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(submission);
+    });
+
+    // 날짜 그룹을 최신 날짜가 먼저 오도록 정렬
+    return Object.entries(groups)
+      .map(([date, items]) => ({
+        date,
+        items,
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date)); // 최신 날짜가 상단에 오도록 정렬
+  };
+
+  // 타임라인 렌더링
+  const renderTimeline = () => {
+    const filteredSubmissions = getFilteredSubmissions();
+    const groupedData = groupSubmissionsByDate(filteredSubmissions);
+
+    if (loading) {
+      return (
+        <div className="space-y-4 pt-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[100px] w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredSubmissions.length === 0) {
+      return (
+        <div className="text-center py-10 border rounded-md bg-muted/20">
+          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-2">
+            {activeTab !== "all"
+              ? `등록된 ${activeTab}가 없습니다`
+              : "등록된 타임라인 항목이 없습니다"}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8 relative py-2">
+        {/* 타임라인 수직선 */}
+        <div className="absolute top-0 bottom-0 left-[24px] w-[2px] bg-gray-200 dark:bg-gray-700 z-0"></div>
+
+        {groupedData.map((group, groupIndex) => (
+          <div key={group.date} className="mb-6">
+            <div className="flex mb-2 items-center z-10 relative">
+              <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-3 border-2 border-white dark:border-gray-900 shadow-sm">
+                <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-300" />
               </div>
-            );
-          })}
-        </div>
-      </div>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 p-1 rounded">
+                {format(new Date(group.date), "yyyy년 MM월 dd일", { locale: ko })}
+              </h3>
+            </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>발신 주체</Label>
-          <Select
-            value={formData.from_entity}
-            onValueChange={(value) => handleInputChange("from_entity", value)}
-          >
-            <SelectTrigger className={formErrors.from_entity ? "border-red-500" : ""}>
-              <SelectValue placeholder="발신 주체 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {entityTypes.map((entity) => (
-                <SelectItem key={entity.value} value={entity.value}>
-                  {entity.label}
-                </SelectItem>
+            <div className="space-y-3 ml-14">
+              {group.items.map((item, itemIndex) => (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-lg border relative ${getTimelineItemBg(
+                    item.submission_type
+                  )}`}
+                >
+                  {/* 타임라인 항목 아이콘 */}
+                  <div className="absolute -left-[40px] top-4 z-10">
+                    <div
+                      className={`h-6 w-6 rounded-full ${getTimelineIconBg(
+                        item.submission_type
+                      )} flex items-center justify-center`}
+                    >
+                      {getSubmissionTypeIcon(item.submission_type)}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap gap-2 items-center mb-1">
+                        <Badge
+                          variant={item.submission_type === "송달문서" ? "outline" : "secondary"}
+                          className="flex items-center gap-1"
+                        >
+                          {getSubmissionTypeIcon(item.submission_type)}
+                          <span>{item.submission_type}</span>
+                        </Badge>
+                        <Badge variant="outline">{item.document_type}</Badge>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {format(new Date(item.submission_date), "HH:mm", { locale: ko })}
+                        </span>
+                      </div>
+
+                      {item.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-white/80 dark:bg-gray-800/80 p-2 rounded">
+                          {item.description}
+                        </p>
+                      )}
+
+                      {item.file_url && (
+                        <a
+                          href={item.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-xs gap-1 mt-2 text-blue-600 hover:text-blue-800 bg-white/60 dark:bg-gray-800/60 p-1 px-2 rounded w-fit"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          <span>문서 보기</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {user && (user.role === "admin" || user.role === "staff") && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onEdit && onEdit(item)}
+                        >
+                          <Edit size={16} />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Trash2 size={16} />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>타임라인 항목 삭제</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                이 타임라인 항목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수
+                                없습니다.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>취소</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(item.id)}>
+                                삭제
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
-            </SelectContent>
-          </Select>
-          {formErrors.from_entity && (
-            <p className="text-xs text-red-500">{formErrors.from_entity}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>수신 주체</Label>
-          <Select
-            value={formData.to_entity}
-            onValueChange={(value) => handleInputChange("to_entity", value)}
-          >
-            <SelectTrigger className={formErrors.to_entity ? "border-red-500" : ""}>
-              <SelectValue placeholder="수신 주체 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {entityTypes.map((entity) => (
-                <SelectItem key={entity.value} value={entity.value}>
-                  {entity.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {formErrors.to_entity && <p className="text-xs text-red-500">{formErrors.to_entity}</p>}
-        </div>
+            </div>
+          </div>
+        ))}
       </div>
-
-      <div className="space-y-2">
-        <Label>문서 종류</Label>
-        <Select
-          value={formData.document_type}
-          onValueChange={(value) => handleInputChange("document_type", value)}
-        >
-          <SelectTrigger className={formErrors.document_type ? "border-red-500" : ""}>
-            <SelectValue placeholder="문서 종류 선택" />
-          </SelectTrigger>
-          <SelectContent>
-            {documentTypes[formData.submission_type]?.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {formErrors.document_type && (
-          <p className="text-xs text-red-500">{formErrors.document_type}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label>날짜</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !formData.submission_date && "text-muted-foreground",
-                formErrors.submission_date && "border-red-500"
-              )}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              {formData.submission_date ? (
-                format(formData.submission_date, "yyyy년 MM월 dd일", { locale: ko })
-              ) : (
-                <span>날짜 선택</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <CalendarComponent
-              mode="single"
-              selected={formData.submission_date}
-              onSelect={(date) => handleInputChange("submission_date", date)}
-              initialFocus
-              locale={ko}
-            />
-          </PopoverContent>
-        </Popover>
-        {formErrors.submission_date && (
-          <p className="text-xs text-red-500">{formErrors.submission_date}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label>설명</Label>
-        <Textarea
-          value={formData.description}
-          onChange={(e) => handleInputChange("description", e.target.value)}
-          placeholder="문서에 대한 설명을 입력하세요"
-          className="min-h-[80px]"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>파일 첨부</Label>
-        <Input
-          type="file"
-          onChange={handleFileChange}
-          className="cursor-pointer"
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-        />
-        <p className="text-xs text-muted-foreground">PDF, Word, 이미지 파일 (최대 10MB)</p>
-      </div>
-
-      <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            resetForm();
-            setShowAddModal(false);
-          }}
-        >
-          취소
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "저장 중..." : "저장"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
+    );
+  };
 
   if (!lawsuit) {
     return (
@@ -633,37 +552,6 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 justify-between items-start sm:items-center">
-        <div>
-          <h3 className="text-lg font-medium">
-            {getLawsuitTypeText(lawsuit.lawsuit_type)} - {lawsuit.case_number} 전자소송 내역
-          </h3>
-          <p className="text-sm text-muted-foreground">{lawsuit.court_name}</p>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchSubmissions}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw size={14} />
-            새로고침
-          </Button>
-          {user && (user.role === "staff" || user.role === "admin") && !viewOnly && (
-            <Button
-              size="sm"
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1"
-            >
-              <Plus size={14} />
-              내역 등록
-            </Button>
-          )}
-        </div>
-      </div>
-
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">전체</TabsTrigger>
@@ -678,95 +566,15 @@ export default function LawsuitSubmissions({ lawsuit, viewOnly = false, onSucces
         </TabsList>
 
         <TabsContent value="all" className="mt-4">
-          {renderSubmissionsTable()}
+          {renderTimeline()}
         </TabsContent>
         <TabsContent value="송달문서" className="mt-4">
-          {renderSubmissionsTable("송달문서")}
+          {renderTimeline()}
         </TabsContent>
         <TabsContent value="제출문서" className="mt-4">
-          {renderSubmissionsTable("제출문서")}
+          {renderTimeline()}
         </TabsContent>
       </Tabs>
-
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>송달/제출 내역 등록</DialogTitle>
-          </DialogHeader>
-          {renderSubmissionForm()}
-        </DialogContent>
-      </Dialog>
     </div>
-  );
-
-  function renderSubmissionsTable(filterType) {
-    const filtered = filterType
-      ? submissions.filter((s) => s.submission_type === filterType)
-      : submissions;
-
-    if (loading) {
-      return (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[50px] w-full" />
-          ))}
-        </div>
-      );
-    }
-
-    if (filtered.length === 0) {
-      return (
-        <div className="text-center py-10 border rounded-md bg-muted/20">
-          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-2">
-            {filterType ? `등록된 ${filterType}가 없습니다` : "등록된 송달/제출 내역이 없습니다"}
-          </p>
-          {user && (user.role === "staff" || user.role === "admin") && !viewOnly && (
-            <Button variant="outline" onClick={() => setShowAddModal(true)}>
-              내역 등록하기
-            </Button>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>유형</TableHead>
-              <TableHead>문서 종류</TableHead>
-              <TableHead>날짜</TableHead>
-              <TableHead>발신/수신</TableHead>
-              <TableHead>설명</TableHead>
-              <TableHead>첨부파일</TableHead>
-              <TableHead className="text-right">작업</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>{filtered.map(renderSubmissionRow)}</TableBody>
-        </Table>
-      </div>
-    );
-  }
-}
-
-function ArrowRight(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="m12 5 7 7-7 7" />
-    </svg>
   );
 }

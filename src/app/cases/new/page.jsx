@@ -50,33 +50,35 @@ export default function NewCasePage() {
     parties: [
       {
         party_type: "creditor", // 기본값: 채권자
-        party_entity_type: "individual", // 기본값: 개인
+        entity_type: "individual", // 기본값: 개인
         name: "",
         company_name: "",
-        company_number: "",
+        corporate_number: "",
         position: "",
         phone: "",
         unknown_phone: false,
         address: "",
         unknown_address: false,
-        address_detail: "",
         email: "",
         unknown_email: false,
+        resident_number: "",
+        unknown_resident_number: false,
       },
       {
         party_type: "debtor", // 기본값: 채무자
-        party_entity_type: "individual", // 기본값: 개인
+        entity_type: "individual", // 기본값: 개인
         name: "",
         company_name: "",
-        company_number: "",
+        corporate_number: "",
         position: "",
         phone: "",
         unknown_phone: false,
         address: "",
         unknown_address: false,
-        address_detail: "",
         email: "",
         unknown_email: false,
+        resident_number: "",
+        unknown_resident_number: false,
       },
     ],
   });
@@ -94,7 +96,7 @@ export default function NewCasePage() {
         parties:
           formData.parties.length >= 2 &&
           formData.parties.every((party) => {
-            if (party.party_entity_type === "individual") {
+            if (party.entity_type === "individual") {
               return !!party.name; // 개인인 경우 이름 필수
             } else {
               return !!party.company_name; // 법인인 경우 회사명 필수
@@ -309,18 +311,19 @@ export default function NewCasePage() {
         ...prev.parties,
         {
           party_type: prev.case_type === "lawsuit" ? "plaintiff" : "creditor",
-          party_entity_type: "individual",
+          entity_type: "individual",
           name: "",
           company_name: "",
-          company_number: "",
+          corporate_number: "",
           position: "",
           phone: "",
           unknown_phone: false,
           address: "",
           unknown_address: false,
-          address_detail: "",
           email: "",
           unknown_email: false,
+          resident_number: "",
+          unknown_resident_number: false,
         },
       ],
     }));
@@ -646,16 +649,15 @@ export default function NewCasePage() {
             return {
               case_id: newCase.id,
               party_type: party.party_type,
-              party_entity_type: party.party_entity_type,
+              entity_type: party.entity_type,
               name: party.name || null,
-              company_name: party.party_entity_type === "organization" ? party.company_name : null,
-              company_number:
-                party.party_entity_type === "organization" ? party.company_number : null,
-              position: party.party_entity_type === "organization" ? party.position : null,
+              company_name: party.entity_type === "corporation" ? party.company_name : null,
+              corporate_number: party.entity_type === "corporation" ? party.corporate_number : null,
+              position: party.entity_type === "corporation" ? party.position : null,
               phone: party.unknown_phone ? null : party.phone,
               address: party.unknown_address ? null : party.address,
-              address_detail: party.address_detail || null,
               email: party.unknown_email ? null : party.email,
+              resident_number: party.unknown_resident_number ? null : party.resident_number,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             };

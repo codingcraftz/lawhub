@@ -52,6 +52,7 @@ import {
   Bell,
   Scale,
   CircleDollarSign,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 
 // 차트 컴포넌트
@@ -159,12 +160,34 @@ function NotificationSummary({ notifications, loading }) {
                     <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                       {notification.message}
                     </p>
-                    <span className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(notification.created_at), {
-                        addSuffix: true,
-                        locale: ko,
-                      })}
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">
+                        {formatDistanceToNow(new Date(notification.created_at), {
+                          addSuffix: true,
+                          locale: ko,
+                        })}
+                      </span>
+                      <div className="flex gap-1">
+                        {!notification.is_read && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs px-2"
+                            onClick={(e) => markAsRead(e, notification.id)}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> 읽음
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs px-2"
+                          onClick={() => router.push(`/cases/${notification.case_id}`)}
+                        >
+                          <ChevronRight className="h-3.5 w-3.5 mr-1" /> 보기
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -292,79 +315,57 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
             </div>
           ) : (
             <div className="divide-y">
-              {displayNotifications.slice(0, 8).map((notification) => (
+              {displayNotifications.slice(0, 3).map((notification) => (
                 <div
                   key={notification.id}
                   className={cn(
-                    "p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                    "p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer",
                     !notification.is_read && "bg-blue-50/50 dark:bg-blue-900/10"
                   )}
+                  onClick={() => router.push(`/cases/${notification.case_id}`)}
                 >
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <div className="mt-0.5">
                       {getNotificationIcon(notification.notification_type)}
                     </div>
                     <div className="flex-1">
-                      <div className="flex justify-between items-start mb-1">
+                      <div className="flex justify-between items-start">
                         <h4
                           className={cn(
-                            "font-medium text-sm",
+                            "font-medium text-xs",
                             !notification.is_read && "font-semibold"
                           )}
                         >
                           {notification.title}
                         </h4>
                         {!notification.is_read && (
-                          <span className="h-2 w-2 rounded-full bg-blue-500 mt-1"></span>
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1"></span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 line-clamp-2">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-1">
                         {notification.message}
                       </p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-[10px] text-gray-500">
                           {formatDistanceToNow(new Date(notification.created_at), {
                             addSuffix: true,
                             locale: ko,
                           })}
                         </span>
-                        <div className="flex gap-1">
-                          {!notification.is_read && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs px-2"
-                              onClick={(e) => markAsRead(e, notification.id)}
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> 읽음
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs px-2"
-                            onClick={() => router.push(`/cases/${notification.case_id}`)}
-                          >
-                            <ChevronRight className="h-3.5 w-3.5 mr-1" /> 보기
-                          </Button>
-                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
-              {(activeTab === "unread" ? unreadNotifications.length : readNotifications.length) >
-                8 && (
-                <div className="text-center py-3">
+              {displayNotifications.length > 3 && (
+                <div className="text-center py-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-xs"
+                    className="text-[10px] h-6"
                     onClick={() => document.querySelector('[aria-label="알림"]')?.click()}
                   >
-                    모든 알림 보기 (
-                    {activeTab === "unread" ? unreadNotifications.length : readNotifications.length}
-                    )
+                    더보기 ({filteredNotifications.length})
                   </Button>
                 </div>
               )}
@@ -400,6 +401,7 @@ export default function MyCasesPage() {
   // 회수 정보를 위한 상태 추가
   const [recoveryStats, setRecoveryStats] = useState({
     totalPrincipalAmount: 0,
+    totalDebtAmount: 0, // 원금 + 이자 + 비용 (총 채권액)
     totalRecoveredAmount: 0,
     recoveryRate: 0,
   });
@@ -411,6 +413,7 @@ export default function MyCasesPage() {
     closedCases: 0,
     casesByType: [],
     casesByMonth: [],
+    debtCategories: [],
   });
 
   // 사건 정보에 당사자 정보 추가
@@ -436,6 +439,26 @@ export default function MyCasesPage() {
 
       if (recoveryError) throw recoveryError;
 
+      // 이자 정보 가져오기
+      const { data: interestData, error: interestError } = await supabase
+        .from("test_case_interests")
+        .select("case_id, rate, start_date, end_date")
+        .in("case_id", caseIds);
+
+      if (interestError) {
+        console.error("이자 정보 가져오기 실패:", interestError);
+      }
+
+      // 비용 정보 가져오기
+      const { data: expenseData, error: expenseError } = await supabase
+        .from("test_case_expenses")
+        .select("case_id, amount")
+        .in("case_id", caseIds);
+
+      if (expenseError) {
+        console.error("비용 정보 가져오기 실패:", expenseError);
+      }
+
       // 회수 금액 계산
       const recoveryByCase = {};
       recoveryData?.forEach((recovery) => {
@@ -443,13 +466,53 @@ export default function MyCasesPage() {
           if (!recoveryByCase[recovery.case_id]) {
             recoveryByCase[recovery.case_id] = 0;
           }
-          recoveryByCase[recovery.case_id] += parseFloat(recovery.amount);
+          recoveryByCase[recovery.case_id] += parseFloat(recovery.amount || 0);
         }
       });
 
+      // 이자 금액 계산 - 간소화를 위해 이자는 0으로 처리 (추후 정확한 이자 계산 로직 필요)
+      const interestByCase = {};
+      caseIds.forEach((caseId) => {
+        interestByCase[caseId] = 0; // 일단 모든 사건의 이자를 0으로 초기화
+      });
+
+      // 이자 정보가 있는 경우만 처리
+      if (interestData && interestData.length > 0) {
+        interestData.forEach((interest) => {
+          // 이자율을 이용한 기본 계산 방식 적용 (수임원금 * 이자율 / 100)
+          if (interest.case_id && interest.rate) {
+            const caseInfo = cases.find((c) => c.id === interest.case_id);
+            if (caseInfo && caseInfo.principal_amount) {
+              const principalAmount = caseInfo.principal_amount || 0;
+              interestByCase[interest.case_id] = (principalAmount * interest.rate) / 100;
+            }
+          }
+        });
+      }
+
+      // 비용 금액 계산
+      const expenseByCase = {};
+      caseIds.forEach((caseId) => {
+        expenseByCase[caseId] = 0; // 일단 모든 사건의 비용을 0으로 초기화
+      });
+
+      // 비용 정보가 있는 경우만 처리
+      if (expenseData && expenseData.length > 0) {
+        expenseData.forEach((expense) => {
+          if (expense.case_id && expense.amount) {
+            if (!expenseByCase[expense.case_id]) {
+              expenseByCase[expense.case_id] = 0;
+            }
+            expenseByCase[expense.case_id] += parseFloat(expense.amount || 0);
+          }
+        });
+      }
+
       // 당사자 정보로 사건 정보 보강
       return cases.map((caseItem) => {
-        const caseParties = partiesData.filter((p) => p.case_id === caseItem.id) || [];
+        const caseParties = partiesData
+          ? partiesData.filter((p) => p.case_id === caseItem.id) || []
+          : [];
 
         const creditor = caseParties.find((p) =>
           ["creditor", "plaintiff", "applicant"].includes(p.party_type)
@@ -459,24 +522,40 @@ export default function MyCasesPage() {
           ["debtor", "defendant", "respondent"].includes(p.party_type)
         );
 
-        // 회수 금액 및 회수율 계산
-        const recoveredAmount = recoveryByCase[caseItem.id] || 0;
+        // 원금 (수임금액)
         const principalAmount = caseItem.principal_amount || 0;
+
+        // 이자 금액
+        const interestAmount = interestByCase[caseItem.id] || 0;
+
+        // 비용 금액
+        const expenseAmount = expenseByCase[caseItem.id] || 0;
+
+        // 총 채권액 (원금 + 이자 + 비용) = 원리금
+        const debtAmount = principalAmount + interestAmount + expenseAmount;
+
+        // 회수 금액
+        const recoveredAmount = recoveryByCase[caseItem.id] || 0;
+
+        // 회수율 (회수금액 / 원금)
         const recoveryRate =
           principalAmount > 0 ? Math.round((recoveredAmount / principalAmount) * 1000) / 10 : 0;
 
         return {
           ...caseItem,
           creditor_name: creditor
-            ? creditor.party_entity_type === "individual"
+            ? creditor.entity_type === "individual"
               ? creditor.name
               : creditor.company_name
             : null,
           debtor_name: debtor
-            ? debtor.party_entity_type === "individual"
+            ? debtor.entity_type === "individual"
               ? debtor.name
               : debtor.company_name
             : null,
+          interest_amount: interestAmount,
+          expense_amount: expenseAmount,
+          debt_amount: debtAmount,
           recovered_amount: recoveredAmount,
           recovery_rate: recoveryRate,
         };
@@ -521,7 +600,27 @@ export default function MyCasesPage() {
     const paginatedCases = filtered.slice(startIndex, startIndex + casesPerPage);
 
     setFilteredCases(paginatedCases);
-  }, [selectedTab, selectedOrg, personalCases, organizationCases, searchTerm, currentPage]);
+
+    // 선택된 사건들에 대한 통계 재계산
+    const currentStats = calculateStats(currentCases);
+    setStats(currentStats);
+
+    // 회수 정보 계산
+    calculateRecoveryStats(currentCases);
+
+    // 알림 필터링
+    if (notifications.length > 0) {
+      filterNotificationsBySelection();
+    }
+  }, [
+    selectedTab,
+    selectedOrg,
+    personalCases,
+    organizationCases,
+    searchTerm,
+    currentPage,
+    notifications,
+  ]);
 
   // 활성화된 탭이나 조직이 변경될 때 알림과 통계 필터링
   useEffect(() => {
@@ -529,20 +628,22 @@ export default function MyCasesPage() {
 
     filterNotificationsBySelection();
 
-    // 선택된 사건들에 대한 통계 재계산
-    const currentCases = selectedTab === "personal" ? personalCases : organizationCases;
-    const currentStats = calculateStats(currentCases);
-    setStats(currentStats);
+    // 선택된 사건들에 대한 통계 재계산 - 현재 다른 useEffect에서 처리됨
+    // 중복 코드 제거로 주석 처리
+    // const currentCases = selectedTab === "personal" ? personalCases : organizationCases;
+    // const currentStats = calculateStats(currentCases);
+    // setStats(currentStats);
 
-    // 회수 정보 계산
-    calculateRecoveryStats(currentCases);
-  }, [selectedTab, selectedOrg, notifications, personalCases, organizationCases]);
+    // 회수 정보 계산 - 현재 다른 useEffect에서 처리됨
+    // calculateRecoveryStats(currentCases);
+  }, [selectedTab, selectedOrg, notifications]);
 
   // 회수 정보 계산
   const calculateRecoveryStats = async (cases) => {
     if (!cases || !cases.length) {
       setRecoveryStats({
         totalPrincipalAmount: 0,
+        totalDebtAmount: 0,
         totalRecoveredAmount: 0,
         recoveryRate: 0,
       });
@@ -553,13 +654,18 @@ export default function MyCasesPage() {
       // 총 원금 계산
       const totalPrincipal = cases.reduce((sum, c) => sum + (c.principal_amount || 0), 0);
 
+      // 총 채권액 계산 (원금 + 이자 + 비용)
+      const totalDebt = cases.reduce((sum, c) => sum + (c.debt_amount || 0), 0);
+
       // 회수된 금액 계산 (이미 각 사건에 계산되어 있음)
       const recoveredAmount = cases.reduce((sum, c) => sum + (c.recovered_amount || 0), 0);
 
+      // 회수율 계산 (회수금액 / 원금)
       const rate = totalPrincipal > 0 ? (recoveredAmount / totalPrincipal) * 100 : 0;
 
       setRecoveryStats({
         totalPrincipalAmount: totalPrincipal,
+        totalDebtAmount: totalDebt,
         totalRecoveredAmount: recoveredAmount,
         recoveryRate: Math.round(rate * 10) / 10, // 소수점 첫째 자리까지
       });
@@ -711,6 +817,47 @@ export default function MyCasesPage() {
       // 통계 계산
       const stats = calculateStats(uniqueCases);
 
+      // 채권 분류별 통계 계산
+      const debtCategories = {
+        normal: 0, // 정상 채권
+        bad: 0, // 악성 채권
+        interest: 0, // 관심 채권
+        special: 0, // 특수 채권
+      };
+
+      // 실제 DB에서 채권 분류 데이터 사용
+      uniqueCases.forEach((c) => {
+        // debt_category 필드는 text 타입이므로 직접 사용
+        // DB에 값이 없으면 기본값 'normal' 사용
+        const category = c.debt_category || "normal";
+
+        // 유효한 카테고리인지 확인
+        if (debtCategories.hasOwnProperty(category)) {
+          debtCategories[category]++;
+        } else {
+          // 알 수 없는 카테고리는 'normal'로 처리
+          debtCategories.normal++;
+        }
+      });
+
+      // 채권 분류 카테고리 표시 이름 수정
+      const debtCategoriesData = [
+        { name: "정상 채권", value: debtCategories.normal, color: "#10b981" },
+        { name: "악성 채권", value: debtCategories.bad, color: "#ef4444" },
+        { name: "관심 채권", value: debtCategories.interest, color: "#f59e0b" },
+        { name: "특수 채권", value: debtCategories.special, color: "#6366f1" },
+      ].filter((category) => category.value > 0); // 값이 0인 카테고리는 제외
+
+      // 데이터가 하나도 없을 경우 기본 데이터 제공
+      if (debtCategoriesData.length === 0) {
+        debtCategoriesData.push({ name: "정상 채권", value: uniqueCases.length, color: "#10b981" });
+      }
+
+      setStats({
+        ...stats,
+        debtCategories: debtCategoriesData,
+      });
+
       setPersonalCases(personalCasesList);
       setOrganizations(filteredOrgCasesByOrg);
 
@@ -721,21 +868,27 @@ export default function MyCasesPage() {
         setOrganizationCases([]);
       }
 
-      setStats(stats);
-
       // 조직 의뢰가 있고 개인 의뢰가 없으면 조직 탭으로 시작
       if (personalCasesList.length === 0 && filteredOrgCasesByOrg.length > 0) {
         setSelectedTab("organization");
       }
 
-      // 초기 회수 정보 계산
-      calculateRecoveryStats(
-        personalCasesList.length > 0
+      // 초기 통계 계산 - 현재 선택된 탭에 따라 계산
+      const initialCases =
+        selectedTab === "personal"
           ? personalCasesList
           : filteredOrgCasesByOrg.length > 0
           ? filteredOrgCasesByOrg[0].cases
-          : []
-      );
+          : [];
+
+      // 통계 계산
+      const initialStats = calculateStats(initialCases);
+
+      // 채권 분류별 통계 초기화
+      setStats(initialStats);
+
+      // 초기 회수 정보 계산
+      calculateRecoveryStats(initialCases);
     } catch (error) {
       console.error("의뢰 정보 로딩 중 오류 발생:", error);
       toast.error("의뢰 정보를 불러오는데 실패했습니다");
@@ -806,6 +959,42 @@ export default function MyCasesPage() {
       })
       .sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
 
+    // 채권 분류별 통계 계산
+    const debtCategories = {
+      normal: 0, // 정상 채권
+      bad: 0, // 악성 채권
+      interest: 0, // 관심 채권
+      special: 0, // 특수 채권
+    };
+
+    // 실제 DB에서 채권 분류 데이터 사용
+    cases.forEach((c) => {
+      // debt_category 필드는 text 타입이므로 직접 사용
+      // DB에 값이 없으면 기본값 'normal' 사용
+      const category = c.debt_category || "normal";
+
+      // 유효한 카테고리인지 확인
+      if (debtCategories.hasOwnProperty(category)) {
+        debtCategories[category]++;
+      } else {
+        // 알 수 없는 카테고리는 'normal'로 처리
+        debtCategories.normal++;
+      }
+    });
+
+    // 채권 분류 카테고리 표시 이름 수정
+    const debtCategoriesData = [
+      { name: "정상 채권", value: debtCategories.normal, color: "#10b981" },
+      { name: "악성 채권", value: debtCategories.bad, color: "#ef4444" },
+      { name: "관심 채권", value: debtCategories.interest, color: "#f59e0b" },
+      { name: "특수 채권", value: debtCategories.special, color: "#6366f1" },
+    ].filter((category) => category.value > 0); // 값이 0인 카테고리는 제외
+
+    // 데이터가 하나도 없을 경우 기본 데이터 제공
+    if (debtCategoriesData.length === 0) {
+      debtCategoriesData.push({ name: "정상 채권", value: cases.length, color: "#10b981" });
+    }
+
     return {
       totalCases,
       activeCases,
@@ -813,9 +1002,11 @@ export default function MyCasesPage() {
       closedCases,
       casesByType,
       casesByMonth,
+      debtCategories: debtCategoriesData,
     };
   };
 
+  // 조직 변경 핸들러
   const handleOrgChange = (orgId) => {
     const org = organizations.find((o) => o.orgId === orgId);
     if (org) {
@@ -825,6 +1016,18 @@ export default function MyCasesPage() {
       // 조직 변경 시 페이지와 검색 초기화
       setCurrentPage(1);
       setSearchTerm("");
+
+      // 즉시 통계 재계산
+      const currentStats = calculateStats(org.cases);
+      setStats(currentStats);
+      calculateRecoveryStats(org.cases);
+
+      // 알림 필터링도 즉시 업데이트
+      if (notifications.length > 0) {
+        const orgCaseIds = org.cases.map((c) => c.id);
+        const filtered = notifications.filter((n) => orgCaseIds.includes(n.case_id));
+        setFilteredNotifications(filtered);
+      }
     }
   };
 
@@ -833,6 +1036,25 @@ export default function MyCasesPage() {
     setSelectedTab(tab);
     setCurrentPage(1);
     setSearchTerm("");
+
+    // 즉시 필터링 수행
+    const currentCases = tab === "personal" ? personalCases : organizationCases;
+    const currentStats = calculateStats(currentCases);
+    setStats(currentStats);
+    calculateRecoveryStats(currentCases);
+
+    // 알림 필터링도 즉시 업데이트
+    if (notifications.length > 0) {
+      if (tab === "personal") {
+        const personalCaseIds = personalCases.map((c) => c.id);
+        const filtered = notifications.filter((n) => personalCaseIds.includes(n.case_id));
+        setFilteredNotifications(filtered);
+      } else if (tab === "organization" && selectedOrg) {
+        const orgCaseIds = organizationCases.map((c) => c.id);
+        const filtered = notifications.filter((n) => orgCaseIds.includes(n.case_id));
+        setFilteredNotifications(filtered);
+      }
+    }
   };
 
   // 검색 변경 핸들러
@@ -1048,161 +1270,449 @@ export default function MyCasesPage() {
         )}
       </div>
 
-      {/* 통계 대시보드 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* 왼쪽 - 요약 통계 카드 */}
-        <div className="lg:col-span-2">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-              <CardContent className="p-4 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3 mt-2">
-                  <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">총 의뢰</p>
-                <p className="text-3xl font-bold">{stats.totalCases}건</p>
-                <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 flex items-center">
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-none">
-                    활성 {stats.activeCases}건
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+      {/* 통계 대시보드 (탭 형식으로 변경) */}
+      <div className="mb-8">
+        <Card className="border shadow-sm overflow-hidden">
+          <CardHeader className="pb-0">
+            <Tabs
+              defaultValue="cases"
+              className="w-full"
+              key={`stats-tabs-${selectedTab}-${selectedOrg || "none"}`}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="cases" className="flex items-center">
+                  <Briefcase className="mr-2 h-4 w-4" />
+                  총의뢰 ({stats.totalCases}건)
+                </TabsTrigger>
+                <TabsTrigger value="recovery" className="flex items-center">
+                  <CircleDollarSign className="mr-2 h-4 w-4" />
+                  채권정보 ({formatCurrency(recoveryStats.totalDebtAmount).replace("₩", "")})
+                </TabsTrigger>
+              </TabsList>
 
-            <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-              <CardContent className="p-4 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-3 mt-2">
-                  <FileBarChart className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">채권 총액</p>
-                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-                  {formatCurrency(recoveryStats.totalPrincipalAmount).replace("₩", "")}
-                </p>
-                <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center">
-                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-none">
-                    건당 평균{" "}
-                    {formatCurrency(
-                      stats.totalCases > 0
-                        ? recoveryStats.totalPrincipalAmount / stats.totalCases
-                        : 0
-                    ).replace("₩", "")}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-              <CardContent className="p-4 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3 mt-2">
-                  <CircleDollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">회수금액</p>
-                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(recoveryStats.totalRecoveredAmount).replace("₩", "")}
-                </p>
-                <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 flex items-center">
-                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-none">
-                    진행 {stats.activeCases}건
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-              <CardContent className="p-4 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-3 mt-2">
-                  <BarChart3 className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">회수율</p>
-                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  {recoveryStats.recoveryRate}%
-                </p>
-                <div className="mt-2 text-xs text-purple-600 dark:text-purple-400 flex items-center">
-                  <Badge
-                    className={`border-none ${
-                      recoveryStats.recoveryRate > 70
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                        : recoveryStats.recoveryRate > 40
-                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-                        : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-                    }`}
-                  >
-                    {recoveryStats.recoveryRate > 70
-                      ? "우수"
-                      : recoveryStats.recoveryRate > 40
-                      ? "보통"
-                      : "저조"}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* 사건 유형 분포 */}
-          <div className="mt-6">
-            <Card className="border shadow-sm overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-blue-500" /> 사건 유형 분포
-                </CardTitle>
-                <CardDescription>사건 유형별 비율</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="flex flex-col lg:flex-row">
-                  <div className="p-4 flex-1 min-h-[200px]">
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie
-                          data={stats.casesByType}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          nameKey="name"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {stats.casesByType.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Legend layout="horizontal" verticalAlign="bottom" align="center" />
-                      </PieChart>
-                    </ResponsiveContainer>
+              {/* 총의뢰 탭 - 알림과 사건 분포 차트 */}
+              <TabsContent value="cases" className="pt-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-3 mb-4">
+                  {/* 좌측 - 알림 컴포넌트 */}
+                  <div>
+                    <Card className="border shadow-sm overflow-hidden h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+                      <CardHeader className="py-2 px-4 border-b">
+                        <div className="flex justify-between items-center">
+                          <CardTitle className="text-base flex items-center">
+                            <Bell className="h-4 w-4 mr-2 text-amber-500" /> 최근 알림
+                            {filteredNotifications.filter((n) => !n.is_read).length > 0 && (
+                              <Badge className="ml-2 bg-amber-500 text-white">
+                                {filteredNotifications.filter((n) => !n.is_read).length}
+                              </Badge>
+                            )}
+                          </CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <div className="max-h-[180px] overflow-y-auto">
+                          {notificationsLoading ? (
+                            <div className="p-3 space-y-2">
+                              {[1, 2].map((i) => (
+                                <div key={i} className="flex flex-col space-y-1">
+                                  <Skeleton className="h-4 w-1/4" />
+                                  <Skeleton className="h-8 w-full" />
+                                </div>
+                              ))}
+                            </div>
+                          ) : filteredNotifications.length === 0 ? (
+                            <div className="text-center py-4 text-gray-500">
+                              <Bell className="h-5 w-5 mx-auto mb-1 text-gray-300 dark:text-gray-600" />
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                새로운 알림이 없습니다.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="divide-y">
+                              {filteredNotifications.slice(0, 3).map((notification) => (
+                                <div
+                                  key={notification.id}
+                                  className={cn(
+                                    "p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer",
+                                    !notification.is_read && "bg-blue-50/50 dark:bg-blue-900/10"
+                                  )}
+                                  onClick={() => router.push(`/cases/${notification.case_id}`)}
+                                >
+                                  <div className="flex gap-2">
+                                    <div className="mt-0.5">
+                                      {getNotificationIcon(notification.notification_type)}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-start">
+                                        <h4
+                                          className={cn(
+                                            "font-medium text-xs",
+                                            !notification.is_read && "font-semibold"
+                                          )}
+                                        >
+                                          {notification.title}
+                                        </h4>
+                                        {!notification.is_read && (
+                                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1"></span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-1">
+                                        {notification.message}
+                                      </p>
+                                      <div className="flex justify-between items-center mt-1">
+                                        <span className="text-[10px] text-gray-500">
+                                          {formatDistanceToNow(new Date(notification.created_at), {
+                                            addSuffix: true,
+                                            locale: ko,
+                                          })}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              {filteredNotifications.length > 3 && (
+                                <div className="text-center py-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-[10px] h-6"
+                                    onClick={() =>
+                                      document.querySelector('[aria-label="알림"]')?.click()
+                                    }
+                                  >
+                                    더보기 ({filteredNotifications.length})
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div className="p-4 flex-1 min-h-[200px]">
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart
-                        data={stats.casesByMonth}
-                        margin={{
-                          top: 5,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="count" fill="#3b82f6" name="사건 수" />
-                      </BarChart>
-                    </ResponsiveContainer>
+
+                  {/* 우측 - 사건 분포 통계 */}
+                  <div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* 상태별 사건 분포 */}
+                      <Card className="border shadow-sm overflow-hidden">
+                        <CardHeader className="py-2 px-4 border-b">
+                          <CardTitle className="text-base flex items-center">
+                            <FileText className="h-4 w-4 mr-2 text-blue-500" /> 사건 현황
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-3 px-4">
+                          <div className="flex items-center justify-around">
+                            <div className="text-center">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1 mx-auto">
+                                <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <p className="text-xs text-muted-foreground">총 사건</p>
+                              <p className="text-base font-bold">{stats.totalCases}건</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-1 mx-auto">
+                                <Timer className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                              <p className="text-xs text-muted-foreground">진행중</p>
+                              <p className="text-base font-bold">{stats.activeCases}건</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1 mx-auto">
+                                <Hourglass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <p className="text-xs text-muted-foreground">대기중</p>
+                              <p className="text-base font-bold">{stats.pendingCases}건</p>
+                            </div>
+                            <div className="text-center">
+                              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-1 mx-auto">
+                                <CheckCircle2 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                              </div>
+                              <p className="text-xs text-muted-foreground">종결</p>
+                              <p className="text-base font-bold">{stats.closedCases}건</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* 채권 분류별 분포 */}
+                      <Card className="border shadow-sm overflow-hidden">
+                        <CardHeader className="py-2 px-4 border-b">
+                          <CardTitle className="text-base flex items-center">
+                            <PieChartIcon className="h-4 w-4 mr-2 text-purple-500" /> 채권 분류
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-3 px-4">
+                          <div className="flex items-center justify-between">
+                            <div className="w-[130px] h-[120px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={stats.debtCategories || []}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={20}
+                                    outerRadius={45}
+                                    paddingAngle={1}
+                                    dataKey="value"
+                                  >
+                                    {(stats.debtCategories || []).map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="flex-1 ml-2">
+                              <div className="text-xs grid grid-cols-2 gap-1">
+                                {(stats.debtCategories || []).map((entry, index) => (
+                                  <div key={index} className="flex items-center">
+                                    <div
+                                      className="w-2 h-2 mr-1 rounded-sm"
+                                      style={{ backgroundColor: entry.color }}
+                                    />
+                                    <span>
+                                      {entry.name}:{" "}
+                                      <span className="font-medium">{entry.value}건</span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </TabsContent>
 
-        {/* 오른쪽 - 알림 섹션 */}
-        <div className="lg:col-span-1">
-          <NotificationsPanel
-            notifications={filteredNotifications}
-            loading={notificationsLoading}
-            router={router}
-          />
-        </div>
+              {/* 채권정보 탭 - 회수 관련 정보와 그래프 */}
+              <TabsContent value="recovery" className="pt-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 mb-6">
+                  <Card className="lg:col-span-1 border shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2 border-b">
+                      <CardTitle className="text-lg flex items-center">
+                        <CircleDollarSign className="h-5 w-5 mr-2 text-amber-500" /> 채권 총액
+                      </CardTitle>
+                      <CardDescription>원금, 이자, 비용의 합계</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-col items-center justify-center py-4">
+                        <div className="text-4xl font-bold text-amber-600 dark:text-amber-400 mb-4">
+                          {formatCurrency(recoveryStats.totalDebtAmount)}
+                        </div>
+                        <div className="w-full max-w-xs">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>원금</span>
+                            <span className="font-medium">
+                              {formatCurrency(recoveryStats.totalPrincipalAmount)}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{
+                                width: `${
+                                  (recoveryStats.totalPrincipalAmount /
+                                    recoveryStats.totalDebtAmount) *
+                                  100
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>이자</span>
+                            <span className="font-medium">
+                              {formatCurrency(
+                                recoveryStats.totalDebtAmount -
+                                  recoveryStats.totalPrincipalAmount -
+                                  (recoveryStats.totalExpenses || 0)
+                              )}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+                            <div
+                              className="bg-amber-500 h-2 rounded-full"
+                              style={{
+                                width: `${
+                                  ((recoveryStats.totalDebtAmount -
+                                    recoveryStats.totalPrincipalAmount -
+                                    (recoveryStats.totalExpenses || 0)) /
+                                    recoveryStats.totalDebtAmount) *
+                                  100
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>비용</span>
+                            <span className="font-medium">
+                              {formatCurrency(recoveryStats.totalExpenses || 0)}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+                            <div
+                              className="bg-red-500 h-2 rounded-full"
+                              style={{
+                                width: `${
+                                  ((recoveryStats.totalExpenses || 0) /
+                                    recoveryStats.totalDebtAmount) *
+                                  100
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="lg:col-span-2 border shadow-sm overflow-hidden">
+                    <CardHeader className="py-2 px-4 border-b">
+                      <CardTitle className="text-base flex items-center">
+                        <BarChart3 className="h-4 w-4 mr-2 text-emerald-500" /> 회수 현황
+                      </CardTitle>
+                      <CardDescription className="text-xs">회수금액과 회수율</CardDescription>
+                    </CardHeader>
+                    <CardContent className="py-3 px-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">회수금액</p>
+                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                              {formatCurrency(recoveryStats.totalRecoveredAmount)}
+                            </p>
+                          </div>
+
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">회수율</p>
+                            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                              {recoveryStats.recoveryRate}%
+                            </p>
+                          </div>
+
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">잔여 채권액</p>
+                            <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                              {formatCurrency(
+                                recoveryStats.totalDebtAmount - recoveryStats.totalRecoveredAmount
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-4">
+                          <div
+                            className={`h-3 rounded-full ${
+                              recoveryStats.recoveryRate > 70
+                                ? "bg-emerald-500"
+                                : recoveryStats.recoveryRate > 40
+                                ? "bg-amber-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{ width: `${Math.min(recoveryStats.recoveryRate, 100)}%` }}
+                          >
+                            <span className="px-2 text-xs text-white font-medium flex h-full items-center justify-end">
+                              {recoveryStats.recoveryRate}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="min-h-[220px]">
+                          <h4 className="text-sm font-medium mb-2">월별 회수 금액</h4>
+                          <ResponsiveContainer width="100%" height={220}>
+                            <BarChart
+                              data={[
+                                // 현재 월을 기준으로 지난 6개월의 데이터를 보여주는 예시 데이터
+                                // 실제로는 API에서 받아온 월별 회수 데이터를 사용해야 함
+                                {
+                                  name:
+                                    new Date(
+                                      new Date().setMonth(new Date().getMonth() - 5)
+                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
+                                  회수금액: 1200000,
+                                  회수건수: 3,
+                                },
+                                {
+                                  name:
+                                    new Date(
+                                      new Date().setMonth(new Date().getMonth() - 4)
+                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
+                                  회수금액: 2500000,
+                                  회수건수: 5,
+                                },
+                                {
+                                  name:
+                                    new Date(
+                                      new Date().setMonth(new Date().getMonth() - 3)
+                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
+                                  회수금액: 1800000,
+                                  회수건수: 2,
+                                },
+                                {
+                                  name:
+                                    new Date(
+                                      new Date().setMonth(new Date().getMonth() - 2)
+                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
+                                  회수금액: 3200000,
+                                  회수건수: 4,
+                                },
+                                {
+                                  name:
+                                    new Date(
+                                      new Date().setMonth(new Date().getMonth() - 1)
+                                    ).toLocaleDateString("ko-KR", { month: "numeric" }) + "월",
+                                  회수금액: 2100000,
+                                  회수건수: 3,
+                                },
+                                {
+                                  name:
+                                    new Date().toLocaleDateString("ko-KR", { month: "numeric" }) +
+                                    "월",
+                                  회수금액: 2800000,
+                                  회수건수: 6,
+                                },
+                              ]}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis yAxisId="left" orientation="left" stroke="#10b981" />
+                              <YAxis yAxisId="right" orientation="right" stroke="#6366f1" />
+                              <Tooltip
+                                formatter={(value, name) => {
+                                  if (name === "회수금액") return formatCurrency(value);
+                                  return `${value}건`;
+                                }}
+                              />
+                              <Legend />
+                              <Bar
+                                yAxisId="left"
+                                dataKey="회수금액"
+                                fill="#10b981"
+                                name="회수금액"
+                              />
+                              <Bar
+                                yAxisId="right"
+                                dataKey="회수건수"
+                                fill="#6366f1"
+                                name="회수건수"
+                                radius={[4, 4, 0, 0]}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardHeader>
+        </Card>
       </div>
 
       {/* 사건 목록 섹션 */}
@@ -1236,21 +1746,19 @@ export default function MyCasesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <TableHead className="w-[100px]">사건번호</TableHead>
-                    <TableHead>채권자</TableHead>
-                    <TableHead>채무자</TableHead>
-                    <TableHead>수임금액</TableHead>
-                    <TableHead>회수금액</TableHead>
-                    <TableHead>회수율</TableHead>
-                    <TableHead>유형</TableHead>
                     <TableHead>상태</TableHead>
+                    <TableHead>채권자/채무자</TableHead>
+                    <TableHead>원리금</TableHead>
+                    <TableHead>회수금</TableHead>
+                    <TableHead>회수율</TableHead>
+                    <TableHead>분류</TableHead>
                     <TableHead className="text-right">메뉴</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCases.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         {searchTerm ? (
                           <div className="flex flex-col items-center">
                             <Search className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
@@ -1271,13 +1779,42 @@ export default function MyCasesPage() {
                         className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                         onClick={() => router.push(`/cases/${caseItem.id}`)}
                       >
-                        <TableCell className="font-medium">{caseItem.case_number || "-"}</TableCell>
-                        <TableCell>{caseItem.creditor_name || "-"}</TableCell>
-                        <TableCell>{caseItem.debtor_name || "-"}</TableCell>
+                        <TableCell>
+                          {getCaseStatusBadge(caseItem.status, caseItem.status_info?.color)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center">
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 text-blue-700 border-blue-200 mr-2"
+                              >
+                                채권자
+                              </Badge>
+                              <span className="truncate max-w-[150px]">
+                                {caseItem.creditor_name || "-"}
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <Badge
+                                variant="outline"
+                                className="bg-red-50 text-red-700 border-red-200 mr-2"
+                              >
+                                채무자
+                              </Badge>
+                              <span className="truncate max-w-[150px]">
+                                {caseItem.debtor_name || "-"}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {formatCurrency(caseItem.principal_amount)}
+                            {formatCurrency(caseItem.debt_amount)}
                           </span>
+                          <div className="text-xs text-gray-500 mt-1">
+                            (원금: {formatCurrency(caseItem.principal_amount)})
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className="font-medium text-green-600 dark:text-green-400">
@@ -1285,24 +1822,66 @@ export default function MyCasesPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`
-                              ${
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`text-sm font-medium ${
                                 caseItem.recovery_rate > 70
-                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  ? "text-green-600 dark:text-green-400"
                                   : caseItem.recovery_rate > 30
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-red-50 text-red-700 border-red-200"
-                              }
-                            `}
-                          >
-                            {caseItem.recovery_rate || 0}%
-                          </Badge>
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {caseItem.recovery_rate || 0}%
+                            </span>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                              <div
+                                className={`h-1.5 rounded-full ${
+                                  caseItem.recovery_rate > 70
+                                    ? "bg-green-500"
+                                    : caseItem.recovery_rate > 30
+                                    ? "bg-amber-500"
+                                    : "bg-red-500"
+                                }`}
+                                style={{ width: `${Math.min(caseItem.recovery_rate, 100)}%` }}
+                              ></div>
+                            </div>
+                          </div>
                         </TableCell>
-                        <TableCell>{getCaseTypeBadge(caseItem.case_type)}</TableCell>
                         <TableCell>
-                          {getCaseStatusBadge(caseItem.status, caseItem.status_info?.color)}
+                          {caseItem.debt_category ? (
+                            <Badge
+                              variant="outline"
+                              className={`
+                                ${
+                                  caseItem.debt_category === "normal"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : caseItem.debt_category === "bad"
+                                    ? "bg-red-50 text-red-700 border-red-200"
+                                    : caseItem.debt_category === "interest"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                }
+                              `}
+                            >
+                              {caseItem.debt_category === "normal"
+                                ? "정상"
+                                : caseItem.debt_category === "bad"
+                                ? "악성"
+                                : caseItem.debt_category === "interest"
+                                ? "관심"
+                                : caseItem.debt_category === "special"
+                                ? "특수"
+                                : caseItem.debt_category}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                            >
+                              정상
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right p-0 pr-2">
                           <DropdownMenu>
