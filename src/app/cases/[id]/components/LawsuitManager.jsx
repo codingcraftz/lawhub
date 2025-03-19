@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, RefreshCw, Trash2, Edit, Download, Calendar, File } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 // 모달 컴포넌트 가져오기
 import AddSubmissionModal from "./modals/AddSubmissionModal";
@@ -230,7 +231,7 @@ export default function LawsuitManager({ caseId }) {
 
         // 2. 관련된 모든 알림 삭제
         const { data: notificationsData, error: notificationsError } = await supabase
-          .from("test_notifications")
+          .from("test_case_notifications")
           .delete()
           .in("related_id", submissionIds)
           .eq("related_entity", "submission")
@@ -496,7 +497,8 @@ export default function LawsuitManager({ caseId }) {
   // 소송이 없는 경우
   if (lawsuits.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-md">
+      <div className="text-center py-12 border rounded-md bg-background/50">
+        <File className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
         <p className="mb-4 text-muted-foreground">등록된 소송이 없습니다</p>
         {user && (user.role === "admin" || user.role === "staff") && (
           <Button variant="outline" onClick={handleAddLawsuit}>
@@ -518,88 +520,92 @@ export default function LawsuitManager({ caseId }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">소송 관리</h2>
-        <div className="flex gap-2">
-          {user && (user.role === "admin" || user.role === "staff") && (
-            <Button size="sm" onClick={handleAddLawsuit}>
-              <Plus className="mr-1 h-4 w-4" />
-              소송 등록
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4 w-full flex flex-wrap h-auto bg-background border">
-          {loading ? (
-            <div className="w-full p-2">
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : lawsuits.length === 0 ? (
-            <div className="w-full p-4 text-center">
-              <p className="text-muted-foreground">등록된 소송이 없습니다</p>
-            </div>
-          ) : (
-            lawsuits.map((lawsuit) => {
-              const type = LAWSUIT_TYPES[lawsuit.lawsuit_type] || {
-                label: lawsuit.lawsuit_type,
-                variant: "default",
-              };
-              const status = LAWSUIT_STATUS[lawsuit.status] || {
-                label: lawsuit.status,
-                variant: "default",
-              };
-
-              return (
-                <TabsTrigger
-                  key={lawsuit.id}
-                  value={lawsuit.id}
-                  className="flex-none h-auto py-2 px-4"
-                >
-                  <div className="flex flex-col items-start space-y-1">
-                    <div className="flex items-center">
-                      <span>{type.label}</span>
-                      <span className="mx-1">-</span>
-                      <span className="font-mono">{lawsuit.case_number}</span>
-                    </div>
-                    <Badge variant={status.variant} className="text-xs">
-                      {status.label}
-                    </Badge>
-                  </div>
-                </TabsTrigger>
-              );
-            })
-          )}
-        </TabsList>
-
-        {loading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-[200px] w-full" />
-            <Skeleton className="h-[100px] w-full" />
-            <Skeleton className="h-[150px] w-full" />
-          </div>
-        ) : lawsuits.length === 0 ? (
-          <div className="text-center py-10">
-            <File className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">등록된 소송이 없습니다</h3>
-            <p className="text-muted-foreground mb-4">소송 정보를 추가하면 이 곳에 표시됩니다.</p>
+    <Card className="space-y-6 border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+      <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-xl font-semibold">소송 관리</CardTitle>
+          <div className="flex gap-2">
             {user && (user.role === "admin" || user.role === "staff") && (
-              <Button onClick={handleAddLawsuit}>
+              <Button size="sm" onClick={handleAddLawsuit}>
                 <Plus className="mr-1 h-4 w-4" />
-                소송 등록하기
+                소송 등록
               </Button>
             )}
           </div>
-        ) : (
-          lawsuits.map((lawsuit) => (
-            <TabsContent key={lawsuit.id} value={lawsuit.id}>
-              <div className="space-y-6">{renderLawsuitInfo(lawsuit)}</div>
-            </TabsContent>
-          ))
-        )}
-      </Tabs>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4 w-full flex flex-wrap h-auto bg-background border">
+            {loading ? (
+              <div className="w-full p-2">
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : lawsuits.length === 0 ? (
+              <div className="w-full p-4 text-center">
+                <p className="text-muted-foreground">등록된 소송이 없습니다</p>
+              </div>
+            ) : (
+              lawsuits.map((lawsuit) => {
+                const type = LAWSUIT_TYPES[lawsuit.lawsuit_type] || {
+                  label: lawsuit.lawsuit_type,
+                  variant: "default",
+                };
+                const status = LAWSUIT_STATUS[lawsuit.status] || {
+                  label: lawsuit.status,
+                  variant: "default",
+                };
+
+                return (
+                  <TabsTrigger
+                    key={lawsuit.id}
+                    value={lawsuit.id}
+                    className="flex-none h-auto py-2 px-4"
+                  >
+                    <div className="flex flex-col items-start space-y-1">
+                      <div className="flex items-center">
+                        <span>{type.label}</span>
+                        <span className="mx-1">-</span>
+                        <span className="font-mono">{lawsuit.case_number}</span>
+                      </div>
+                      <Badge variant={status.variant} className="text-xs">
+                        {status.label}
+                      </Badge>
+                    </div>
+                  </TabsTrigger>
+                );
+              })
+            )}
+          </TabsList>
+
+          {loading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-[200px] w-full" />
+              <Skeleton className="h-[100px] w-full" />
+              <Skeleton className="h-[150px] w-full" />
+            </div>
+          ) : lawsuits.length === 0 ? (
+            <div className="text-center py-10 border rounded-md bg-background/50">
+              <File className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2 text-foreground">등록된 소송이 없습니다</h3>
+              <p className="text-muted-foreground mb-4">소송 정보를 추가하면 이 곳에 표시됩니다.</p>
+              {user && (user.role === "admin" || user.role === "staff") && (
+                <Button onClick={handleAddLawsuit}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  소송 등록하기
+                </Button>
+              )}
+            </div>
+          ) : (
+            lawsuits.map((lawsuit) => (
+              <TabsContent key={lawsuit.id} value={lawsuit.id}>
+                <div className="space-y-6">{renderLawsuitInfo(lawsuit)}</div>
+              </TabsContent>
+            ))
+          )}
+        </Tabs>
+      </CardContent>
 
       {/* 송달/제출 내역 추가/수정 모달 */}
       {showAddSubmissionModal && (
@@ -626,6 +632,6 @@ export default function LawsuitManager({ caseId }) {
           editingLawsuit={editingLawsuit}
         />
       )}
-    </div>
+    </Card>
   );
 }

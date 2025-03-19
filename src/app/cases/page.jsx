@@ -23,6 +23,9 @@ import {
   AlertCircle,
   X,
   ChevronRight,
+  Timer,
+  Hourglass,
+  CheckCircle2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -106,10 +109,29 @@ export default function CasesPage() {
     setLoading(true);
 
     try {
-      // 사건 쿼리 구성
-      let query = supabase
-        .from("test_cases")
-        .select("*, status_info:status_id(name, color)", { count: "exact" });
+      // 사건 쿼리 구성 - 클라이언트(의뢰인) 정보와 당사자 정보 함께 가져오기
+      let query = supabase.from("test_cases").select(
+        `
+          *,
+          status_info:status_id(name, color),
+          clients:test_case_clients(
+            id,
+            client_type,
+            individual_id,
+            organization_id,
+            individual:individual_id(name, email),
+            organization:organization_id(name, representative_name)
+          ),
+          parties:test_case_parties(
+            id,
+            party_type,
+            entity_type,
+            name,
+            company_name
+          )
+        `,
+        { count: "exact" }
+      );
 
       // 필터링 적용
       if (caseType) {
@@ -138,7 +160,54 @@ export default function CasesPage() {
 
       if (error) throw error;
 
-      setCases(data || []);
+      // 데이터 가공
+      const enrichedCases = data.map((caseItem) => {
+        // 의뢰인 정보 처리
+        const clientInfo =
+          caseItem.clients && caseItem.clients.length > 0
+            ? caseItem.clients
+                .map((client) => {
+                  if (client.client_type === "individual" && client.individual) {
+                    return client.individual.name;
+                  } else if (client.client_type === "organization" && client.organization) {
+                    return client.organization.name;
+                  }
+                  return null;
+                })
+                .filter(Boolean)
+                .join(", ")
+            : "미등록";
+
+        // 당사자 정보 처리
+        const parties = caseItem.parties || [];
+        const creditor = parties.find((p) =>
+          ["creditor", "plaintiff", "applicant"].includes(p.party_type)
+        );
+        const debtor = parties.find((p) =>
+          ["debtor", "defendant", "respondent"].includes(p.party_type)
+        );
+
+        const creditorName = creditor
+          ? creditor.entity_type === "individual"
+            ? creditor.name
+            : creditor.company_name
+          : null;
+
+        const debtorName = debtor
+          ? debtor.entity_type === "individual"
+            ? debtor.name
+            : debtor.company_name
+          : null;
+
+        return {
+          ...caseItem,
+          clientInfo,
+          creditor_name: creditorName,
+          debtor_name: debtorName,
+        };
+      });
+
+      setCases(enrichedCases || []);
       setTotalCases(count || 0);
     } catch (error) {
       console.error("Error fetching cases:", error);
@@ -149,8 +218,20 @@ export default function CasesPage() {
   };
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    // 검색 시에는 첫 페이지로 이동
+    setPage(1);
     fetchCases();
+  };
+
+  const handleSearchInputChange = (e) => {
+    setSearchTerm(e.target.value);
+    // 검색어 변경 시 타이머 설정 (300ms 후 자동 검색)
+    if (window.searchTimer) clearTimeout(window.searchTimer);
+    window.searchTimer = setTimeout(() => {
+      setPage(1);
+      fetchCases();
+    }, 300);
   };
 
   const handleFilterReset = () => {
@@ -172,27 +253,25 @@ export default function CasesPage() {
     switch (type) {
       case "civil":
         return (
-          <Badge className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/50 border border-blue-200 dark:border-blue-800/50">
+          <Badge className="bg-primary/10 text-primary border-primary/20 border">
             <FileText className="mr-1 h-3 w-3" /> 민사
           </Badge>
         );
       case "payment_order":
         return (
-          <Badge className="bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-800/50 border border-purple-200 dark:border-purple-800/50">
+          <Badge className="bg-secondary/20 text-secondary-foreground border-secondary/30 border">
             <CreditCard className="mr-1 h-3 w-3" /> 지급명령
           </Badge>
         );
       case "debt":
         return (
-          <Badge className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/50 border border-emerald-200 dark:border-emerald-800/50">
+          <Badge className="bg-success/10 text-success border-success/20 border">
             <Briefcase className="mr-1 h-3 w-3" /> 채권
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700">
-            {type}
-          </Badge>
+          <Badge className="bg-muted text-muted-foreground border-muted/50 border">{type}</Badge>
         );
     }
   };
@@ -208,40 +287,42 @@ export default function CasesPage() {
     }
 
     switch (status) {
-      case "active":
-        icon = <Clock className="mr-1 h-3 w-3" />;
-        bgClass = "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50";
-        textClass = "text-blue-700 dark:text-blue-300";
-        borderClass = "border-blue-200 dark:border-blue-800/50";
+      case "in_progress":
+      case "active": // 이전 상태값 호환성 유지
+        icon = <Timer className="mr-1 h-3 w-3" />;
+        bgClass = "bg-primary/10 hover:bg-primary/20";
+        textClass = "text-primary";
+        borderClass = "border-primary/20";
         break;
       case "pending":
-        icon = <AlertCircle className="mr-1 h-3 w-3" />;
-        bgClass = "bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-800/50";
-        textClass = "text-amber-700 dark:text-amber-300";
-        borderClass = "border-amber-200 dark:border-amber-800/50";
+        icon = <Hourglass className="mr-1 h-3 w-3" />;
+        bgClass = "bg-warning/10 hover:bg-warning/20";
+        textClass = "text-warning-foreground";
+        borderClass = "border-warning/20";
         break;
-      case "closed":
-        icon = <Check className="mr-1 h-3 w-3" />;
-        bgClass = "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700";
-        textClass = "text-gray-700 dark:text-gray-300";
-        borderClass = "border-gray-200 dark:border-gray-700";
+      case "completed":
+      case "closed": // 이전 상태값 호환성 유지
+        icon = <CheckCircle2 className="mr-1 h-3 w-3" />;
+        bgClass = "bg-secondary/30 hover:bg-secondary/40";
+        textClass = "text-secondary-foreground";
+        borderClass = "border-secondary/30";
         break;
       default:
-        icon = null;
-        bgClass = "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700";
-        textClass = "text-gray-700 dark:text-gray-300";
-        borderClass = "border-gray-200 dark:border-gray-700";
+        icon = <AlertCircle className="mr-1 h-3 w-3" />;
+        bgClass = "bg-muted hover:bg-muted/80";
+        textClass = "text-muted-foreground";
+        borderClass = "border-muted";
     }
 
     return (
       <Badge className={`${bgClass} ${textClass} border ${borderClass}`}>
         {icon}
-        {status === "active"
+        {status === "active" || status === "in_progress"
           ? "진행중"
           : status === "pending"
           ? "대기중"
-          : status === "closed"
-          ? "종결"
+          : status === "closed" || status === "completed"
+          ? "완료"
           : status}
       </Badge>
     );
@@ -254,6 +335,126 @@ export default function CasesPage() {
       currency: "KRW",
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  // 채권 분류 배지 함수 추가
+  const getDebtCategoryBadge = (category) => {
+    switch (category) {
+      case "normal":
+        return (
+          <Badge variant="outline" className="bg-green-600/10 text-green-600 border-green-600/20">
+            정상채권
+          </Badge>
+        );
+      case "bad":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-destructive/10 text-destructive border-destructive/20"
+          >
+            악성채권
+          </Badge>
+        );
+      case "interest":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-warning/10 text-warning-foreground border-warning/20"
+          >
+            관심채권
+          </Badge>
+        );
+      case "special":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-secondary/50 text-secondary-foreground border-secondary/30"
+          >
+            특수채권
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="bg-green-600/10 text-green-600 border-green-600/20">
+            정상채권
+          </Badge>
+        );
+    }
+  };
+
+  // 페이지네이션 구성요소 개선
+  const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    // 표시할 페이지 버튼 계산
+    const getPageButtons = () => {
+      // 총 페이지가 7개 이하면 모든 페이지 버튼 표시
+      if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      }
+
+      // 현재 페이지가 앞쪽에 있을 때
+      if (currentPage <= 4) {
+        return [1, 2, 3, 4, 5, "...", totalPages];
+      }
+
+      // 현재 페이지가 뒤쪽에 있을 때
+      if (currentPage >= totalPages - 3) {
+        return [
+          1,
+          "...",
+          totalPages - 4,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages,
+        ];
+      }
+
+      // 현재 페이지가 중간에 있을 때
+      return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+    };
+
+    const pageButtons = getPageButtons();
+
+    return (
+      <div className="flex justify-center py-4">
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            이전
+          </Button>
+
+          {pageButtons.map((pageNum, index) =>
+            pageNum === "..." ? (
+              <Button key={`ellipsis-${index}`} variant="outline" size="sm" disabled>
+                ...
+              </Button>
+            ) : (
+              <Button
+                key={pageNum}
+                variant={currentPage === pageNum ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(pageNum)}
+              >
+                {pageNum}
+              </Button>
+            )
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            다음
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -277,7 +478,7 @@ export default function CasesPage() {
                 placeholder="사건번호, 법원명, 내용 검색..."
                 className="w-[250px] pl-9 bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchInputChange}
               />
             </form>
 
@@ -442,13 +643,14 @@ export default function CasesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <TableHead className="w-[180px]">사건번호</TableHead>
+                    <TableHead>상태</TableHead>
+                    <TableHead className="w-[150px]">사건번호</TableHead>
                     <TableHead>내용</TableHead>
+                    <TableHead>의뢰인</TableHead>
                     <TableHead>당사자</TableHead>
                     <TableHead>유형</TableHead>
                     <TableHead>금액</TableHead>
-                    <TableHead>법원</TableHead>
-                    <TableHead>상태</TableHead>
+                    <TableHead>채권분류</TableHead>
                     <TableHead className="text-right">등록일</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
@@ -460,18 +662,40 @@ export default function CasesPage() {
                       className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                       onClick={() => router.push(`/cases/${caseItem.id}`)}
                     >
+                      <TableCell>
+                        {getCaseStatusBadge(caseItem.status, caseItem.status_info?.color)}
+                      </TableCell>
                       <TableCell className="font-medium">{caseItem.case_number || "-"}</TableCell>
-                      <TableCell className="max-w-[300px] truncate">
+                      <TableCell className="max-w-[200px] truncate">
                         {caseItem.case_info || "제목 없음"}
                       </TableCell>
+                      <TableCell className="text-primary">
+                        {caseItem.clientInfo || "미등록"}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {caseItem.plaintiff || caseItem.creditor || "-"}
-                          </span>
-                          <span className="text-gray-400 dark:text-gray-500">
-                            vs. {caseItem.defendant || caseItem.debtor || "-"}
-                          </span>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center">
+                            <Badge
+                              variant="outline"
+                              className="bg-primary/10 text-primary border-primary/20 mr-2 text-xs font-medium"
+                            >
+                              채권자
+                            </Badge>
+                            <span className="truncate max-w-[150px]">
+                              {caseItem.creditor_name || "-"}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <Badge
+                              variant="outline"
+                              className="bg-destructive/10 text-destructive border-destructive/20 mr-2 text-xs font-medium"
+                            >
+                              채무자
+                            </Badge>
+                            <span className="truncate max-w-[150px]">
+                              {caseItem.debtor_name || "-"}
+                            </span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>{getCaseTypeBadge(caseItem.case_type)}</TableCell>
@@ -480,10 +704,7 @@ export default function CasesPage() {
                           {formatCurrency(caseItem.principal_amount)}
                         </span>
                       </TableCell>
-                      <TableCell>{caseItem.court_name || "-"}</TableCell>
-                      <TableCell>
-                        {getCaseStatusBadge(caseItem.status, caseItem.status_info?.color)}
-                      </TableCell>
+                      <TableCell>{getDebtCategoryBadge(caseItem.debt_category)}</TableCell>
                       <TableCell className="text-right text-gray-500 dark:text-gray-400">
                         {format(new Date(caseItem.created_at), "yyyy.MM.dd", {
                           locale: ko,
@@ -510,73 +731,39 @@ export default function CasesPage() {
           )}
 
           {!loading && cases.length > 0 && (
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                총 {totalCases}개 중 {(page - 1) * pageSize + 1}-
-                {Math.min(page * pageSize, totalCases)}개 표시
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  총 {totalCases}개 중 {(page - 1) * pageSize + 1}-
+                  {Math.min(page * pageSize, totalCases)}개 표시
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => {
+                      setPageSize(parseInt(value));
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[110px] h-8">
+                      <SelectValue placeholder="페이지 크기" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10개씩 보기</SelectItem>
+                      <SelectItem value="20">20개씩 보기</SelectItem>
+                      <SelectItem value="30">30개씩 보기</SelectItem>
+                      <SelectItem value="50">50개씩 보기</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Pagination
+                    currentPage={page}
+                    totalPages={Math.ceil(totalCases / pageSize)}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
               </div>
-              <Pagination>
-                <PaginationContent>
-                  {page > 1 && (
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() => handlePageChange(page - 1)}
-                        className="cursor-pointer"
-                      />
-                    </PaginationItem>
-                  )}
-                  {Array.from({ length: Math.min(5, Math.ceil(totalCases / pageSize)) }, (_, i) => {
-                    const pageNumber = i + 1;
-                    const isVisible =
-                      pageNumber === 1 ||
-                      pageNumber === Math.ceil(totalCases / pageSize) ||
-                      (pageNumber >= page - 1 && pageNumber <= page + 1);
-
-                    if (!isVisible && pageNumber === 2) {
-                      return (
-                        <PaginationItem key="ellipsis-start">
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-
-                    if (!isVisible && pageNumber === Math.ceil(totalCases / pageSize) - 1) {
-                      return (
-                        <PaginationItem key="ellipsis-end">
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-
-                    if (isVisible) {
-                      return (
-                        <PaginationItem key={pageNumber}>
-                          <PaginationLink
-                            isActive={pageNumber === page}
-                            onClick={() => handlePageChange(pageNumber)}
-                            className={cn(
-                              "cursor-pointer",
-                              pageNumber === page ? "bg-blue-500 text-white hover:bg-blue-600" : ""
-                            )}
-                          >
-                            {pageNumber}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    }
-
-                    return null;
-                  })}
-                  {page < Math.ceil(totalCases / pageSize) && (
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() => handlePageChange(page + 1)}
-                        className="cursor-pointer"
-                      />
-                    </PaginationItem>
-                  )}
-                </PaginationContent>
-              </Pagination>
             </div>
           )}
         </CardContent>

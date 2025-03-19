@@ -31,31 +31,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  FileText,
-  Briefcase,
-  Building2,
-  ChevronRight,
-  User,
-  BarChart3,
-  Calendar,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  Timer,
-  Hourglass,
-  Filter,
-  Search,
-  GanttChartSquare,
-  Users,
-  ChevronDown,
-  FileBarChart,
-  Bell,
-  Scale,
   CircleDollarSign,
   PieChart as PieChartIcon,
+  BadgeDollarSign,
+  Gavel,
+  CreditCard,
+  CalendarIcon,
+  Bell,
+  FileText as FileTextIcon,
+  CheckCircle2,
+  ChevronDown,
+  AlertCircle,
+  Timer,
+  Hourglass,
+  GanttChartSquare,
+  BarChart3,
+  FileBarChart,
+  ChevronRight,
+  User,
+  Building2,
+  Briefcase,
 } from "lucide-react";
 
-// 차트 컴포넌트
+// 차트 컴포넌트는 recharts에서 가져오기
 import {
   BarChart,
   Bar,
@@ -70,6 +68,9 @@ import {
   Legend,
 } from "recharts";
 
+// CasesTable 컴포넌트 추가
+import { CasesTable } from "@/components/CasesTable";
+
 // NotificationSummary 컴포넌트
 function NotificationSummary({ notifications, loading }) {
   const router = useRouter();
@@ -78,13 +79,17 @@ function NotificationSummary({ notifications, loading }) {
   const getNotificationIcon = (type) => {
     switch (type) {
       case "lawsuit":
-        return <FileText className="h-4 w-4 text-blue-500" />;
+        return <FileTextIcon className="h-4 w-4 text-blue-500" />;
       case "lawsuit_update":
-        return <Clock className="h-4 w-4 text-indigo-500" />;
+        return <Gavel className="h-4 w-4 text-purple-500" />;
       case "recovery_activity":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CreditCard className="h-4 w-4 text-green-500" />;
+      case "deadline":
+        return <CalendarIcon className="h-4 w-4 text-red-500" />;
+      case "document":
+        return <FileTextIcon className="h-4 w-4 text-blue-500" />;
       default:
-        return <Bell className="h-4 w-4 text-amber-500" />;
+        return <Bell className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -98,7 +103,10 @@ function NotificationSummary({ notifications, loading }) {
 
   const updateNotificationReadStatus = async (notificationId) => {
     try {
-      await supabase.from("test_notifications").update({ is_read: true }).eq("id", notificationId);
+      await supabase
+        .from("test_case_notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId);
     } catch (error) {
       console.error("알림 상태 업데이트 실패:", error);
     }
@@ -230,7 +238,10 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
     event.stopPropagation();
 
     try {
-      await supabase.from("test_notifications").update({ is_read: true }).eq("id", notificationId);
+      await supabase
+        .from("test_case_notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId);
 
       // 로컬 상태 업데이트
       setLocalNotifications((prev) =>
@@ -245,13 +256,17 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
   const getNotificationIcon = (type) => {
     switch (type) {
       case "lawsuit":
-        return <FileText className="h-4 w-4 text-blue-500" />;
+        return <FileTextIcon className="h-4 w-4 text-blue-500" />;
       case "lawsuit_update":
-        return <Clock className="h-4 w-4 text-indigo-500" />;
+        return <Gavel className="h-4 w-4 text-purple-500" />;
       case "recovery_activity":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CreditCard className="h-4 w-4 text-green-500" />;
+      case "deadline":
+        return <CalendarIcon className="h-4 w-4 text-red-500" />;
+      case "document":
+        return <FileTextIcon className="h-4 w-4 text-blue-500" />;
       default:
-        return <Bell className="h-4 w-4 text-amber-500" />;
+        return <Bell className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -381,7 +396,26 @@ export default function MyCasesPage() {
   const router = useRouter();
   const { user } = useUser();
 
+  // 알림 유형에 따른 아이콘 반환 - 컴포넌트 내부 함수
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "lawsuit":
+        return <FileTextIcon className="h-4 w-4 text-blue-500" />;
+      case "lawsuit_update":
+        return <Gavel className="h-4 w-4 text-purple-500" />;
+      case "recovery_activity":
+        return <CreditCard className="h-4 w-4 text-green-500" />;
+      case "deadline":
+        return <CalendarIcon className="h-4 w-4 text-red-500" />;
+      case "document":
+        return <FileTextIcon className="h-4 w-4 text-blue-500" />;
+      default:
+        return <Bell className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
   const [loading, setLoading] = useState(true);
+  const [cases, setCases] = useState([]);
   const [personalCases, setPersonalCases] = useState([]);
   const [organizationCases, setOrganizationCases] = useState([]);
   const [organizations, setOrganizations] = useState([]);
@@ -786,7 +820,7 @@ export default function MyCasesPage() {
     setNotificationsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("test_notifications")
+        .from("test_case_notifications")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -1156,7 +1190,7 @@ export default function MyCasesPage() {
       case "civil":
         return (
           <Badge className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/50 border border-blue-200 dark:border-blue-800/50">
-            <FileText className="mr-1 h-3 w-3" /> 민사
+            <FileTextIcon className="mr-1 h-3 w-3" /> 민사
           </Badge>
         );
       case "payment_order":
@@ -1183,52 +1217,56 @@ export default function MyCasesPage() {
   // 상태에 따른 배지 색상
   const getCaseStatusBadge = (status, color) => {
     let icon = null;
-    let bgClass = "";
-    let textClass = "";
-    let borderClass = "";
+    let badgeClass = "";
 
     if (color) {
       return <Badge style={{ backgroundColor: color, color: "#fff" }}>{status}</Badge>;
     }
 
     switch (status) {
-      case "active":
+      case "in_progress":
+      case "active": // 이전 상태값 호환성 유지
         icon = <Timer className="mr-1 h-3 w-3" />;
-        bgClass = "bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50";
-        textClass = "text-blue-700 dark:text-blue-300";
-        borderClass = "border-blue-200 dark:border-blue-800/50";
-        break;
+        badgeClass =
+          "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50";
+        return (
+          <Badge className={`border ${badgeClass}`}>
+            {icon}
+            진행중
+          </Badge>
+        );
       case "pending":
         icon = <Hourglass className="mr-1 h-3 w-3" />;
-        bgClass = "bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-800/50";
-        textClass = "text-amber-700 dark:text-amber-300";
-        borderClass = "border-amber-200 dark:border-amber-800/50";
-        break;
-      case "closed":
+        badgeClass =
+          "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50";
+        return (
+          <Badge className={`border ${badgeClass}`}>
+            {icon}
+            대기중
+          </Badge>
+        );
+      case "completed":
+      case "closed": // 이전 상태값 호환성 유지
         icon = <CheckCircle2 className="mr-1 h-3 w-3" />;
-        bgClass = "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700";
-        textClass = "text-gray-700 dark:text-gray-300";
-        borderClass = "border-gray-200 dark:border-gray-700";
-        break;
+        badgeClass =
+          "bg-green-100 text-green-700 border-green-200 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50";
+        return (
+          <Badge className={`border ${badgeClass}`}>
+            {icon}
+            완료
+          </Badge>
+        );
       default:
         icon = <AlertCircle className="mr-1 h-3 w-3" />;
-        bgClass = "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700";
-        textClass = "text-gray-700 dark:text-gray-300";
-        borderClass = "border-gray-200 dark:border-gray-700";
+        badgeClass =
+          "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+        return (
+          <Badge className={`border ${badgeClass}`}>
+            {icon}
+            {status}
+          </Badge>
+        );
     }
-
-    return (
-      <Badge className={`${bgClass} ${textClass} border ${borderClass}`}>
-        {icon}
-        {status === "active"
-          ? "진행중"
-          : status === "pending"
-          ? "대기중"
-          : status === "closed"
-          ? "종결"
-          : status}
-      </Badge>
-    );
   };
 
   // 금액 포맷팅
@@ -1283,7 +1321,7 @@ export default function MyCasesPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h1 className="text-3xl font-bold">내 사건 관리</h1>
           <Tabs value={selectedTab} onValueChange={handleTabChange} defaultValue={selectedTab}>
-            <TabsList className="bg-background shadow-md border dark:border-gray-700 rounded-xl p-1">
+            <TabsList className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm border-0 rounded-xl p-1">
               <TabsTrigger
                 value="personal"
                 className="rounded-lg py-2 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -1311,7 +1349,7 @@ export default function MyCasesPage() {
         </div>
 
         {selectedTab === "organization" && organizations.length > 0 && (
-          <div className="mt-4 p-3 bg-muted/30 rounded-lg border shadow-sm">
+          <div className="mt-4 p-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg border-0 shadow-sm">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-muted-foreground">소속 법인/단체 선택</p>
               <DropdownMenu>
@@ -1354,30 +1392,30 @@ export default function MyCasesPage() {
 
       {/* 통계 대시보드 (탭 형식으로 변경) */}
       <div className="mb-8">
-        <Card className="border shadow-sm overflow-hidden">
+        <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
           <CardHeader className="pb-0">
             <Tabs
               defaultValue="cases"
               className="w-full"
               key={`stats-tabs-${selectedTab}-${selectedOrg || "none"}`}
             >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="cases" className="flex items-center">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-50 dark:bg-gray-800/50 p-1 rounded-lg">
+                <TabsTrigger value="cases" className="flex items-center rounded-md">
                   <Briefcase className="mr-2 h-4 w-4" />
                   총의뢰 ({stats.totalCases}건)
                 </TabsTrigger>
-                <TabsTrigger value="recovery" className="flex items-center">
+                <TabsTrigger value="recovery" className="flex items-center rounded-md">
                   <CircleDollarSign className="mr-2 h-4 w-4" />
                   채권정보 ({formatCurrency(recoveryStats.totalDebtAmount).replace("₩", "")})
                 </TabsTrigger>
               </TabsList>
 
-              {/* 총의뢰 탭 - 알림과 사건 분포 차트 */}
+              {/* 총의뢰 탭 내용의 카드 스타일 수정 */}
               <TabsContent value="cases" className="pt-3">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-3 mb-4">
                   {/* 좌측 - 알림 컴포넌트 */}
                   <div>
-                    <Card className="border shadow-sm overflow-hidden h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+                    <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md h-full">
                       <CardHeader className="py-2 px-4 border-b">
                         <div className="flex justify-between items-center">
                           <CardTitle className="text-base flex items-center">
@@ -1477,38 +1515,38 @@ export default function MyCasesPage() {
                   <div>
                     <div className="grid grid-cols-1 gap-4">
                       {/* 상태별 사건 분포 */}
-                      <Card className="border shadow-sm overflow-hidden">
+                      <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
                         <CardHeader className="py-2 px-4 border-b">
                           <CardTitle className="text-base flex items-center">
-                            <FileText className="h-4 w-4 mr-2 text-blue-500" /> 사건 현황
+                            <FileTextIcon className="h-4 w-4 mr-2 text-blue-500" /> 사건 현황
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="py-3 px-4">
                           <div className="flex items-center justify-around">
                             <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1 mx-auto">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1 mx-auto border border-blue-200 dark:border-blue-800/50">
                                 <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                               </div>
                               <p className="text-xs text-muted-foreground">총 사건</p>
                               <p className="text-base font-bold">{stats.totalCases}건</p>
                             </div>
                             <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-1 mx-auto">
-                                <Timer className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1 mx-auto border border-blue-200 dark:border-blue-800/50">
+                                <Timer className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                               </div>
                               <p className="text-xs text-muted-foreground">진행중</p>
                               <p className="text-base font-bold">{stats.activeCases}건</p>
                             </div>
                             <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1 mx-auto">
+                              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1 mx-auto border border-amber-200 dark:border-amber-800/50">
                                 <Hourglass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                               </div>
                               <p className="text-xs text-muted-foreground">대기중</p>
                               <p className="text-base font-bold">{stats.pendingCases}건</p>
                             </div>
                             <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-1 mx-auto">
-                                <CheckCircle2 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1 mx-auto border border-green-200 dark:border-green-800/50">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                               </div>
                               <p className="text-xs text-muted-foreground">종결</p>
                               <p className="text-base font-bold">{stats.closedCases}건</p>
@@ -1518,7 +1556,7 @@ export default function MyCasesPage() {
                       </Card>
 
                       {/* 채권 분류별 분포 */}
-                      <Card className="border shadow-sm overflow-hidden">
+                      <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
                         <CardHeader className="py-2 px-4 border-b">
                           <CardTitle className="text-base flex items-center">
                             <PieChartIcon className="h-4 w-4 mr-2 text-purple-500" /> 채권 분류
@@ -1572,7 +1610,7 @@ export default function MyCasesPage() {
               {/* 채권정보 탭 - 회수 관련 정보와 그래프 */}
               <TabsContent value="recovery" className="pt-4">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 mb-6">
-                  <Card className="lg:col-span-1 border shadow-sm overflow-hidden">
+                  <Card className="lg:col-span-1 border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
                     <CardHeader className="pb-2 border-b">
                       <CardTitle className="text-lg flex items-center">
                         <CircleDollarSign className="h-5 w-5 mr-2 text-amber-500" /> 채권 총액
@@ -1616,7 +1654,7 @@ export default function MyCasesPage() {
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
                             <div
-                              className="bg-amber-500 h-2 rounded-full"
+                              className="bg-purple-500 h-2 rounded-full"
                               style={{
                                 width: `${
                                   ((recoveryStats.totalDebtAmount -
@@ -1652,7 +1690,7 @@ export default function MyCasesPage() {
                     </CardContent>
                   </Card>
 
-                  <Card className="lg:col-span-2 border shadow-sm overflow-hidden">
+                  <Card className="lg:col-span-2 border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
                     <CardHeader className="py-2 px-4 border-b">
                       <CardTitle className="text-base flex items-center">
                         <BarChart3 className="h-4 w-4 mr-2 text-emerald-500" /> 회수 현황
@@ -1663,6 +1701,9 @@ export default function MyCasesPage() {
                       <div className="flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                           <div className="text-center">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-1 mx-auto border border-emerald-200 dark:border-emerald-800/50">
+                              <CircleDollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
                             <p className="text-xs text-muted-foreground">회수금액</p>
                             <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                               {formatCurrency(recoveryStats.totalRecoveredAmount)}
@@ -1670,6 +1711,9 @@ export default function MyCasesPage() {
                           </div>
 
                           <div className="text-center">
+                            <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-1 mx-auto border border-purple-200 dark:border-purple-800/50">
+                              <PieChartIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                            </div>
                             <p className="text-xs text-muted-foreground">회수율</p>
                             <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
                               {recoveryStats.recoveryRate}%
@@ -1677,6 +1721,9 @@ export default function MyCasesPage() {
                           </div>
 
                           <div className="text-center">
+                            <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-1 mx-auto border border-red-200 dark:border-red-800/50">
+                              <FileBarChart className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            </div>
                             <p className="text-xs text-muted-foreground">잔여 채권액</p>
                             <p className="text-lg font-bold text-red-600 dark:text-red-400">
                               {formatCurrency(
@@ -1688,13 +1735,7 @@ export default function MyCasesPage() {
 
                         <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-4">
                           <div
-                            className={`h-3 rounded-full ${
-                              recoveryStats.recoveryRate > 70
-                                ? "bg-emerald-500"
-                                : recoveryStats.recoveryRate > 40
-                                ? "bg-amber-500"
-                                : "bg-red-500"
-                            }`}
+                            className="h-3 rounded-full bg-emerald-500"
                             style={{ width: `${Math.min(recoveryStats.recoveryRate, 100)}%` }}
                           >
                             <span className="px-2 text-xs text-white font-medium flex h-full items-center justify-end">
@@ -1779,269 +1820,20 @@ export default function MyCasesPage() {
 
       {/* 사건 목록 섹션 */}
       <div className="mb-8">
-        <Card className="border shadow-sm overflow-hidden">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg flex items-center">
-                <Briefcase className="h-5 w-5 mr-2 text-primary" /> 사건 목록
-              </CardTitle>
-              <CardDescription>
-                총 {selectedTab === "personal" ? personalCases.length : organizationCases.length}건
-                중 {filteredCases.length}건 표시
-              </CardDescription>
-            </div>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={16}
-              />
-              <Input
-                placeholder="사건번호, 당사자 이름으로 검색"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="pl-9 w-[300px]"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <TableHead>상태</TableHead>
-                    <TableHead>채권자/채무자</TableHead>
-                    <TableHead>원리금</TableHead>
-                    <TableHead>회수금</TableHead>
-                    <TableHead>회수율</TableHead>
-                    <TableHead>분류</TableHead>
-                    <TableHead className="text-right">메뉴</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCases.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        {searchTerm ? (
-                          <div className="flex flex-col items-center">
-                            <Search className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                            <p>검색 결과가 없습니다.</p>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <Briefcase className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                            <p>등록된 사건이 없습니다.</p>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredCases.map((caseItem) => (
-                      <TableRow
-                        key={caseItem.id}
-                        className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
-                        onClick={() => router.push(`/cases/${caseItem.id}`)}
-                      >
-                        <TableCell>
-                          {getCaseStatusBadge(caseItem.status, caseItem.status_info?.color)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 text-blue-700 border-blue-200 mr-2"
-                              >
-                                채권자
-                              </Badge>
-                              <span className="truncate max-w-[150px]">
-                                {caseItem.creditor_name || "-"}
-                              </span>
-                            </div>
-                            <div className="flex items-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-red-50 text-red-700 border-red-200 mr-2"
-                              >
-                                채무자
-                              </Badge>
-                              <span className="truncate max-w-[150px]">
-                                {caseItem.debtor_name || "-"}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {formatCurrency(caseItem.debt_amount)}
-                          </span>
-                          <div className="text-xs text-gray-500 mt-1">
-                            (원금: {formatCurrency(caseItem.principal_amount)})
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium text-green-600 dark:text-green-400">
-                            {formatCurrency(caseItem.recovered_amount || 0)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <span
-                              className={`text-sm font-medium ${
-                                caseItem.recovery_rate > 70
-                                  ? "text-green-600 dark:text-green-400"
-                                  : caseItem.recovery_rate > 30
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-red-600 dark:text-red-400"
-                              }`}
-                            >
-                              {caseItem.recovery_rate || 0}%
-                            </span>
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
-                              <div
-                                className={`h-1.5 rounded-full ${
-                                  caseItem.recovery_rate > 70
-                                    ? "bg-green-500"
-                                    : caseItem.recovery_rate > 30
-                                    ? "bg-amber-500"
-                                    : "bg-red-500"
-                                }`}
-                                style={{ width: `${Math.min(caseItem.recovery_rate, 100)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {caseItem.debt_category ? (
-                            <Badge
-                              variant="outline"
-                              className={`
-                                ${
-                                  caseItem.debt_category === "normal"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : caseItem.debt_category === "bad"
-                                    ? "bg-red-50 text-red-700 border-red-200"
-                                    : caseItem.debt_category === "interest"
-                                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                                    : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                }
-                              `}
-                            >
-                              {caseItem.debt_category === "normal"
-                                ? "정상"
-                                : caseItem.debt_category === "bad"
-                                ? "악성"
-                                : caseItem.debt_category === "interest"
-                                ? "관심"
-                                : caseItem.debt_category === "special"
-                                ? "특수"
-                                : caseItem.debt_category}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="bg-emerald-50 text-emerald-700 border-emerald-200"
-                            >
-                              정상
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right p-0 pr-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[180px]">
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/cases/${caseItem.id}`);
-                                }}
-                              >
-                                <FileText className="mr-2 h-4 w-4" />
-                                의뢰 상세보기
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/cases/${caseItem.id}?tab=lawsuits`);
-                                }}
-                              >
-                                <Scale className="mr-2 h-4 w-4" />
-                                소송 상세보기
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/cases/${caseItem.id}?tab=recovery`);
-                                }}
-                              >
-                                <CircleDollarSign className="mr-2 h-4 w-4" />
-                                회수 상세보기
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-
-          {/* 페이지네이션 */}
-          {totalPages > 1 && (
-            <div className="flex justify-center py-4 border-t">
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange(currentPage - 1)}
-                >
-                  이전
-                </Button>
-
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else {
-                    if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-                  }
-
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNum)}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange(currentPage + 1)}
-                >
-                  다음
-                </Button>
-              </div>
-            </div>
-          )}
-        </Card>
+        <CasesTable
+          cases={filteredCases}
+          personalCases={personalCases}
+          organizationCases={organizationCases}
+          selectedTab={selectedTab}
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={selectedTab === "personal" ? personalCases.length : organizationCases.length}
+          casesPerPage={casesPerPage}
+          onPageChange={handlePageChange}
+          formatCurrency={formatCurrency}
+        />
       </div>
     </div>
   );

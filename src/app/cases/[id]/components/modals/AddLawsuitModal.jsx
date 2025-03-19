@@ -291,11 +291,6 @@ export default function AddLawsuitModal({
         }
       });
 
-      if (!creditor || !debtor) {
-        console.error("알림 생성 실패: 채권자 또는 채무자 정보가 없습니다.", { creditor, debtor });
-        return;
-      }
-
       // 알림 제목 및 내용 구성
       const creditorName =
         creditor.entity_type === "individual" ? creditor.name : creditor.company_name;
@@ -396,7 +391,9 @@ export default function AddLawsuitModal({
         };
 
         try {
-          const { data, error } = await supabase.from("test_notifications").insert(notification);
+          const { data, error } = await supabase
+            .from("test_case_notifications")
+            .insert(notification);
 
           if (error) {
             console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);

@@ -37,6 +37,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarIcon,
   Plus,
@@ -52,6 +53,7 @@ import {
   Download,
   Link as LinkIcon,
   PaperclipIcon,
+  Calendar as CalendarIcon2,
 } from "lucide-react";
 import { format as dateFnsFormat, parseISO } from "date-fns";
 import { AlertCircle, CircleDollarSign, FileText, Phone, User2 } from "lucide-react";
@@ -82,6 +84,7 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentActivity, setCurrentActivity] = useState(null);
+  const [activeTab, setActiveTab] = useState("all");
 
   const activityTypes = [
     { value: "call", label: "전화 연락" },
@@ -188,21 +191,45 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
         return <FileText className="h-4 w-4" />;
       case "visit":
         return <User2 className="h-4 w-4" />;
+      case "legal":
+        return <FileCheck className="h-4 w-4" />;
       default:
         return <FileText className="h-4 w-4" />;
     }
   };
 
-  const getActivityTypeLabel = (type) => {
-    const types = {
-      call: "전화",
-      visit: "방문",
-      payment: "납부",
-      letter: "내용증명",
-      legal: "법적조치",
-      other: "기타",
-    };
-    return types[type] || type;
+  const getActivityIconBg = (type) => {
+    switch (type) {
+      case "call":
+        return "bg-blue-500 dark:bg-blue-600";
+      case "payment":
+        return "bg-green-500 dark:bg-green-600";
+      case "letter":
+        return "bg-amber-500 dark:bg-amber-600";
+      case "visit":
+        return "bg-purple-500 dark:bg-purple-600";
+      case "legal":
+        return "bg-red-500 dark:bg-red-600";
+      default:
+        return "bg-gray-500 dark:bg-gray-600";
+    }
+  };
+
+  const getActivityItemBg = (type) => {
+    switch (type) {
+      case "call":
+        return "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30";
+      case "payment":
+        return "bg-green-50/40 dark:bg-green-900/10 border-green-100 dark:border-green-800/30";
+      case "letter":
+        return "bg-amber-50/40 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30";
+      case "visit":
+        return "bg-purple-50/40 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800/30";
+      case "legal":
+        return "bg-red-50/40 dark:bg-red-900/10 border-red-100 dark:border-red-800/30";
+      default:
+        return "bg-gray-50/40 dark:bg-gray-900/10 border-gray-100 dark:border-gray-800/30";
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -222,7 +249,7 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
           variant="outline"
           className="border-green-500 text-green-500 flex items-center gap-1"
         >
-          <CalendarIcon className="h-3 w-3" />
+          <Check className="h-3 w-3" />
           완료
         </Badge>
       );
@@ -250,22 +277,189 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
     setCurrentActivity(null);
   };
 
+  // 날짜 그룹으로 활동 항목 정렬
+  const groupActivitiesByDate = (activities) => {
+    const sorted = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const groups = {};
+    sorted.forEach((activity) => {
+      const date = format(new Date(activity.date), "yyyy-MM-dd");
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(activity);
+    });
+
+    // 날짜 그룹을 최신 날짜가 먼저 오도록 정렬
+    return Object.entries(groups)
+      .map(([date, items]) => ({
+        date,
+        items,
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
+  const getFilteredActivities = () => {
+    if (activeTab === "all") return activities;
+    return activities.filter((item) => item.activity_type === activeTab);
+  };
+
+  // 타임라인 렌더링
+  const renderTimeline = () => {
+    const filteredActivities = getFilteredActivities();
+    const groupedData = groupActivitiesByDate(filteredActivities);
+
+    if (loading) {
+      return (
+        <div className="space-y-4 pt-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[100px] w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredActivities.length === 0) {
+      return (
+        <div className="text-center py-10 border rounded-md bg-background/50">
+          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-2">
+            {activeTab !== "all"
+              ? `등록된 ${getActivityTypeText(activeTab)}가 없습니다`
+              : "등록된 회수 활동이 없습니다"}
+          </p>
+          {user && (user.role === "staff" || user.role === "admin") && !isDashboard && (
+            <Button variant="outline" className="mt-4" onClick={handleAddActivity}>
+              회수 활동 추가하기
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8 relative py-2">
+        {/* 타임라인 수직선 */}
+        <div className="absolute top-0 bottom-0 left-[24px] w-[2px] bg-border z-0"></div>
+
+        {groupedData.map((group, groupIndex) => (
+          <div key={group.date} className="mb-6">
+            <div className="flex mb-2 items-center z-10 relative">
+              <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center mr-3 border-2 border-background shadow-sm">
+                <CalendarIcon2 className="h-5 w-5 text-foreground/70" />
+              </div>
+              <h3 className="font-medium text-foreground">
+                {format(new Date(group.date), "yyyy년 MM월 dd일", { locale: ko })}
+              </h3>
+            </div>
+
+            <div className="space-y-3 ml-14">
+              {group.items.map((item, itemIndex) => (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-lg border relative ${getActivityItemBg(
+                    item.activity_type
+                  )}`}
+                >
+                  {/* 타임라인 항목 아이콘 */}
+                  <div className="absolute -left-[40px] top-4 z-10">
+                    <div
+                      className={`h-6 w-6 rounded-full ${getActivityIconBg(
+                        item.activity_type
+                      )} flex items-center justify-center text-white`}
+                    >
+                      {getActivityTypeIcon(item.activity_type)}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap gap-2 items-center mb-1">
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          {getActivityTypeIcon(item.activity_type)}
+                          <span>{getActivityTypeText(item.activity_type)}</span>
+                        </Badge>
+                        {item.amount > 0 && (
+                          <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                            {formatCurrency(item.amount)}
+                          </span>
+                        )}
+                        {getStatusBadge(item.status || "completed")}
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(item.date), "HH:mm", { locale: ko })}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-foreground/90 mt-2 rounded">{item.description}</p>
+
+                      {item.notes && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">
+                          비고: {item.notes}
+                        </p>
+                      )}
+
+                      {item.file_url && (
+                        <a
+                          href={item.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-xs gap-1 mt-2 text-blue-600 hover:text-blue-800 rounded w-fit"
+                        >
+                          <PaperclipIcon className="h-3.5 w-3.5" />
+                          <span>첨부파일</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {user && (user.role === "admin" || user.role === "staff") && !isDashboard && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEditActivity(item)}
+                        >
+                          <FileEdit size={16} />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Trash2 size={16} />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>회수 활동 삭제</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                이 회수 활동을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>취소</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(item.id)}>
+                                삭제
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <Card className="w-full">
+    <Card className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
       {!isDashboard && (
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
           <CardTitle className="text-xl">회수 활동 기록</CardTitle>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchActivities}
-              className="flex items-center gap-1"
-            >
-              <RefreshCw size={14} />
-              새로고침
-            </Button>
-
             {user && (user.role === "staff" || user.role === "admin") && (
               <Dialog open={showModal} onOpenChange={setShowModal}>
                 <DialogTrigger asChild>
@@ -288,119 +482,37 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
           </div>
         </CardHeader>
       )}
-      <CardContent>
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex flex-col space-y-2">
-                <Skeleton className="h-6 w-1/4" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ))}
-          </div>
-        ) : activities.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
-            <p>등록된 회수 활동이 없습니다.</p>
-            {user && (user.role === "staff" || user.role === "admin") && !isDashboard && (
-              <Button variant="outline" className="mt-4" onClick={handleAddActivity}>
-                회수 활동 추가하기
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>날짜</TableHead>
-                  <TableHead>활동 유형</TableHead>
-                  <TableHead>내용</TableHead>
-                  <TableHead>금액</TableHead>
-                  <TableHead>상태</TableHead>
-                  {!isDashboard && (
-                    <>
-                      <TableHead>첨부</TableHead>
-                      <TableHead>비고</TableHead>
-                      <TableHead>생성자</TableHead>
-                    </>
-                  )}
-                  {user && (user.role === "staff" || user.role === "admin") && !isDashboard && (
-                    <TableHead className="text-right">관리</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activities.map((activity) => (
-                  <TableRow key={activity.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {format(new Date(activity.date), "yyyy. MM. dd", { locale: ko })}
-                    </TableCell>
-                    <TableCell>{getActivityTypeText(activity.activity_type)}</TableCell>
-                    <TableCell className="max-w-xs truncate">{activity.description}</TableCell>
-                    <TableCell>{formatCurrency(activity.amount)}</TableCell>
-                    <TableCell>{getStatusBadge(activity.status || "completed")}</TableCell>
-                    {!isDashboard && (
-                      <>
-                        <TableCell>
-                          {activity.file_url ? (
-                            <Link
-                              href={activity.file_url}
-                              target="_blank"
-                              className="text-blue-500 hover:underline flex items-center"
-                            >
-                              <PaperclipIcon className="h-4 w-4 mr-1" />
-                              첨부
-                            </Link>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">{activity.notes || "-"}</TableCell>
-                        <TableCell>{activity.created_by_user?.name || "알 수 없음"}</TableCell>
-                      </>
-                    )}
-                    {user && (user.role === "staff" || user.role === "admin") && !isDashboard && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditActivity(activity)}
-                            className="h-8 w-8"
-                          >
-                            <FileEdit size={16} />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Trash2 size={16} />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>회수 활동 삭제</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  이 회수 활동을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수
-                                  없습니다.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>취소</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(activity.id)}>
-                                  삭제
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+      <CardContent className={isDashboard ? "pt-4" : ""}>
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="all">전체</TabsTrigger>
+            <TabsTrigger value="payment" className="flex items-center gap-1">
+              <CircleDollarSign className="h-4 w-4" />
+              납부
+            </TabsTrigger>
+            <TabsTrigger value="call" className="flex items-center gap-1">
+              <Phone className="h-4 w-4" />
+              전화
+            </TabsTrigger>
+            <TabsTrigger value="letter" className="flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              통지서
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+          <TabsContent value="payment" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+          <TabsContent value="call" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+          <TabsContent value="letter" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

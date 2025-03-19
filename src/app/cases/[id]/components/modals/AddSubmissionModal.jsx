@@ -313,7 +313,9 @@ export default function AddSubmissionModal({
         };
 
         try {
-          const { data, error } = await supabase.from("test_notifications").insert(notification);
+          const { data, error } = await supabase
+            .from("test_case_notifications")
+            .insert(notification);
 
           if (error) {
             console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);

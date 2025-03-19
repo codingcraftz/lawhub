@@ -304,7 +304,7 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     try {
       // 1. 먼저 관련된 알림 삭제
       const { data: notificationsData, error: notificationsError } = await supabase
-        .from("test_notifications")
+        .from("test_case_notifications")
         .delete()
         .match({
           related_entity: "submission",
@@ -366,8 +366,8 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
   // 타임라인 항목 배경색 설정
   const getTimelineItemBg = (type) => {
     if (type === "송달문서")
-      return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
-    return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800";
+      return "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30";
+    return "bg-green-50/40 dark:bg-green-900/10 border-green-100 dark:border-green-800/30";
   };
 
   // 타임라인 항목 아이콘 배경색 설정
@@ -417,7 +417,7 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
 
     if (filteredSubmissions.length === 0) {
       return (
-        <div className="text-center py-10 border rounded-md bg-muted/20">
+        <div className="text-center py-10 border rounded-md bg-background/50">
           <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground mb-2">
             {activeTab !== "all"
@@ -431,15 +431,15 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     return (
       <div className="space-y-8 relative py-2">
         {/* 타임라인 수직선 */}
-        <div className="absolute top-0 bottom-0 left-[24px] w-[2px] bg-gray-200 dark:bg-gray-700 z-0"></div>
+        <div className="absolute top-0 bottom-0 left-[24px] w-[2px] bg-border z-0"></div>
 
         {groupedData.map((group, groupIndex) => (
           <div key={group.date} className="mb-6">
             <div className="flex mb-2 items-center z-10 relative">
-              <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-3 border-2 border-white dark:border-gray-900 shadow-sm">
-                <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+              <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center mr-3 border-2 border-background shadow-sm">
+                <Calendar className="h-5 w-5 text-foreground/70" />
               </div>
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 p-1 rounded">
+              <h3 className="font-medium text-foreground">
                 {format(new Date(group.date), "yyyy년 MM월 dd일", { locale: ko })}
               </h3>
             </div>
@@ -457,7 +457,7 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
                     <div
                       className={`h-6 w-6 rounded-full ${getTimelineIconBg(
                         item.submission_type
-                      )} flex items-center justify-center`}
+                      )} flex items-center justify-center text-white`}
                     >
                       {getSubmissionTypeIcon(item.submission_type)}
                     </div>
@@ -474,13 +474,13 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
                           <span>{item.submission_type}</span>
                         </Badge>
                         <Badge variant="outline">{item.document_type}</Badge>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           {format(new Date(item.submission_date), "HH:mm", { locale: ko })}
                         </span>
                       </div>
 
                       {item.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-white/80 dark:bg-gray-800/80 p-2 rounded">
+                        <p className="text-sm text-foreground/90 mt-2 rounded">
                           {item.description}
                         </p>
                       )}
@@ -490,7 +490,7 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
                           href={item.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center text-xs gap-1 mt-2 text-blue-600 hover:text-blue-800 bg-white/60 dark:bg-gray-800/60 p-1 px-2 rounded w-fit"
+                          className="flex items-center text-xs gap-1 mt-2 text-blue-600 hover:text-blue-800 rounded w-fit"
                         >
                           <FileText className="h-3.5 w-3.5" />
                           <span>문서 보기</span>
@@ -551,30 +551,35 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
   }
 
   return (
-    <div className="space-y-4">
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">전체</TabsTrigger>
-          <TabsTrigger value="송달문서" className="flex items-center gap-1">
-            <ArrowDown className="h-4 w-4" />
-            송달문서
-          </TabsTrigger>
-          <TabsTrigger value="제출문서" className="flex items-center gap-1">
-            <ArrowUp className="h-4 w-4" />
-            제출문서
-          </TabsTrigger>
-        </TabsList>
+    <Card className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+      <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-2">
+        <CardTitle className="text-lg font-semibold">소송 진행 타임라인</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="all">전체</TabsTrigger>
+            <TabsTrigger value="송달문서" className="flex items-center gap-1">
+              <ArrowDown className="h-4 w-4" />
+              송달문서
+            </TabsTrigger>
+            <TabsTrigger value="제출문서" className="flex items-center gap-1">
+              <ArrowUp className="h-4 w-4" />
+              제출문서
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="all" className="mt-4">
-          {renderTimeline()}
-        </TabsContent>
-        <TabsContent value="송달문서" className="mt-4">
-          {renderTimeline()}
-        </TabsContent>
-        <TabsContent value="제출문서" className="mt-4">
-          {renderTimeline()}
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="all" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+          <TabsContent value="송달문서" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+          <TabsContent value="제출문서" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 }

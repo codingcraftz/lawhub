@@ -239,7 +239,7 @@
 | case_id           | uuid                     | 사건 ID (외래키)                                   |
 | title             | character varying        | 알림 제목                                          |
 | message           | text                     | 알림 내용                                          |
-| notification_type | character varying        | 알림 유형 (general, important, deadline, email 등) |
+| notification_type | character varying        | 알림 유형 (lawsuit_update, recovery_activity, etc) |
 | is_read           | boolean                  | 읽음 여부                                          |
 | user_id           | uuid                     | 사용자 ID (외래키, users 테이블)                   |
 | created_at        | timestamp with time zone | 생성 시간                                          |
@@ -287,20 +287,18 @@
 | created_at      | timestamp with time zone | 생성 시간                                             |
 | updated_at      | timestamp with time zone | 수정 시간                                             |
 
-## 알림 테이블 (test_notifications)
+## 알림 테이블 (test_case_notifications)
 
-| 컬럼명            | 데이터 타입              | 설명                                                |
-| ----------------- | ------------------------ | --------------------------------------------------- |
-| id                | uuid                     | 알림 고유 식별자                                    |
-| user_id           | uuid                     | 알림을 받을 사용자 ID (외래키, auth.users 테이블)   |
-| case_id           | uuid                     | 관련 사건 ID (외래키, test_cases 테이블)            |
-| title             | character varying        | 알림 제목                                           |
-| message           | text                     | 알림 내용                                           |
-| notification_type | character varying        | 알림 유형 (lawsuit_update, recovery_activity, etc)  |
-| is_read           | boolean                  | 읽음 여부                                           |
-| created_at        | timestamp with time zone | 생성 시간                                           |
-| related_entity    | character varying        | 관련 엔티티 유형 (submission, recovery, lawsuit 등) |
-| related_id        | uuid                     | 관련 엔티티 ID                                      |
+| 컬럼              | 데이터 타입 | 설명                                                                          |
+| ----------------- | ----------- | ----------------------------------------------------------------------------- |
+| id                | uuid        | 고유 식별자                                                                   |
+| case_id           | uuid        | 관련 사건 ID                                                                  |
+| title             | varchar     | 알림 제목                                                                     |
+| message           | text        | 알림 내용                                                                     |
+| notification_type | varchar     | 알림 유형 (lawsuit, lawsuit_update, recovery_activity, deadline, document 등) |
+| is_read           | boolean     | 읽음 여부                                                                     |
+| user_id           | uuid        | 수신자 ID                                                                     |
+| created_at        | timestamptz | 생성 시간                                                                     |
 
 ## 결제 계획 테이블 (test_payment_plans)
 
@@ -357,7 +355,6 @@
 - **users** ↔ **test_case_progress**: 1:N (한 사용자는 여러 진행 상태를 업데이트할 수 있음)
 - **users** ↔ **test_recovery_activities**: 1:N (한 사용자는 여러 회수 활동을 기록할 수 있음)
 - **users** ↔ **test_case_notifications**: 1:N (한 사용자는 여러 알림을 생성할 수 있음)
-- **users** ↔ **test_notifications**: 1:N (한 사용자는 여러 알림을 받을 수 있음)
 - **test_organizations** ↔ **test_organization_members**: 1:N (한 조직은 여러 구성원을 가질 수 있음)
 - **test_organizations** ↔ **test_case_clients**: 1:N (한 조직은 여러 사건의 의뢰인이 될 수 있음)
 - **test_cases** ↔ **test_case_parties**: 1:N (한 사건은 여러 당사자를 가질 수 있음)
@@ -369,7 +366,6 @@
 - **test_cases** ↔ **test_case_progress**: 1:N (한 사건은 여러 진행 상태를 가질 수 있음)
 - **test_cases** ↔ **test_recovery_activities**: 1:N (한 사건은 여러 회수 활동을 가질 수 있음)
 - **test_cases** ↔ **test_case_notifications**: 1:N (한 사건은 여러 알림을 생성할 수 있음)
-- **test_cases** ↔ **test_notifications**: 1:N (한 사건은 여러 알림을 생성할 수 있음)
 - **test_case_parties** ↔ **test_debt_claims**: 1:N (한 당사자는 여러 채권/채무 관계를 가질 수 있음)
 - **test_legal_process_stages** ↔ **test_case_progress**: 1:N (한 법적 프로세스 단계는 여러 사건의 진행 상태에 연결될 수 있음)
 - **test_document_types** ↔ **test_case_documents**: 1:N (한 문서 유형은 여러 문서에 적용될 수 있음)

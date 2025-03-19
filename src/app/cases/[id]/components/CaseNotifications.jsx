@@ -97,25 +97,19 @@ export default function CaseNotifications({ caseId, limit, isDashboard = false }
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from("test_case_notifications")
-        .select("*, user:user_id(id, name, email)")
+        .select("*")
         .eq("case_id", caseId)
         .order("created_at", { ascending: false });
 
-      if (isDashboard && limit) {
-        query = query.limit(limit);
+      if (error) {
+        throw error;
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
-      console.error("알림 가져오기 실패:", error);
-      toast.error("알림 가져오기 실패", {
-        description: error.message,
-      });
+      console.error("알림 로드 실패:", error);
+      toast.error("알림을 불러오는데 실패했습니다");
     } finally {
       setLoading(false);
     }

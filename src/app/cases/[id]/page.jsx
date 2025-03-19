@@ -25,6 +25,10 @@ import {
   Building2,
   Trash2,
   Search,
+  Activity,
+  Gavel,
+  CreditCard,
+  CalendarIcon,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { formatCurrency, formatDate } from "@/utils/format";
@@ -87,6 +91,8 @@ export default function CasePage() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [parties, setParties] = useState([]);
   const [clients, setClients] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
 
   // 모달 상태 관리
   const [showDocumentModal, setShowDocumentModal] = useState(false);
@@ -124,6 +130,9 @@ export default function CasePage() {
   const [residentNumber, setResidentNumber] = useState("");
   const [corporateNumber, setCorporateNumber] = useState("");
   const [position, setPosition] = useState("");
+
+  // 알림 개수 관리
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // 케이스 정보 가져오기
   const fetchCaseDetails = async () => {
@@ -230,9 +239,86 @@ export default function CasePage() {
     }
   };
 
+  // 알림 정보 가져오기
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const { data, error } = await supabase
+        .from("test_case_notifications")
+        .select("*")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (error) {
+      console.error("알림 정보 조회 실패:", error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  // 알림 개수 가져오기
+  const fetchNotificationCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from("test_case_notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("case_id", caseId)
+        .eq("is_read", false);
+
+      if (error) throw error;
+
+      setNotificationCount(count || 0);
+    } catch (error) {
+      console.error("알림 개수 조회 실패:", error);
+      setNotificationCount(0);
+    }
+  };
+
+  // 알림 유형에 따른 아이콘 가져오기
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "lawsuit_update":
+        return <Gavel className="w-4 h-4 text-purple-500" />;
+      case "recovery_activity":
+        return <CreditCard className="w-4 h-4 text-green-500" />;
+      case "deadline":
+        return <CalendarIcon className="w-4 h-4 text-red-500" />;
+      case "document":
+        return <FileText className="w-4 h-4 text-blue-500" />;
+      default:
+        return <Bell className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  // 알림 생성 시간 포맷팅
+  const formatNotificationTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffDay > 0) {
+      return `${diffDay}일 전`;
+    } else if (diffHour > 0) {
+      return `${diffHour}시간 전`;
+    } else if (diffMin > 0) {
+      return `${diffMin}분 전`;
+    } else {
+      return "방금 전";
+    }
+  };
+
   useEffect(() => {
     if (caseId && user) {
       fetchCaseDetails();
+      fetchNotifications();
+      fetchNotificationCount();
     }
   }, [caseId, user]);
 
@@ -887,6 +973,75 @@ export default function CasePage() {
                 <CardTitle className="text-lg font-semibold">사건 정보</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5 pt-5">
+                {/* 알림 섹션 추가 */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">최근 알림</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={fetchNotifications}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {loadingNotifications ? (
+                      <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="flex space-x-2">
+                            <Skeleton className="h-6 w-6 rounded-full" />
+                            <div className="space-y-1 flex-1">
+                              <Skeleton className="h-3 w-3/4" />
+                              <Skeleton className="h-2 w-1/2" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">알림이 없습니다</p>
+                    ) : (
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`p-2 rounded-md ${
+                              notification.is_read
+                                ? "bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700"
+                                : "bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30"
+                            }`}
+                          >
+                            <div className="flex items-start">
+                              <div className="rounded-full bg-white dark:bg-slate-700 p-1.5 mr-2 flex-shrink-0">
+                                {getNotificationIcon(notification.notification_type)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4
+                                  className={`text-xs font-medium truncate ${
+                                    notification.is_read
+                                      ? "text-gray-800 dark:text-gray-200"
+                                      : "text-blue-700 dark:text-blue-300"
+                                  }`}
+                                >
+                                  {notification.title}
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                                  {notification.message}
+                                </p>
+                                <div className="flex items-center mt-1 text-xs text-gray-400">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {formatNotificationTime(notification.created_at)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">상태</p>
                   {caseData.status_info?.color ? (
