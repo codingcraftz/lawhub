@@ -375,11 +375,41 @@ export default function LawsuitManager({ caseId }) {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-xl font-semibold">
-              {typeLabel} - {lawsuit.case_number}
-              {getStatusBadge(lawsuit.status)}
-            </h3>
-            <p className="text-muted-foreground">{lawsuit.court_name}</p>
+            {lawsuit.description && (
+              <p className="whitespace-pre-line text-gray-400">{lawsuit.description}</p>
+            )}
+            {lawsuit.test_lawsuit_parties && lawsuit.test_lawsuit_parties.length > 0 ? (
+              (() => {
+                // lawsuit 내부에서 실시간으로 데이터 그룹화
+                const groupedParties = lawsuit.test_lawsuit_parties.reduce((acc, partyRel) => {
+                  const party = parties.find((p) => p.id === partyRel.party_id);
+                  if (!party) return acc;
+
+                  const label = getPartyTypeLabel(partyRel.party_type);
+                  if (!acc[label]) acc[label] = [];
+                  acc[label].push(party.name);
+                  return acc;
+                }, {});
+
+                // 정렬된 키 리스트
+                const sortedPartyTypes = Object.keys(groupedParties).sort(
+                  (a, b) => (PARTY_ORDER[a] || 99) - (PARTY_ORDER[b] || 99)
+                );
+
+                return (
+                  <div className="space-y-2">
+                    {sortedPartyTypes.map((partyType) => (
+                      <p key={partyType} className="text-sm">
+                        <span className="font-medium">{partyType}:</span>{" "}
+                        {groupedParties[partyType].join(", ")}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="text-sm text-muted-foreground">등록된 당사자가 없습니다.</p>
+            )}
           </div>
 
           {user && (user.role === "admin" || user.role === "staff") && (
@@ -418,48 +448,10 @@ export default function LawsuitManager({ caseId }) {
           )}
         </div>
 
-        <div>
-          {lawsuit.description && (
-            <p className="whitespace-pre-line text-gray-400">{lawsuit.description}</p>
-          )}
-          {lawsuit.test_lawsuit_parties && lawsuit.test_lawsuit_parties.length > 0 ? (
-            (() => {
-              // lawsuit 내부에서 실시간으로 데이터 그룹화
-              const groupedParties = lawsuit.test_lawsuit_parties.reduce((acc, partyRel) => {
-                const party = parties.find((p) => p.id === partyRel.party_id);
-                if (!party) return acc;
-
-                const label = getPartyTypeLabel(partyRel.party_type);
-                if (!acc[label]) acc[label] = [];
-                acc[label].push(party.name);
-                return acc;
-              }, {});
-
-              // 정렬된 키 리스트
-              const sortedPartyTypes = Object.keys(groupedParties).sort(
-                (a, b) => (PARTY_ORDER[a] || 99) - (PARTY_ORDER[b] || 99)
-              );
-
-              return (
-                <div className="space-y-2">
-                  {sortedPartyTypes.map((partyType) => (
-                    <p key={partyType} className="text-sm">
-                      <span className="font-medium">{partyType}:</span>{" "}
-                      {groupedParties[partyType].join(", ")}
-                    </p>
-                  ))}
-                </div>
-              );
-            })()
-          ) : (
-            <p className="text-sm text-muted-foreground">등록된 당사자가 없습니다.</p>
-          )}
-        </div>
-
         {/* CaseTimeline 컴포넌트 사용 - AddSubmissionModal과 연결 */}
         <div className="border-t pt-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium">소송 진행 타임라인</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="font-medium text-lg ">소송 진행 타임라인</h3>
             {user && (user.role === "admin" || user.role === "staff") && (
               <Button size="sm" onClick={handleAddSubmission}>
                 <Plus className="h-4 w-4 mr-1" />

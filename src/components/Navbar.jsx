@@ -23,12 +23,13 @@ import {
   Users,
   Settings,
   LogOut,
-  X,
+  PersonStandingIcon,
   User,
   Bell,
   Scale,
   CalendarRange,
   Building2,
+  UserCog,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,25 @@ export default function Navbar() {
             </Button>
           </Link>
 
+          {/* 클라이언트 관리 - 관리자와 직원만 접근 가능 */}
+          {(isAdmin() || isStaff()) && (
+            <Link href="/clients">
+              <Button
+                variant={isActive("/clients") ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "flex items-center rounded-lg transition-all",
+                  isActive("/clients")
+                    ? "bg-purple-500 hover:bg-purple-600 text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                )}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                의뢰 관리
+              </Button>
+            </Link>
+          )}
+
           {/* 사건 관리 - 관리자와 직원만 접근 가능 */}
           {(isAdmin() || isStaff()) && (
             <Link href="/cases">
@@ -147,24 +167,24 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* 클라이언트 관리 - 관리자와 직원만 접근 가능
-          {(isAdmin() || isStaff()) && (
-            <Link href="/clients">
+          {/* 조직 관리 - 관리자만 접근 가능 */}
+          {isAdmin() && (
+            <Link href="/admin/case-handlers">
               <Button
-                variant={isActive("/clients") ? "default" : "ghost"}
+                variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
                 size="sm"
                 className={cn(
                   "flex items-center rounded-lg transition-all",
-                  isActive("/clients")
-                    ? "bg-purple-500 hover:bg-purple-600 text-white"
+                  isActive("/admin/case-handlers")
+                    ? "bg-teal-500 hover:bg-teal-600 text-white"
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
-                <Users className="mr-2 h-4 w-4" />
-                고객 관리
+                <Building2 className="mr-2 h-4 w-4" />
+                담당자 관리
               </Button>
             </Link>
-          )} */}
+          )}
 
           {/* 조직 관리 - 관리자만 접근 가능 */}
           {isAdmin() && (
@@ -372,7 +392,7 @@ export default function Navbar() {
                       )}
                     >
                       <Users className="mr-2 h-5 w-5" />
-                      고객 관리
+                      의뢰인 관리
                     </Button>
                   </Link>
                 )}
@@ -409,6 +429,59 @@ export default function Navbar() {
                 </Link>
               </div>
 
+              {/* 관리자 메뉴 - 모바일 */}
+              {isAdmin() && (
+                <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4">
+                  <h3 className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                    관리자 메뉴
+                  </h3>
+                  <div className="space-y-1">
+                    <Link href="/admin/case-handlers" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/admin/case-handlers")
+                            ? "bg-rose-500 hover:bg-rose-600 text-white"
+                            : ""
+                        )}
+                      >
+                        <UserCog className="mr-2 h-5 w-5" />
+                        사건 담당자 관리
+                      </Button>
+                    </Link>
+                    <Link href="/admin/users" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/admin/users") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/admin/users")
+                            ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                            : ""
+                        )}
+                      >
+                        <Users className="mr-2 h-5 w-5" />
+                        사용자 관리
+                      </Button>
+                    </Link>
+                    <Link href="/admin/settings" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/admin/settings") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/admin/settings")
+                            ? "bg-teal-500 hover:bg-teal-600 text-white"
+                            : ""
+                        )}
+                      >
+                        <Settings className="mr-2 h-5 w-5" />
+                        시스템 설정
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               <div className="absolute bottom-4 w-full pr-6">
                 <div className="flex justify-between items-center">
                   <ThemeToggle />
@@ -432,5 +505,60 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+  );
+}
+
+// 관리자 메뉴 컴포넌트
+function AdminMenu({ user }) {
+  const pathname = usePathname();
+
+  if (user?.role !== "admin") {
+    return null;
+  }
+
+  return (
+    <div className="py-2">
+      <h3 className="mb-2 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
+        관리자 메뉴
+      </h3>
+      <nav className="grid gap-1 px-2">
+        <Link
+          href="/admin/users"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground",
+            pathname.startsWith("/admin/users")
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground"
+          )}
+        >
+          <Users className="h-4 w-4" />
+          사용자 관리
+        </Link>
+        <Link
+          href="/admin/settings"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground",
+            pathname.startsWith("/admin/settings")
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground"
+          )}
+        >
+          <Settings className="h-4 w-4" />
+          시스템 설정
+        </Link>
+        <Link
+          href="/admin/case-handlers"
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent hover:text-accent-foreground",
+            pathname.startsWith("/admin/case-handlers")
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground"
+          )}
+        >
+          <UserCog className="h-4 w-4" />
+          사건 담당자 관리
+        </Link>
+      </nav>
+    </div>
   );
 }

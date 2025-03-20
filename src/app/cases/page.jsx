@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -26,6 +26,8 @@ import {
   Timer,
   Hourglass,
   CheckCircle2,
+  Users,
+  Plus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -85,7 +87,24 @@ import Link from "next/link";
 
 export default function CasesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
+
+  // URL에서 의뢰인 필터 쿼리 파라미터 가져오기
+  const individualId = searchParams.get("individualId");
+  const organizationId = searchParams.get("organizationId");
+  const clientName = searchParams.get("clientName");
+
+  // UUID 유효성 검사 함수
+  const isValidUUID = (uuid) => {
+    const uuidRegex =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    return uuid && uuidRegex.test(uuid);
+  };
+
+  // URL 파라미터 유효성 검사
+  const validIndividualId = isValidUUID(individualId) ? individualId : null;
+  const validOrganizationId = isValidUUID(organizationId) ? organizationId : null;
 
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState([]);
@@ -103,7 +122,17 @@ export default function CasesPage() {
     if (user) {
       fetchCases();
     }
-  }, [user, page, pageSize, caseType, caseStatus, sortBy, sortOrder]);
+  }, [
+    user,
+    page,
+    pageSize,
+    caseType,
+    caseStatus,
+    sortBy,
+    sortOrder,
+    validIndividualId,
+    validOrganizationId,
+  ]);
 
   const fetchCases = async () => {
     setLoading(true);
@@ -146,6 +175,48 @@ export default function CasesPage() {
         query = query.or(
           `case_number.ilike.%${searchTerm}%,case_info.ilike.%${searchTerm}%,court_name.ilike.%${searchTerm}%`
         );
+      }
+
+      // 의뢰인 ID로 필터링 (individualId, organizationId)
+      if (validIndividualId || validOrganizationId) {
+        // 먼저 필터링된 case_id 목록을 가져옵니다
+        const clientFilter = supabase.from("test_case_clients");
+
+        if (validIndividualId) {
+          const { data: caseIds, error: caseIdError } = await clientFilter
+            .select("case_id")
+            .eq("individual_id", validIndividualId);
+
+          if (caseIdError) throw caseIdError;
+
+          if (caseIds && caseIds.length > 0) {
+            const ids = caseIds.map((item) => item.case_id);
+            query = query.in("id", ids);
+          } else {
+            // 결과가 없는 경우 빈 배열 반환
+            setCases([]);
+            setTotalCases(0);
+            setLoading(false);
+            return;
+          }
+        } else if (validOrganizationId) {
+          const { data: caseIds, error: caseIdError } = await clientFilter
+            .select("case_id")
+            .eq("organization_id", validOrganizationId);
+
+          if (caseIdError) throw caseIdError;
+
+          if (caseIds && caseIds.length > 0) {
+            const ids = caseIds.map((item) => item.case_id);
+            query = query.in("id", ids);
+          } else {
+            // 결과가 없는 경우 빈 배열 반환
+            setCases([]);
+            setTotalCases(0);
+            setLoading(false);
+            return;
+          }
+        }
       }
 
       // 정렬 적용
@@ -458,56 +529,76 @@ export default function CasesPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="container py-6 px-4 md:px-6">
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 dark:from-gray-100 dark:via-gray-200 dark:to-gray-300 bg-clip-text text-transparent">
-              사건 관리
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              민사소송 및 채권관리 사건 목록입니다
+            <h1 className="text-2xl font-semibold tracking-tight">사건 목록</h1>
+            {(individualId || organizationId) && clientName && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="outline" className="text-sm font-normal px-2">
+                  {clientName} 의뢰인의 사건만 표시
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => router.push("/cases")}
+                >
+                  필터 해제
+                </Button>
+              </div>
+            )}
+            <p className="text-muted-foreground mt-2">
+              {individualId || organizationId
+                ? `${clientName} 의뢰인의 사건 ${totalCases}건`
+                : `총 ${totalCases}건의 사건이 있습니다`}
             </p>
           </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Link href="/cases/clients">
+              <Button variant="outline" className="w-full sm:w-auto flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                의뢰인 목록
+              </Button>
+            </Link>
+            <Link href="/cases/new">
+              <Button className="w-full sm:w-auto flex items-center gap-2">
+                <Plus className="h-4 w-4" />새 사건 등록
+              </Button>
+            </Link>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <Input
-                type="search"
-                placeholder="사건번호, 법원명, 내용 검색..."
-                className="w-[250px] pl-9 bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700"
-                value={searchTerm}
-                onChange={handleSearchInputChange}
-              />
-            </form>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={fetchCases}
-              className="bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <RefreshCw className="h-4 w-4 text-gray-500" />
-            </Button>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="relative col-span-1 md:col-span-2">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <Input
+              type="search"
+              placeholder="사건번호, 법원, 내용으로 검색..."
+              className="pl-9 w-full"
+              value={searchTerm}
+              onChange={handleSearchInputChange}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
+            />
+          </div>
+          <div className="flex gap-2">
             <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="bg-white/90 dark:bg-gray-900/80 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  필터
+                <Button variant="outline" className="flex-1 flex items-center justify-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  필터 및 정렬
                 </Button>
               </SheetTrigger>
-              <SheetContent className="w-[300px]">
-                <SheetHeader>
-                  <SheetTitle>필터 설정</SheetTitle>
-                  <SheetDescription>사건 목록 필터링 옵션을 설정하세요</SheetDescription>
+              <SheetContent>
+                <SheetHeader className="mb-4">
+                  <SheetTitle>필터링 및 정렬</SheetTitle>
+                  <SheetDescription>
+                    사건 목록을 필터링하거나 원하는 순서로 정렬하세요.
+                  </SheetDescription>
                 </SheetHeader>
 
-                <div className="py-6 space-y-4">
+                <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">사건 유형</label>
                     <Select value={caseType} onValueChange={setCaseType}>
@@ -588,13 +679,6 @@ export default function CasesPage() {
                 </SheetFooter>
               </SheetContent>
             </Sheet>
-
-            <Link href="/cases/new">
-              <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 shadow-sm">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                신규 등록
-              </Button>
-            </Link>
           </div>
         </div>
       </div>

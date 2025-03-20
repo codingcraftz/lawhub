@@ -13,23 +13,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   CircleDollarSign,
   PieChart as PieChartIcon,
@@ -51,6 +42,9 @@ import {
   User,
   Building2,
   Briefcase,
+  Clock,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 // 차트 컴포넌트는 recharts에서 가져오기
@@ -392,6 +386,117 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
   );
 }
 
+// 이 코드 조각을 기존 컴포넌트 위에 추가합니다
+// ClientSummary 컴포넌트 추가
+function ClientSummary({ userData, cases, totalDebt, loading }) {
+  // 금액 포맷
+  const formatCurrency = (amount) => {
+    if (!amount) return "0원";
+    return new Intl.NumberFormat("ko-KR", {
+      style: "currency",
+      currency: "KRW",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md h-full">
+        <CardHeader className="py-2 px-4 border-b">
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3 items-center">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <div className="flex-1">
+                <Skeleton className="h-5 w-32 mb-2" />
+                <Skeleton className="h-3.5 w-24" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md h-full">
+      <CardHeader className="py-2 px-4 border-b">
+        <CardTitle className="text-base flex items-center">
+          <User className="h-4 w-4 mr-2 text-blue-500" />내 프로필
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4">
+        <div className="flex gap-3 items-center mb-4">
+          <Avatar className="h-14 w-14">
+            <AvatarImage src={userData?.profile_image} alt={userData?.name} />
+            <AvatarFallback className="bg-blue-100">
+              <User className="h-6 w-6 text-blue-700" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center">
+              <h3 className="text-base font-semibold mr-2">{userData?.name || "사용자"}</h3>
+              <Badge variant="outline" className="text-xs">
+                {userData?.role === "staff" ? "변호사" : "회원"}
+              </Badge>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex items-center">
+              {userData?.email && (
+                <div className="flex items-center mr-3">
+                  <Mail className="h-3 w-3 mr-1" />
+                  <span className="truncate max-w-[160px]">{userData.email}</span>
+                </div>
+              )}
+              {userData?.phone && (
+                <div className="flex items-center">
+                  <Phone className="h-3 w-3 mr-1" />
+                  <span>{userData.phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col items-center justify-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400 mb-1" />
+            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+              {cases?.length || 0}
+            </div>
+            <div className="text-xs text-muted-foreground">전체 사건</div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <Clock className="h-5 w-5 text-green-600 dark:text-green-400 mb-1" />
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">
+              {
+                (cases?.filter((c) => c.status === "active" || c.status === "in_progress") || [])
+                  .length
+              }
+            </div>
+            <div className="text-xs text-muted-foreground">진행중</div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+            <CircleDollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400 mb-1" />
+            <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
+              {formatCurrency(totalDebt)}
+            </div>
+            <div className="text-xs text-muted-foreground">채권 총액</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function MyCasesPage() {
   const router = useRouter();
   const { user } = useUser();
@@ -430,7 +535,7 @@ export default function MyCasesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredCases, setFilteredCases] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
-  const casesPerPage = 10;
+  const [casesPerPage, setCasesPerPage] = useState(10);
 
   // 회수 정보를 위한 상태 추가
   const [recoveryStats, setRecoveryStats] = useState({
@@ -614,10 +719,8 @@ export default function MyCasesPage() {
       const term = searchTerm.toLowerCase();
       filtered = currentCases.filter(
         (c) =>
-          (c.case_number && c.case_number.toLowerCase().includes(term)) ||
           (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
-          (c.debtor_name && c.debtor_name.toLowerCase().includes(term)) ||
-          (c.case_info && c.case_info.toLowerCase().includes(term))
+          (c.debtor_name && c.debtor_name.toLowerCase().includes(term))
       );
     }
 
@@ -637,7 +740,7 @@ export default function MyCasesPage() {
     const startIndex = (validCurrentPage - 1) * casesPerPage;
     const paginatedCases = filtered.slice(startIndex, startIndex + casesPerPage);
 
-    setFilteredCases(paginatedCases);
+    setFilteredCases(filtered); // 전체 필터링된 사건을 저장하고, CasesTable 컴포넌트에서 슬라이싱
 
     // 선택된 사건들에 대한 통계 재계산
     const currentStats = calculateStats(currentCases);
@@ -657,6 +760,7 @@ export default function MyCasesPage() {
     organizationCases,
     searchTerm,
     currentPage,
+    casesPerPage,
     notifications,
   ]);
 
@@ -838,6 +942,9 @@ export default function MyCasesPage() {
   const fetchCases = async () => {
     setLoading(true);
     try {
+      // 외부 직원인지 확인
+      const isExternalStaff = user.employee_type === "external" && user.role === "staff";
+
       // 1. 사용자가 개인 의뢰인으로 등록된 사건 가져오기
       const { data: clientCases, error: clientError } = await supabase
         .from("test_case_clients")
@@ -892,8 +999,35 @@ export default function MyCasesPage() {
         orgCases = orgClientCases || [];
       }
 
+      // 4. 외부 직원인 경우 담당자로 지정된 사건만 가져오기
+      let handledCases = [];
+
+      if (isExternalStaff) {
+        // 담당자 테이블에서 사용자가 담당하는 사건 ID 목록 가져오기
+        const { data: userHandlers, error: handlersError } = await supabase
+          .from("test_case_handlers")
+          .select("case_id")
+          .eq("user_id", user.id);
+
+        if (handlersError) throw handlersError;
+
+        // 담당자로 지정된 사건 ID 목록
+        const handledCaseIds = userHandlers.map((h) => h.case_id);
+
+        // 담당 사건 정보 가져오기 (외부 직원은 담당 사건만 접근 가능)
+        if (handledCaseIds.length > 0) {
+          const { data: handledCasesData, error: handledCasesError } = await supabase
+            .from("test_cases")
+            .select("*, status_info:status_id(name, color)")
+            .in("id", handledCaseIds);
+
+          if (handledCasesError) throw handledCasesError;
+          handledCases = handledCasesData || [];
+        }
+      }
+
       // 개인 의뢰와 조직 의뢰 정리
-      const personalCasesList = await enrichCasesWithPartyInfo(
+      let personalCasesList = await enrichCasesWithPartyInfo(
         clientCases
           .filter((client) => client.case && !client.case.deleted_at)
           .map((client) => client.case)
@@ -918,6 +1052,26 @@ export default function MyCasesPage() {
       );
 
       const filteredOrgCasesByOrg = orgCasesByOrg.filter((org) => org.cases.length > 0);
+
+      // 외부 직원 처리 - 담당하는 사건만 표시
+      if (isExternalStaff) {
+        // 담당 사건 ID 목록
+        const handledCaseIds = handledCases.map((c) => c.id);
+
+        // 각 목록에서 담당 사건만 필터링
+        personalCasesList = await enrichCasesWithPartyInfo(handledCases);
+
+        // 조직 사건에는 접근 권한 없음 (필요하다면 여기서 필터링 로직 추가)
+        for (let i = 0; i < filteredOrgCasesByOrg.length; i++) {
+          filteredOrgCasesByOrg[i].cases = []; // 외부 직원은 조직 사건 비우기
+        }
+
+        // 사용자에게 안내 메시지 표시
+        toast.info("외부 직원은 담당으로 지정된 사건만 볼 수 있습니다", {
+          duration: 5000,
+          position: "top-center",
+        });
+      }
 
       // 모든 의뢰를 합쳐서 통계 계산
       const allCases = [...personalCasesList];
@@ -1174,14 +1328,21 @@ export default function MyCasesPage() {
   };
 
   // 검색 변경 핸들러
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+  const handleSearchChange = (value) => {
+    console.log("당사자(채권자/채무자) 이름으로 검색합니다.");
+    setSearchTerm(value);
     setCurrentPage(1);
   };
 
   // 페이지 변경 핸들러
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  // 페이지 크기 변경 핸들러
+  const handlePageSizeChange = (size) => {
+    setCasesPerPage(Number(size));
+    setCurrentPage(1); // 페이지 크기 변경 시 첫 페이지로 이동
   };
 
   // 사건 유형에 따른 배지 색상 및 아이콘
@@ -1324,7 +1485,7 @@ export default function MyCasesPage() {
             <TabsList className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm border-0 rounded-xl p-1">
               <TabsTrigger
                 value="personal"
-                className="rounded-lg py-2 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="rounded-lg py-2 px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
               >
                 <User className="h-4 w-4 mr-2" />
                 개인 사건 {personalCases.length > 0 && `(${personalCases.length})`}
@@ -1413,7 +1574,17 @@ export default function MyCasesPage() {
               {/* 총의뢰 탭 내용의 카드 스타일 수정 */}
               <TabsContent value="cases" className="pt-3">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-3 mb-4">
-                  {/* 좌측 - 알림 컴포넌트 */}
+                  {/* 좌측 - 프로필 카드 */}
+                  <div>
+                    <ClientSummary
+                      userData={user}
+                      cases={selectedTab === "personal" ? personalCases : organizationCases}
+                      totalDebt={recoveryStats.totalDebtAmount}
+                      loading={loading}
+                    />
+                  </div>
+
+                  {/* 우측 - 알림 */}
                   <div>
                     <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md h-full">
                       <CardHeader className="py-2 px-4 border-b">
@@ -1429,7 +1600,7 @@ export default function MyCasesPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="p-0">
-                        <div className="max-h-[180px] overflow-y-auto">
+                        <div className="max-h-[220px] overflow-y-auto">
                           {notificationsLoading ? (
                             <div className="p-3 space-y-2">
                               {[1, 2].map((i) => (
@@ -1448,7 +1619,7 @@ export default function MyCasesPage() {
                             </div>
                           ) : (
                             <div className="divide-y">
-                              {filteredNotifications.slice(0, 3).map((notification) => (
+                              {filteredNotifications.slice(0, 4).map((notification) => (
                                 <div
                                   key={notification.id}
                                   className={cn(
@@ -1490,7 +1661,7 @@ export default function MyCasesPage() {
                                   </div>
                                 </div>
                               ))}
-                              {filteredNotifications.length > 3 && (
+                              {filteredNotifications.length > 4 && (
                                 <div className="text-center py-1">
                                   <Button
                                     variant="ghost"
@@ -1509,100 +1680,6 @@ export default function MyCasesPage() {
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
-
-                  {/* 우측 - 사건 분포 통계 */}
-                  <div>
-                    <div className="grid grid-cols-1 gap-4">
-                      {/* 상태별 사건 분포 */}
-                      <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
-                        <CardHeader className="py-2 px-4 border-b">
-                          <CardTitle className="text-base flex items-center">
-                            <FileTextIcon className="h-4 w-4 mr-2 text-blue-500" /> 사건 현황
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="py-3 px-4">
-                          <div className="flex items-center justify-around">
-                            <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1 mx-auto border border-blue-200 dark:border-blue-800/50">
-                                <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              </div>
-                              <p className="text-xs text-muted-foreground">총 사건</p>
-                              <p className="text-base font-bold">{stats.totalCases}건</p>
-                            </div>
-                            <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1 mx-auto border border-blue-200 dark:border-blue-800/50">
-                                <Timer className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              </div>
-                              <p className="text-xs text-muted-foreground">진행중</p>
-                              <p className="text-base font-bold">{stats.activeCases}건</p>
-                            </div>
-                            <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1 mx-auto border border-amber-200 dark:border-amber-800/50">
-                                <Hourglass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                              </div>
-                              <p className="text-xs text-muted-foreground">대기중</p>
-                              <p className="text-base font-bold">{stats.pendingCases}건</p>
-                            </div>
-                            <div className="text-center">
-                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1 mx-auto border border-green-200 dark:border-green-800/50">
-                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                              </div>
-                              <p className="text-xs text-muted-foreground">종결</p>
-                              <p className="text-base font-bold">{stats.closedCases}건</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* 채권 분류별 분포 */}
-                      <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
-                        <CardHeader className="py-2 px-4 border-b">
-                          <CardTitle className="text-base flex items-center">
-                            <PieChartIcon className="h-4 w-4 mr-2 text-purple-500" /> 채권 분류
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="py-3 px-4">
-                          <div className="flex items-center justify-between">
-                            <div className="w-[130px] h-[120px]">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                  <Pie
-                                    data={stats.debtCategories || []}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={20}
-                                    outerRadius={45}
-                                    paddingAngle={1}
-                                    dataKey="value"
-                                  >
-                                    {(stats.debtCategories || []).map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                  </Pie>
-                                </PieChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div className="flex-1 ml-2">
-                              <div className="text-xs grid grid-cols-2 gap-1">
-                                {(stats.debtCategories || []).map((entry, index) => (
-                                  <div key={index} className="flex items-center">
-                                    <div
-                                      className="w-2 h-2 mr-1 rounded-sm"
-                                      style={{ backgroundColor: entry.color }}
-                                    />
-                                    <span>
-                                      {entry.name}:{" "}
-                                      <span className="font-medium">{entry.value}건</span>
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
                   </div>
                 </div>
               </TabsContent>
@@ -1832,7 +1909,9 @@ export default function MyCasesPage() {
           totalItems={selectedTab === "personal" ? personalCases.length : organizationCases.length}
           casesPerPage={casesPerPage}
           onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
           formatCurrency={formatCurrency}
+          notifications={filteredNotifications}
         />
       </div>
     </div>

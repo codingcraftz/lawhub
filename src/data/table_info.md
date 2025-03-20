@@ -59,18 +59,6 @@
 | status_id        | uuid                     | 상태 ID (외래키, test_case_statuses 테이블)          |
 | debt_category    | text                     | 채권 분류 (normal, bad, interest, special 등)        |
 
-## 사건 상태 테이블 (test_case_statuses)
-
-| 컬럼명      | 데이터 타입              | 설명             |
-| ----------- | ------------------------ | ---------------- |
-| id          | uuid                     | 상태 고유 식별자 |
-| name        | character varying        | 상태 이름        |
-| description | text                     | 상태 설명        |
-| color       | character varying        | 상태 표시 색상   |
-| order_index | integer                  | 순서 인덱스      |
-| created_at  | timestamp with time zone | 생성 시간        |
-| updated_at  | timestamp with time zone | 수정 시간        |
-
 ## 사건 당사자 테이블 (test_case_parties)
 
 | 컬럼명                        | 데이터 타입              | 설명                                                 |
@@ -117,53 +105,8 @@
 | end_date   | date                     | 종기일           |
 | rate       | numeric                  | 이자율 (%)       |
 | created_at | timestamp with time zone | 생성 시간        |
-| updated_at | timestamp with time zone | 수정 시간        |
 
-## 채권 정보 테이블 (test_debt_claims)
-
-| 컬럼명            | 데이터 타입              | 설명                                         |
-| ----------------- | ------------------------ | -------------------------------------------- |
-| id                | uuid                     | 채권 고유 식별자                             |
-| case_id           | uuid                     | 사건 ID (외래키)                             |
-| creditor_party_id | uuid                     | 채권자 ID (외래키, test_case_parties 테이블) |
-| debtor_party_id   | uuid                     | 채무자 ID (외래키, test_case_parties 테이블) |
-| claim_basis       | character varying        | 채권발생근거 (대여금, 물품대금, 용역대금 등) |
-| principal_amount  | numeric                  | 원금                                         |
-| interest_rate     | numeric                  | 이자율 (%)                                   |
-| interest_amount   | numeric                  | 이자 금액                                    |
-| total_amount      | numeric                  | 총 청구금액                                  |
-| due_date          | date                     | 변제기일                                     |
-| status            | character varying        | 상태 (active, partially_paid, paid)          |
-| description       | text                     | 설명                                         |
-| created_at        | timestamp with time zone | 생성 시간                                    |
-| updated_at        | timestamp with time zone | 수정 시간                                    |
-
-## 사건 문서 테이블 (test_case_documents)
-
-| 컬럼명           | 데이터 타입              | 설명                                              |
-| ---------------- | ------------------------ | ------------------------------------------------- |
-| id               | uuid                     | 문서 고유 식별자                                  |
-| case_id          | uuid                     | 사건 ID (외래키)                                  |
-| document_type    | character varying        | 문서 유형                                         |
-| name             | character varying        | 문서 이름                                         |
-| file_path        | text                     | 파일 경로                                         |
-| file_type        | character varying        | 파일 유형                                         |
-| uploaded_by      | uuid                     | 업로더 ID (외래키, users 테이블)                  |
-| created_at       | timestamp with time zone | 생성 시간                                         |
-| updated_at       | timestamp with time zone | 수정 시간                                         |
-| document_type_id | uuid                     | 문서 타입 ID (외래키, test_document_types 테이블) |
-| is_public        | boolean                  | 공개 여부                                         |
-| related_stage_id | uuid                     | 관련 단계 ID                                      |
-
-## 문서 타입 정의 테이블 (test_document_types)
-
-| 컬럼명      | 데이터 타입              | 설명                                           |
-| ----------- | ------------------------ | ---------------------------------------------- |
-| id          | uuid                     | 문서 타입 고유 식별자                          |
-| name        | character varying        | 문서 타입 이름                                 |
-| description | text                     | 설명                                           |
-| category    | character varying        | 문서 카테고리 (legal, submission, contract 등) |
-| created_at  | timestamp with time zone | 생성 시간                                      |
+| updated_at | timestamp with time zone | 수정 시간 |
 
 ## 사건 비용 정보 테이블 (test_case_expenses)
 
@@ -359,7 +302,6 @@
 - **test_organizations** ↔ **test_case_clients**: 1:N (한 조직은 여러 사건의 의뢰인이 될 수 있음)
 - **test_cases** ↔ **test_case_parties**: 1:N (한 사건은 여러 당사자를 가질 수 있음)
 - **test_cases** ↔ **test_case_clients**: 1:N (한 사건은 여러 의뢰인을 가질 수 있음)
-- **test_cases** ↔ **test_debt_claims**: 1:N (한 사건은 여러 채권 정보를 가질 수 있음)
 - **test_cases** ↔ **test_case_interests**: 1:N (한 사건은 여러 이자 정보를 가질 수 있음)
 - **test_cases** ↔ **test_case_documents**: 1:N (한 사건은 여러 문서를 가질 수 있음)
 - **test_cases** ↔ **test_case_handlers**: 1:N (한 사건은 여러 담당자를 가질 수 있음)

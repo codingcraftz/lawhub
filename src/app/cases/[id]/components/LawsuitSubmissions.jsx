@@ -552,9 +552,6 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
 
   return (
     <Card className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
-      <CardHeader className="border-b border-gray-100 dark:border-gray-800 pb-2">
-        <CardTitle className="text-lg font-semibold">소송 진행 타임라인</CardTitle>
-      </CardHeader>
       <CardContent className="pt-4">
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
