@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/select";
 import { CalendarIcon, Upload, FileCheck, X } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 const activityTypes = [
   { value: "call", label: "전화 연락" },
@@ -47,6 +49,7 @@ export default function RecoveryActivityModal({
   onSuccess,
   caseId,
   user,
+  parties = [],
   activity = null, // 수정 시 전달되는 활동 데이터
   isEditing = false, // 수정 모드 여부
 }) {
@@ -263,24 +266,75 @@ export default function RecoveryActivityModal({
 
   // 알림 생성 함수
   const createNotification = async (activityData, actionType, oldStatus = null) => {
-    if (!caseDetails) return;
+    if (!caseId) return;
 
     try {
-      // 채권자(의뢰인)와 채무자 찾기
+      console.log("Notification parties:", parties);
+
+      // props로 받은 parties 배열을 사용하여 채권자와 채무자 찾기
       let creditor = null;
       let debtor = null;
 
-      if (caseDetails.parties) {
-        caseDetails.parties.forEach((party) => {
+      if (parties && parties.length > 0) {
+        console.log("Using props parties for notification");
+        parties.forEach((party) => {
+          console.log("Party:", party);
           if (["creditor", "plaintiff", "applicant"].includes(party.party_type)) {
             creditor = party;
+            console.log("Found creditor:", creditor);
           } else if (["debtor", "defendant", "respondent"].includes(party.party_type)) {
             debtor = party;
+            console.log("Found debtor:", debtor);
           }
         });
       }
 
-      if (!creditor || !debtor) return;
+      if (!creditor || !debtor) {
+        console.log("Falling back to caseDetails parties");
+        // props에서 찾지 못한 경우 caseDetails에서 시도
+        if (caseDetails && caseDetails.parties) {
+          caseDetails.parties.forEach((party) => {
+            console.log("CaseDetails party:", party);
+            if (["creditor", "plaintiff", "applicant"].includes(party.party_type)) {
+              creditor = party;
+              console.log("Found creditor from caseDetails:", creditor);
+            } else if (["debtor", "defendant", "respondent"].includes(party.party_type)) {
+              debtor = party;
+              console.log("Found debtor from caseDetails:", debtor);
+            }
+          });
+        }
+      }
+
+      // 알림 제목 및 내용 구성
+      let creditorName = "미지정";
+      let debtorName = "미지정";
+
+      if (creditor) {
+        // entity_type 또는 party_entity_type 중 하나를 체크
+        const isIndividual =
+          creditor.entity_type === "individual" || creditor.party_entity_type === "individual";
+
+        if (isIndividual) {
+          creditorName = creditor.name || "미지정";
+        } else {
+          creditorName = creditor.company_name || "미지정";
+        }
+      }
+
+      if (debtor) {
+        // entity_type 또는 party_entity_type 중 하나를 체크
+        const isIndividual =
+          debtor.entity_type === "individual" || debtor.party_entity_type === "individual";
+
+        if (isIndividual) {
+          debtorName = debtor.name || "미지정";
+        } else {
+          debtorName = debtor.company_name || "미지정";
+        }
+      }
+
+      console.log("Final notification title data:", { creditorName, debtorName });
 
       // 알림 생성 여부 결정
       let shouldCreateNotification = true;
@@ -291,13 +345,6 @@ export default function RecoveryActivityModal({
       }
 
       if (!shouldCreateNotification) return;
-
-      // 알림 제목 및 내용 구성
-      const creditorName =
-        creditor.party_entity_type === "individual" ? creditor.name : creditor.company_name;
-
-      const debtorName =
-        debtor.party_entity_type === "individual" ? debtor.name : debtor.company_name;
 
       const title = `채권자 ${creditorName} | 채무자 ${debtorName}`;
       const message = getActivityMessage(
@@ -466,6 +513,22 @@ export default function RecoveryActivityModal({
       style: "currency",
       currency: "KRW",
     }).format(amount);
+  };
+
+  // 당사자 유형에 따른 색상 반환 함수
+  const getPartyTypeColor = (type) => {
+    switch (type) {
+      case "plaintiff":
+      case "creditor":
+      case "applicant":
+        return "text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800";
+      case "defendant":
+      case "debtor":
+      case "respondent":
+        return "text-red-600 dark:text-red-400 border-red-200 dark:border-red-800";
+      default:
+        return "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800";
+    }
   };
 
   // 추가 모드 - 데이터 저장
@@ -656,7 +719,40 @@ export default function RecoveryActivityModal({
         <DialogHeader>
           <DialogTitle>{isEditing ? "회수 활동 수정" : "회수 활동 추가"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+
+        {/* 당사자 정보 섹션 */}
+        {parties && parties.length > 0 && (
+          <div className="mb-4 border rounded-md p-3 bg-gray-50/50 dark:bg-gray-900/50">
+            <h3 className="text-sm font-medium mb-2">당사자 정보</h3>
+            <div className="space-y-2">
+              {parties.slice(0, 3).map((party, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs", getPartyTypeColor(party.party_type))}
+                  >
+                    {party.party_type === "plaintiff"
+                      ? "원고"
+                      : party.party_type === "defendant"
+                      ? "피고"
+                      : party.party_type === "creditor"
+                      ? "채권자"
+                      : party.party_type === "debtor"
+                      ? "채무자"
+                      : party.party_type === "applicant"
+                      ? "신청인"
+                      : party.party_type === "respondent"
+                      ? "피신청인"
+                      : party.party_type}
+                  </Badge>
+                  <span className="font-medium truncate">{party.name || party.company_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">활동 유형</label>
             <Select value={formData.activity_type} onValueChange={handleTypeChange}>
@@ -816,12 +912,17 @@ export default function RecoveryActivityModal({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               취소
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "저장 중..." : "저장"}
+              {isSubmitting ? "처리 중..." : isEditing ? "수정" : "추가"}
             </Button>
           </DialogFooter>
         </form>

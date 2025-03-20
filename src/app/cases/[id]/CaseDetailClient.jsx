@@ -424,7 +424,7 @@ function CaseDetailContent({ id }) {
         </TabsContent>
 
         <TabsContent value="activities">
-          <RecoveryActivities caseId={id} />
+          <RecoveryActivities caseId={id} parties={parties} />
         </TabsContent>
 
         <TabsContent value="documents">

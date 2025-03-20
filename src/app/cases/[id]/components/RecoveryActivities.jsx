@@ -75,7 +75,7 @@ import Link from "next/link";
 // 통합된 모달 컴포넌트 가져오기
 import { RecoveryActivityModal } from "./modals";
 
-export default function RecoveryActivities({ caseId, limit, isDashboard = false }) {
+export default function RecoveryActivities({ caseId, limit, isDashboard = false, parties }) {
   const router = useRouter();
   const { user } = useUser();
 
@@ -454,6 +454,22 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
     );
   };
 
+  // 당사자 유형에 따른 색상 반환 함수 추가
+  const getPartyTypeColor = (type) => {
+    switch (type) {
+      case "plaintiff":
+      case "creditor":
+      case "applicant":
+        return "text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800";
+      case "defendant":
+      case "debtor":
+      case "respondent":
+        return "text-red-600 dark:text-red-400 border-red-200 dark:border-red-800";
+      default:
+        return "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800";
+    }
+  };
+
   return (
     <Card className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
       {!isDashboard && (
@@ -474,6 +490,7 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
                   onSuccess={fetchActivities}
                   caseId={caseId}
                   user={user}
+                  parties={parties}
                   activity={currentActivity}
                   isEditing={isEditing}
                 />
@@ -482,38 +499,7 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false 
           </div>
         </CardHeader>
       )}
-      <CardContent className={isDashboard ? "pt-4" : ""}>
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">전체</TabsTrigger>
-            <TabsTrigger value="payment" className="flex items-center gap-1">
-              <CircleDollarSign className="h-4 w-4" />
-              납부
-            </TabsTrigger>
-            <TabsTrigger value="call" className="flex items-center gap-1">
-              <Phone className="h-4 w-4" />
-              전화
-            </TabsTrigger>
-            <TabsTrigger value="letter" className="flex items-center gap-1">
-              <FileText className="h-4 w-4" />
-              통지서
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="mt-4">
-            {renderTimeline()}
-          </TabsContent>
-          <TabsContent value="payment" className="mt-4">
-            {renderTimeline()}
-          </TabsContent>
-          <TabsContent value="call" className="mt-4">
-            {renderTimeline()}
-          </TabsContent>
-          <TabsContent value="letter" className="mt-4">
-            {renderTimeline()}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+      <CardContent className={isDashboard ? "pt-4" : ""}>{renderTimeline()}</CardContent>
     </Card>
   );
 }

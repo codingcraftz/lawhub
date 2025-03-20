@@ -1293,7 +1293,7 @@ export default function CasePage() {
                     </TabsContent>
 
                     <TabsContent value="recovery" className="mt-0">
-                      <RecoveryActivities caseId={caseId} />
+                      <RecoveryActivities caseId={caseId} parties={parties} />
                     </TabsContent>
                   </div>
                 </Tabs>

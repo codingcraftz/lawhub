@@ -45,6 +45,8 @@ import {
   Clock,
   Mail,
   Phone,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 
 // 차트 컴포넌트는 recharts에서 가져오기
@@ -324,18 +326,21 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
             </div>
           ) : (
             <div className="divide-y">
-              {displayNotifications.slice(0, 3).map((notification) => (
+              {displayNotifications.slice(0, 5).map((notification) => (
                 <div
                   key={notification.id}
                   className={cn(
-                    "p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer",
-                    !notification.is_read && "bg-blue-50/50 dark:bg-blue-900/10"
+                    "p-3 transition-colors",
+                    !notification.is_read
+                      ? "bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100/60 dark:hover:bg-blue-900/30"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   )}
-                  onClick={() => router.push(`/cases/${notification.case_id}`)}
                 >
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <div className="mt-0.5">
-                      {getNotificationIcon(notification.notification_type)}
+                      <div className="bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-sm">
+                        {getNotificationIcon(notification.notification_type)}
+                      </div>
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
@@ -346,35 +351,107 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
                           )}
                         >
                           {notification.title}
+                          {!notification.is_read && (
+                            <span className="inline-block h-2 w-2 rounded-full bg-blue-500 ml-2"></span>
+                          )}
                         </h4>
-                        {!notification.is_read && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1"></span>
-                        )}
                       </div>
-                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-1">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 mt-1 mb-2">
                         {notification.message}
                       </p>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-[10px] text-gray-500">
+
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[10px] text-gray-500 flex items-center">
+                          <Clock className="h-3 w-3 mr-1 text-gray-400" />
                           {formatDistanceToNow(new Date(notification.created_at), {
                             addSuffix: true,
                             locale: ko,
                           })}
                         </span>
+
+                        <div className="flex gap-1.5">
+                          {/* 안읽은 알림일 경우 읽음 처리 버튼 + 바로가기 버튼 표시 */}
+                          {!notification.is_read && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs px-2.5 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // 로컬 상태 업데이트를 포함한 markAsRead 함수 호출
+                                  const updatedNotifications = filteredNotifications.map((n) =>
+                                    n.id === notification.id ? { ...n, is_read: true } : n
+                                  );
+
+                                  // 상태 업데이트를 위해 supabase 호출
+                                  supabase
+                                    .from("test_case_notifications")
+                                    .update({ is_read: true })
+                                    .eq("id", notification.id)
+                                    .then(() => {
+                                      // 상태 업데이트
+                                      setFilteredNotifications(updatedNotifications);
+                                    });
+                                }}
+                              >
+                                <Check className="h-3.5 w-3.5 mr-1" />
+                                읽음 처리
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="h-7 text-xs px-2.5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  // 읽음 처리 후 해당 사건으로 이동
+                                  supabase
+                                    .from("test_case_notifications")
+                                    .update({ is_read: true })
+                                    .eq("id", notification.id)
+                                    .then(() => {
+                                      router.push(`/cases/${notification.case_id}`);
+                                    });
+                                }}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                                바로가기
+                              </Button>
+                            </>
+                          )}
+
+                          {/* 읽은 알림일 경우 바로가기 버튼만 표시 */}
+                          {notification.is_read && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs px-2.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/cases/${notification.case_id}`);
+                              }}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                              사건 바로가기
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
-              {displayNotifications.length > 3 && (
-                <div className="text-center py-1">
+              {displayNotifications.length > 5 && (
+                <div className="text-center py-3">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[10px] h-6"
+                    className="text-xs h-8 px-4 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
                     onClick={() => document.querySelector('[aria-label="알림"]')?.click()}
                   >
-                    더보기 ({filteredNotifications.length})
+                    <Bell className="h-3.5 w-3.5 mr-1.5" />
+                    모든 알림 보기 ({displayNotifications.length})
                   </Button>
                 </div>
               )}
@@ -1619,18 +1696,21 @@ export default function MyCasesPage() {
                             </div>
                           ) : (
                             <div className="divide-y">
-                              {filteredNotifications.slice(0, 4).map((notification) => (
+                              {filteredNotifications.slice(0, 5).map((notification) => (
                                 <div
                                   key={notification.id}
                                   className={cn(
-                                    "p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer",
-                                    !notification.is_read && "bg-blue-50/50 dark:bg-blue-900/10"
+                                    "p-3 transition-colors",
+                                    !notification.is_read
+                                      ? "bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100/60 dark:hover:bg-blue-900/30"
+                                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                                   )}
-                                  onClick={() => router.push(`/cases/${notification.case_id}`)}
                                 >
-                                  <div className="flex gap-2">
+                                  <div className="flex gap-3">
                                     <div className="mt-0.5">
-                                      {getNotificationIcon(notification.notification_type)}
+                                      <div className="bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-sm">
+                                        {getNotificationIcon(notification.notification_type)}
+                                      </div>
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex justify-between items-start">
@@ -1641,37 +1721,114 @@ export default function MyCasesPage() {
                                           )}
                                         >
                                           {notification.title}
+                                          {!notification.is_read && (
+                                            <span className="inline-block h-2 w-2 rounded-full bg-blue-500 ml-2"></span>
+                                          )}
                                         </h4>
-                                        {!notification.is_read && (
-                                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1"></span>
-                                        )}
                                       </div>
-                                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-1">
+                                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 mt-1 mb-2">
                                         {notification.message}
                                       </p>
-                                      <div className="flex justify-between items-center mt-1">
-                                        <span className="text-[10px] text-gray-500">
+
+                                      <div className="flex items-center justify-between mt-2">
+                                        <span className="text-[10px] text-gray-500 flex items-center">
+                                          <Clock className="h-3 w-3 mr-1 text-gray-400" />
                                           {formatDistanceToNow(new Date(notification.created_at), {
                                             addSuffix: true,
                                             locale: ko,
                                           })}
                                         </span>
+
+                                        <div className="flex gap-1.5">
+                                          {/* 안읽은 알림일 경우 읽음 처리 버튼 + 바로가기 버튼 표시 */}
+                                          {!notification.is_read && (
+                                            <>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-xs px-2.5 border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  // 로컬 상태 업데이트를 포함한 markAsRead 함수 호출
+                                                  const updatedNotifications =
+                                                    filteredNotifications.map((n) =>
+                                                      n.id === notification.id
+                                                        ? { ...n, is_read: true }
+                                                        : n
+                                                    );
+
+                                                  // 상태 업데이트를 위해 supabase 호출
+                                                  supabase
+                                                    .from("test_case_notifications")
+                                                    .update({ is_read: true })
+                                                    .eq("id", notification.id)
+                                                    .then(() => {
+                                                      // 상태 업데이트
+                                                      setFilteredNotifications(
+                                                        updatedNotifications
+                                                      );
+                                                    });
+                                                }}
+                                              >
+                                                <Check className="h-3.5 w-3.5 mr-1" />
+                                                읽음 처리
+                                              </Button>
+                                              <Button
+                                                variant="default"
+                                                size="sm"
+                                                className="h-7 text-xs px-2.5"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+
+                                                  // 읽음 처리 후 해당 사건으로 이동
+                                                  supabase
+                                                    .from("test_case_notifications")
+                                                    .update({ is_read: true })
+                                                    .eq("id", notification.id)
+                                                    .then(() => {
+                                                      router.push(`/cases/${notification.case_id}`);
+                                                    });
+                                                }}
+                                              >
+                                                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                                                바로가기
+                                              </Button>
+                                            </>
+                                          )}
+
+                                          {/* 읽은 알림일 경우 바로가기 버튼만 표시 */}
+                                          {notification.is_read && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 text-xs px-2.5"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/cases/${notification.case_id}`);
+                                              }}
+                                            >
+                                              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                                              사건 바로가기
+                                            </Button>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
                               ))}
-                              {filteredNotifications.length > 4 && (
-                                <div className="text-center py-1">
+                              {filteredNotifications.length > 5 && (
+                                <div className="text-center py-3">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="text-[10px] h-6"
+                                    className="text-xs h-8 px-4 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
                                     onClick={() =>
                                       document.querySelector('[aria-label="알림"]')?.click()
                                     }
                                   >
-                                    더보기 ({filteredNotifications.length})
+                                    <Bell className="h-3.5 w-3.5 mr-1.5" />
+                                    모든 알림 보기 ({filteredNotifications.length})
                                   </Button>
                                 </div>
                               )}
