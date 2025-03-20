@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { format, parseISO } from "date-fns";
@@ -23,6 +23,7 @@ import {
   MailCheck,
   User,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import CaseProgressTimeline from "./components/CaseProgressTimeline";
@@ -30,7 +31,8 @@ import RecoveryActivities from "./components/RecoveryActivities";
 import CaseNotifications from "./components/CaseNotifications";
 import DocumentManager from "./components/DocumentManager";
 
-export default function CaseDetailClient({ id }) {
+// useSearchParams를 사용하는 컴포넌트
+function CaseDetailContent({ id }) {
   const router = useRouter();
   const { user } = useUser();
   const searchParams = useSearchParams();
@@ -434,5 +436,25 @@ export default function CaseDetailClient({ id }) {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Suspense로 감싸서 사용하는 메인 컴포넌트
+export default function CaseDetailClient({ id }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center py-12">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin">
+              <RefreshCw className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">사건 정보 로딩 중...</p>
+          </div>
+        </div>
+      }
+    >
+      <CaseDetailContent id={id} />
+    </Suspense>
   );
 }

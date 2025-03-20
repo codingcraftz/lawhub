@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { format } from "date-fns";
@@ -85,7 +85,8 @@ import { useUser } from "@/contexts/UserContext";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export default function CasesPage() {
+// useSearchParams를 사용하는 부분을 별도 컴포넌트로 분리
+function CasesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
@@ -853,5 +854,25 @@ export default function CasesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// 메인 컴포넌트에서는 Suspense로 감싸서 사용
+export default function CasesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center py-12">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin">
+              <RefreshCw className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">로딩 중...</p>
+          </div>
+        </div>
+      }
+    >
+      <CasesContent />
+    </Suspense>
   );
 }
