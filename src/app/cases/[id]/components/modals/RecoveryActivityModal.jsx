@@ -306,16 +306,20 @@ export default function RecoveryActivityModal({
         activityData.status
       );
 
+      // =======================================================================
+      // 알림 대상자(의뢰인 + 담당자) 수집
+      // =======================================================================
+
       // 모든 의뢰인 정보를 수집하기 위한 작업 배열
       const clientFetchPromises = [];
-      const clientIds = new Set(); // 중복 방지를 위해 Set 사용
+      const userIds = new Set(); // 중복 방지를 위해 Set 사용
 
       // 개인 및 법인/그룹 의뢰인 모두 처리
       if (caseDetails.clients) {
         caseDetails.clients.forEach((client) => {
           if (client.individual_id) {
             // 개인 의뢰인
-            clientIds.add(client.individual_id.id);
+            userIds.add(client.individual_id.id);
           } else if (client.organization_id) {
             // 조직 의뢰인인 경우 조직 멤버 조회 작업 추가
             const promise = supabase
@@ -342,41 +346,55 @@ export default function RecoveryActivityModal({
       orgMembersResults.forEach((members) => {
         members.forEach((member) => {
           if (member.user_id) {
-            clientIds.add(member.user_id);
+            userIds.add(member.user_id);
           }
         });
       });
 
+      // 사건 담당자 조회 및 추가
+      const { data: handlersData, error: handlersError } = await supabase
+        .from("test_case_handlers")
+        .select("user_id")
+        .eq("case_id", caseId);
+
+      if (!handlersError && handlersData) {
+        handlersData.forEach((handler) => {
+          if (handler.user_id) {
+            userIds.add(handler.user_id);
+          }
+        });
+      } else if (handlersError) {
+        console.error("사건 담당자 조회 실패:", handlersError);
+      }
+
       // Set을 배열로 변환
-      const uniqueClientIds = Array.from(clientIds);
+      const uniqueUserIds = Array.from(userIds);
 
-      if (uniqueClientIds.length === 0) return;
+      if (uniqueUserIds.length === 0) return;
 
-      // 각 클라이언트에 대한 알림 생성
-      const notificationPromises = uniqueClientIds.map(async (clientId) => {
+      // 각 사용자에 대한 알림 생성
+      const notificationPromises = uniqueUserIds.map(async (userId) => {
         const notification = {
-          user_id: clientId,
+          user_id: userId,
           case_id: caseId,
           title: title,
           message: message,
           notification_type: "recovery_activity",
           is_read: false,
-          related_entity: "recovery_activity",
-          related_id: activityData.id,
         };
 
         try {
-          const { error } = await supabase.from("test_notifications").insert(notification);
+          const { error } = await supabase.from("test_case_notifications").insert(notification);
 
           if (error) {
-            console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);
-            return { success: false, clientId, error };
+            console.error(`사용자 ${userId}에 대한 알림 생성 실패:`, error);
+            return { success: false, userId, error };
           } else {
-            return { success: true, clientId };
+            return { success: true, userId };
           }
         } catch (err) {
-          console.error(`클라이언트 ${clientId}에 대한 알림 생성 중 예외 발생:`, err);
-          return { success: false, clientId, error: err };
+          console.error(`사용자 ${userId}에 대한 알림 생성 중 예외 발생:`, err);
+          return { success: false, userId, error: err };
         }
       });
 

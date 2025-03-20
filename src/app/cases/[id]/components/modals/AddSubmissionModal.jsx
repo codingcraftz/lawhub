@@ -223,9 +223,13 @@ export default function AddSubmissionModal({
         message,
       });
 
+      // =======================================================================
+      // 알림 대상자(의뢰인 + 담당자) 수집
+      // =======================================================================
+
       // 모든 의뢰인 정보를 수집하기 위한 작업 배열
       const clientFetchPromises = [];
-      const clientIds = new Set(); // 중복 방지를 위해 Set 사용
+      const userIds = new Set(); // 중복 방지를 위해 Set 사용
 
       // 개인 및 법인/그룹 의뢰인 모두 처리
       if (!caseDetails.clients || caseDetails.clients.length === 0) {
@@ -236,7 +240,7 @@ export default function AddSubmissionModal({
       caseDetails.clients.forEach((client) => {
         if (client.individual_id) {
           // 개인 의뢰인
-          clientIds.add(client.individual_id.id);
+          userIds.add(client.individual_id.id);
         } else if (client.organization_id) {
           // 조직 의뢰인인 경우 조직 멤버 조회 작업 추가
           const promise = supabase
@@ -262,54 +266,68 @@ export default function AddSubmissionModal({
       orgMembersResults.forEach((members) => {
         members.forEach((member) => {
           if (member.user_id) {
-            clientIds.add(member.user_id);
+            userIds.add(member.user_id);
           }
         });
       });
 
-      // Set을 배열로 변환
-      const uniqueClientIds = Array.from(clientIds);
+      // 사건 담당자 조회 및 추가
+      const { data: handlersData, error: handlersError } = await supabase
+        .from("test_case_handlers")
+        .select("user_id")
+        .eq("case_id", caseId);
 
-      if (uniqueClientIds.length === 0) {
-        console.warn("알림을 받을 의뢰인이 없습니다.");
+      if (!handlersError && handlersData) {
+        handlersData.forEach((handler) => {
+          if (handler.user_id) {
+            userIds.add(handler.user_id);
+          }
+        });
+      } else if (handlersError) {
+        console.error("사건 담당자 조회 실패:", handlersError);
+      }
+
+      // Set을 배열로 변환
+      const uniqueUserIds = Array.from(userIds);
+
+      if (uniqueUserIds.length === 0) {
+        console.warn("알림을 받을 사용자가 없습니다.");
         return;
       }
 
-      console.log("알림을 받을 의뢰인:", uniqueClientIds);
+      console.log("알림을 받을 사용자:", uniqueUserIds);
 
-      // 각 클라이언트에 대한 알림 생성
-      const notificationPromises = uniqueClientIds.map(async (clientId) => {
-        // 생성된 제출 정보의 ID 가져오기
-        let submissionId = null;
+      // 생성된 제출 정보의 ID 가져오기
+      let submissionId = null;
 
-        if (isEditMode && editingSubmission) {
-          submissionId = editingSubmission.id;
-        } else {
-          // 최근 생성된 제출 정보 가져오기
-          const { data: latestSubmission, error: latestError } = await supabase
-            .from("test_lawsuit_submissions")
-            .select("id")
-            .eq("lawsuit_id", lawsuitId)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
+      if (isEditMode && editingSubmission) {
+        submissionId = editingSubmission.id;
+      } else {
+        // 최근 생성된 제출 정보 가져오기
+        const { data: latestSubmission, error: latestError } = await supabase
+          .from("test_lawsuit_submissions")
+          .select("id")
+          .eq("lawsuit_id", lawsuitId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
 
-          if (latestError) {
-            console.error("최근 생성된 제출 정보 조회 실패:", latestError);
-          } else if (latestSubmission) {
-            submissionId = latestSubmission.id;
-          }
+        if (latestError) {
+          console.error("최근 생성된 제출 정보 조회 실패:", latestError);
+        } else if (latestSubmission) {
+          submissionId = latestSubmission.id;
         }
+      }
 
+      // 각 사용자에 대한 알림 생성
+      const notificationPromises = uniqueUserIds.map(async (userId) => {
         const notification = {
-          user_id: clientId,
+          user_id: userId,
           case_id: caseId,
           title: title,
           message: message,
           notification_type: "lawsuit_update",
           is_read: false,
-          related_entity: "submission",
-          related_id: submissionId,
         };
 
         try {
@@ -318,14 +336,14 @@ export default function AddSubmissionModal({
             .insert(notification);
 
           if (error) {
-            console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);
-            return { success: false, clientId, error };
+            console.error(`사용자 ${userId}에 대한 알림 생성 실패:`, error);
+            return { success: false, userId, error };
           } else {
-            return { success: true, clientId };
+            return { success: true, userId };
           }
         } catch (err) {
-          console.error(`클라이언트 ${clientId}에 대한 알림 생성 중 예외 발생:`, err);
-          return { success: false, clientId, error: err };
+          console.error(`사용자 ${userId}에 대한 알림 생성 중 예외 발생:`, err);
+          return { success: false, userId, error: err };
         }
       });
 

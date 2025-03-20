@@ -318,18 +318,20 @@ export default function AddLawsuitModal({
         return;
       }
 
-      // 클라이언트 ID 수집
+      // =======================================================================
+      // 알림 대상자(의뢰인 + 담당자) 수집
+      // =======================================================================
       console.log("사건 의뢰인 정보:", caseDetails.clients);
 
       // 모든 의뢰인 정보를 수집하기 위한 작업 배열
       const clientFetchPromises = [];
-      const clientIds = new Set(); // 중복 방지를 위해 Set 사용
+      const userIds = new Set(); // 중복 방지를 위해 Set 사용
 
       // 개인 의뢰인과 조직 의뢰인 처리
       caseDetails.clients.forEach((client) => {
         if (client.individual_id) {
           // 개인 의뢰인
-          clientIds.add(client.individual_id.id);
+          userIds.add(client.individual_id.id);
         } else if (client.organization_id) {
           // 조직 의뢰인인 경우 조직 멤버 조회 작업 추가
           const promise = supabase
@@ -355,39 +357,53 @@ export default function AddLawsuitModal({
       orgMembersResults.forEach((members) => {
         members.forEach((member) => {
           if (member.user_id) {
-            clientIds.add(member.user_id);
+            userIds.add(member.user_id);
           }
         });
       });
 
-      // Set을 배열로 변환
-      const uniqueClientIds = Array.from(clientIds);
+      // 사건 담당자 조회 및 추가
+      const { data: handlersData, error: handlersError } = await supabase
+        .from("test_case_handlers")
+        .select("user_id")
+        .eq("case_id", caseId);
 
-      if (uniqueClientIds.length === 0) {
-        console.error("알림 생성 실패: 클라이언트 ID가 없습니다.");
+      if (!handlersError && handlersData) {
+        handlersData.forEach((handler) => {
+          if (handler.user_id) {
+            userIds.add(handler.user_id);
+          }
+        });
+      } else if (handlersError) {
+        console.error("사건 담당자 조회 실패:", handlersError);
+      }
+
+      // Set을 배열로 변환
+      const uniqueUserIds = Array.from(userIds);
+
+      if (uniqueUserIds.length === 0) {
+        console.error("알림 생성 실패: 알림 수신자가 없습니다.");
         return;
       }
 
-      console.log("알림 생성 대상 clientIds:", uniqueClientIds);
+      console.log("알림 생성 대상 사용자:", uniqueUserIds);
       console.log("알림 생성 데이터:", {
         title,
         message,
-        clientCount: uniqueClientIds.length,
+        userCount: uniqueUserIds.length,
         caseId,
         lawsuitId: lawsuitData.id,
       });
 
-      // 각 클라이언트에 대한 알림 생성
-      const notificationPromises = uniqueClientIds.map(async (clientId) => {
+      // 각 사용자에 대한 알림 생성
+      const notificationPromises = uniqueUserIds.map(async (userId) => {
         const notification = {
-          user_id: clientId,
+          user_id: userId,
           case_id: caseId,
           title: title,
           message: message,
           notification_type: "lawsuit",
           is_read: false,
-          related_entity: "lawsuit",
-          related_id: lawsuitData.id,
         };
 
         try {
@@ -396,22 +412,22 @@ export default function AddLawsuitModal({
             .insert(notification);
 
           if (error) {
-            console.error(`클라이언트 ${clientId}에 대한 알림 생성 실패:`, error);
-            return { success: false, clientId, error };
+            console.error(`사용자 ${userId}에 대한 알림 생성 실패:`, error);
+            return { success: false, userId, error };
           } else {
-            console.log(`클라이언트 ${clientId}에 대한 알림 생성 성공`);
-            return { success: true, clientId };
+            console.log(`사용자 ${userId}에 대한 알림 생성 성공`);
+            return { success: true, userId };
           }
         } catch (err) {
-          console.error(`클라이언트 ${clientId}에 대한 알림 생성 중 예외 발생:`, err);
-          return { success: false, clientId, error: err };
+          console.error(`사용자 ${userId}에 대한 알림 생성 중 예외 발생:`, err);
+          return { success: false, userId, error: err };
         }
       });
 
       const notificationResults = await Promise.all(notificationPromises);
       const successCount = notificationResults.filter((r) => r.success).length;
 
-      console.log(`알림 생성 결과: ${successCount}/${uniqueClientIds.length} 성공`);
+      console.log(`알림 생성 결과: ${successCount}/${uniqueUserIds.length} 성공`);
     } catch (error) {
       console.error("알림 생성 중 오류 발생:", error);
     }
