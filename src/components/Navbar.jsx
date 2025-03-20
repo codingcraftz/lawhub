@@ -339,7 +339,7 @@ export default function Navbar() {
                 </Link>
 
                 {(isAdmin() || isStaff()) && (
-                  <Link href="/cases" onClick={closeMenu}>
+                  <Link href="/clients" onClick={closeMenu}>
                     <Button
                       variant={isActive("/cases") ? "default" : "ghost"}
                       className={cn(
