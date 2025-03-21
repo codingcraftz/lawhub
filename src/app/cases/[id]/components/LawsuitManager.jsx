@@ -489,11 +489,15 @@ export default function LawsuitManager({ caseId }) {
   // 소송이 없는 경우
   if (lawsuits.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-md bg-background/50">
+      <div className="text-center py-12 border rounded-md bg-white/90 dark:bg-slate-900/90 shadow-md backdrop-blur-sm">
         <File className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
         <p className="mb-4 text-muted-foreground">등록된 소송이 없습니다</p>
         {user && (user.role === "admin" || user.role === "staff") && (
-          <Button variant="outline" onClick={handleAddLawsuit}>
+          <Button
+            variant="outline"
+            onClick={handleAddLawsuit}
+            className="bg-white/90 hover:bg-gray-100 dark:bg-slate-800/90 dark:hover:bg-slate-800 border border-gray-200 dark:border-gray-700"
+          >
             <Plus className="mr-2 h-4 w-4" /> 소송 등록하기
           </Button>
         )}
@@ -529,14 +533,27 @@ export default function LawsuitManager({ caseId }) {
 
       <CardContent className="pt-3">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-4 w-full flex flex-wrap h-auto bg-background border">
+          <TabsList className="mb-4 w-full flex flex-wrap h-auto bg-gray-50 dark:bg-gray-900/50 border rounded-lg overflow-hidden">
             {loading ? (
               <div className="w-full p-2">
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : lawsuits.length === 0 ? (
-              <div className="w-full p-4 text-center">
-                <p className="text-muted-foreground">등록된 소송이 없습니다</p>
+              <div className="text-center py-10 border rounded-md bg-white/90 dark:bg-slate-900/90 shadow-sm backdrop-blur-sm">
+                <File className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2 text-foreground">등록된 소송이 없습니다</h3>
+                <p className="text-muted-foreground mb-4">
+                  소송 정보를 추가하면 이 곳에 표시됩니다.
+                </p>
+                {user && (user.role === "admin" || user.role === "staff") && (
+                  <Button
+                    onClick={handleAddLawsuit}
+                    className="bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    소송 등록하기
+                  </Button>
+                )}
               </div>
             ) : (
               lawsuits.map((lawsuit) => {
@@ -553,7 +570,7 @@ export default function LawsuitManager({ caseId }) {
                   <TabsTrigger
                     key={lawsuit.id}
                     value={lawsuit.id}
-                    className="flex-none h-auto py-2 px-4"
+                    className="flex-none h-auto py-2 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
                   >
                     <div className="flex flex-col items-start space-y-1">
                       <div className="flex items-center">
@@ -578,12 +595,15 @@ export default function LawsuitManager({ caseId }) {
               <Skeleton className="h-[150px] w-full" />
             </div>
           ) : lawsuits.length === 0 ? (
-            <div className="text-center py-10 border rounded-md bg-background/50">
+            <div className="text-center py-10 border rounded-md bg-white/90 dark:bg-slate-900/90 shadow-sm backdrop-blur-sm">
               <File className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2 text-foreground">등록된 소송이 없습니다</h3>
               <p className="text-muted-foreground mb-4">소송 정보를 추가하면 이 곳에 표시됩니다.</p>
               {user && (user.role === "admin" || user.role === "staff") && (
-                <Button onClick={handleAddLawsuit}>
+                <Button
+                  onClick={handleAddLawsuit}
+                  className="bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
                   <Plus className="mr-1 h-4 w-4" />
                   소송 등록하기
                 </Button>

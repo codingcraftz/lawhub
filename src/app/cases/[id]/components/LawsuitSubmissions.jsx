@@ -417,7 +417,7 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
 
     if (filteredSubmissions.length === 0) {
       return (
-        <div className="text-center py-10 border rounded-md bg-background/50">
+        <div className="text-center py-10 border rounded-md bg-white/90 dark:bg-slate-900/90 shadow-sm backdrop-blur-sm">
           <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground mb-2">
             {activeTab !== "all"
@@ -554,13 +554,24 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     <Card className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
       <CardContent className="pt-4">
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">전체</TabsTrigger>
-            <TabsTrigger value="송달문서" className="flex items-center gap-1">
+          <TabsList className="bg-gray-50 dark:bg-gray-900/50 border rounded-lg overflow-hidden">
+            <TabsTrigger
+              value="all"
+              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
+            >
+              전체
+            </TabsTrigger>
+            <TabsTrigger
+              value="송달문서"
+              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
+            >
               <ArrowDown className="h-4 w-4" />
               송달문서
             </TabsTrigger>
-            <TabsTrigger value="제출문서" className="flex items-center gap-1">
+            <TabsTrigger
+              value="제출문서"
+              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
+            >
               <ArrowUp className="h-4 w-4" />
               제출문서
             </TabsTrigger>

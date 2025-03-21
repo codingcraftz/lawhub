@@ -101,13 +101,13 @@ export default function PartyDetailModal({
                         )}
                         {party.name && (
                           <p>
-                            <span className="font-medium mr-2">담당자 이름:</span>
+                            <span className="font-medium mr-2">대표자 이름:</span>
                             <span>{party.name}</span>
                           </p>
                         )}
                         {party.position && (
                           <p>
-                            <span className="font-medium mr-2">담당자 직위:</span>
+                            <span className="font-medium mr-2">대표자 직위:</span>
                             <span>{party.position}</span>
                           </p>
                         )}

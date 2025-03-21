@@ -19,7 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MapPin } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Building2, MapPin, User, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import DaumPostcode from "react-daum-postcode";
 
@@ -44,6 +50,7 @@ export default function PartyManageModal({
   editPartyId = null,
   address,
   setAddress,
+  clients = [],
 }) {
   // 주소 검색 관련 상태
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
@@ -166,6 +173,52 @@ export default function PartyManageModal({
     toast.success("주소가 저장되었습니다");
   };
 
+  // 의뢰인 정보로 당사자 정보 복사 핸들러
+  const copyFromClient = (client) => {
+    console.log("복사 대상 의뢰인 데이터:", client);
+
+    // 의뢰인 종류에 따라 당사자 구분 설정
+    const newEntityType = client.client_type === "individual" ? "individual" : "corporation";
+    setEntityType(newEntityType);
+
+    if (client.client_type === "individual") {
+      // 개인 의뢰인 정보
+      setName(client.individual_name || "");
+      setCompanyName("");
+      setCorporateNumber("");
+      setResidentNumber(""); // 주민등록번호 초기화
+      setPosition("");
+    } else {
+      // 법인/단체 의뢰인 정보
+      setCompanyName(client.organization_name || "");
+      setName(client.representative_name || ""); // 대표자명
+      setCorporateNumber(client.business_number || ""); // 사업자등록번호를 법인번호에 설정
+      setPosition(client.representative_position || ""); // 대표자 직위
+    }
+
+    // 공통 정보 설정
+    setPhone(client.phone || "");
+    setEmail(client.email || "");
+    setAddress(client.address || "");
+
+    // 디버깅 정보: 복사 후 상태 확인
+    setTimeout(() => {
+      console.log("복사 후 당사자 데이터:", {
+        entityType: newEntityType,
+        name,
+        companyName,
+        phone,
+        email,
+        address,
+        residentNumber,
+        corporateNumber,
+        position,
+      });
+    }, 100);
+
+    toast.success("의뢰인 정보가 복사되었습니다");
+  };
+
   // 당사자 추가/수정 전 데이터 수집
   const collectAndSaveParty = () => {
     // 당사자 데이터 수집
@@ -181,6 +234,8 @@ export default function PartyManageModal({
       corporateNumber,
       position,
     };
+
+    console.log("저장할 당사자 데이터:", partyData);
 
     // 당사자 추가 또는 수정 처리
     if (editMode && editPartyId) {
@@ -233,6 +288,38 @@ export default function PartyManageModal({
               </Select>
             </div>
           </div>
+
+          {/* 의뢰인 정보 복사 버튼 */}
+          {clients && clients.length > 0 && (
+            <div className="mb-4 w-full">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    의뢰인 정보 복사하기
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {clients.map((client) => (
+                    <DropdownMenuItem
+                      key={client.id}
+                      onClick={() => copyFromClient(client)}
+                      className="cursor-pointer"
+                    >
+                      {client.client_type === "individual" ? (
+                        <User className="h-4 w-4 mr-2 text-blue-500" />
+                      ) : (
+                        <Building2 className="h-4 w-4 mr-2 text-amber-500" />
+                      )}
+                      {client.client_type === "individual"
+                        ? client.individual_name
+                        : client.organization_name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
 
           {/* 개인 정보 */}
           {entityType === "individual" && (
@@ -288,17 +375,17 @@ export default function PartyManageModal({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="name">담당자 이름</Label>
+                  <Label htmlFor="name">대표자 이름</Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="담당자 이름 입력"
+                    placeholder="대표자 이름 입력"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="position">담당자 직위</Label>
+                  <Label htmlFor="position">대표자 직위</Label>
                   <Input
                     id="position"
                     value={position}

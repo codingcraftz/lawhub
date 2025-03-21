@@ -30,6 +30,9 @@ import {
   CalendarRange,
   Building2,
   UserCog,
+  ClipboardList,
+  Folders,
+  UsersRound,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -161,13 +164,13 @@ export default function Navbar() {
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
-                <FileText className="mr-2 h-4 w-4" />
+                <ClipboardList className="mr-2 h-4 w-4" />
                 나의 의뢰
               </Button>
             </Link>
           )}
 
-          {/* 조직 관리 - 관리자만 접근 가능 */}
+          {/* 담당자 관리 - 관리자만 접근 가능 */}
           {isAdmin() && (
             <Link href="/admin/case-handlers">
               <Button
@@ -180,7 +183,7 @@ export default function Navbar() {
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
-                <Building2 className="mr-2 h-4 w-4" />
+                <UserCog className="mr-2 h-4 w-4" />
                 담당자 관리
               </Button>
             </Link>
@@ -338,8 +341,9 @@ export default function Navbar() {
                   </Button>
                 </Link>
 
+                {/* 사건 관리 - 관리자와 직원만 접근 가능 */}
                 {(isAdmin() || isStaff()) && (
-                  <Link href="/clients" onClick={closeMenu}>
+                  <Link href="/cases" onClick={closeMenu}>
                     <Button
                       variant={isActive("/cases") ? "default" : "ghost"}
                       className={cn(
@@ -353,35 +357,7 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                <Link href="/debts" onClick={closeMenu}>
-                  <Button
-                    variant={isActive("/debts") ? "default" : "ghost"}
-                    className={cn(
-                      "w-full justify-start",
-                      isActive("/debts") ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""
-                    )}
-                  >
-                    <Briefcase className="mr-2 h-5 w-5" />
-                    채권 관리
-                  </Button>
-                </Link>
-
-                {/* 모바일 - 나의 의뢰 - 클라이언트만 접근 가능 */}
-                {isClient() && (
-                  <Link href="/my-cases" onClick={closeMenu}>
-                    <Button
-                      variant={isActive("/my-cases") ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start",
-                        isActive("/my-cases") ? "bg-blue-500 hover:bg-blue-600 text-white" : ""
-                      )}
-                    >
-                      <FileText className="mr-2 h-5 w-5" />
-                      나의 의뢰
-                    </Button>
-                  </Link>
-                )}
-
+                {/* 의뢰 관리 - 관리자와 직원만 접근 가능 */}
                 {(isAdmin() || isStaff()) && (
                   <Link href="/clients" onClick={closeMenu}>
                     <Button
@@ -392,7 +368,55 @@ export default function Navbar() {
                       )}
                     >
                       <Users className="mr-2 h-5 w-5" />
-                      의뢰인 관리
+                      의뢰 관리
+                    </Button>
+                  </Link>
+                )}
+
+                {/* 채권 관리는 주석 처리되어 있음 - 주석 유지 */}
+                {/* <Link href="/debts" onClick={closeMenu}>
+                  <Button
+                    variant={isActive("/debts") ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start",
+                      isActive("/debts") ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""
+                    )}
+                  >
+                    <Briefcase className="mr-2 h-5 w-5" />
+                    채권 관리
+                  </Button>
+                </Link> */}
+
+                {/* 모바일 - 나의 의뢰 - 클라이언트 또는 관리자만 접근 가능 */}
+                {(isClient() || isAdmin()) && (
+                  <Link href="/my-cases" onClick={closeMenu}>
+                    <Button
+                      variant={isActive("/my-cases") ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start",
+                        isActive("/my-cases") ? "bg-blue-500 hover:bg-blue-600 text-white" : ""
+                      )}
+                    >
+                      <ClipboardList className="mr-2 h-5 w-5" />
+                      나의 의뢰
+                    </Button>
+                  </Link>
+                )}
+
+                {/* 모바일 - 담당자 관리 - 관리자만 접근 가능 */}
+                {isAdmin() && (
+                  <Link href="/admin/case-handlers" onClick={closeMenu}>
+                    <Button
+                      variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
+                      className={cn(
+                        "w-full justify-start",
+                        isActive("/admin/case-handlers")
+                          ? "bg-teal-500 hover:bg-teal-600 text-white"
+                          : ""
+                      )}
+                    >
+                      <UserCog className="mr-2 h-5 w-5" />
+                      담당자 관리
                     </Button>
                   </Link>
                 )}
@@ -413,7 +437,8 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                <Link href="/calendar" onClick={closeMenu}>
+                {/* 일정 관리 - 주석 처리되어 있음 - 주석 유지 */}
+                {/* <Link href="/calendar" onClick={closeMenu}>
                   <Button
                     variant={isActive("/calendar") ? "default" : "ghost"}
                     className={cn(
@@ -426,7 +451,7 @@ export default function Navbar() {
                     <CalendarRange className="mr-2 h-5 w-5" />
                     일정 관리
                   </Button>
-                </Link>
+                </Link> */}
               </div>
 
               {/* 관리자 메뉴 - 모바일 */}
@@ -436,20 +461,6 @@ export default function Navbar() {
                     관리자 메뉴
                   </h3>
                   <div className="space-y-1">
-                    <Link href="/admin/case-handlers" onClick={closeMenu}>
-                      <Button
-                        variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
-                        className={cn(
-                          "w-full justify-start",
-                          isActive("/admin/case-handlers")
-                            ? "bg-rose-500 hover:bg-rose-600 text-white"
-                            : ""
-                        )}
-                      >
-                        <UserCog className="mr-2 h-5 w-5" />
-                        사건 담당자 관리
-                      </Button>
-                    </Link>
                     <Link href="/admin/users" onClick={closeMenu}>
                       <Button
                         variant={isActive("/admin/users") ? "default" : "ghost"}
@@ -460,7 +471,7 @@ export default function Navbar() {
                             : ""
                         )}
                       >
-                        <Users className="mr-2 h-5 w-5" />
+                        <UsersRound className="mr-2 h-5 w-5" />
                         사용자 관리
                       </Button>
                     </Link>

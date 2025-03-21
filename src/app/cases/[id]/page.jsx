@@ -124,13 +124,13 @@ export default function CasePage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [residentNumber, setResidentNumber] = useState("");
+  const [corporateNumber, setCorporateNumber] = useState("");
+  const [position, setPosition] = useState("");
 
   // 당사자 수정 관련 상태 변수
   const [editMode, setEditMode] = useState(false);
   const [editPartyId, setEditPartyId] = useState(null);
-  const [residentNumber, setResidentNumber] = useState("");
-  const [corporateNumber, setCorporateNumber] = useState("");
-  const [position, setPosition] = useState("");
 
   // 알림 개수 관리
   const [notificationCount, setNotificationCount] = useState(0);
@@ -178,8 +178,17 @@ export default function CasePage() {
         .select(
           `
           *,
-          individual_id(id, name),
-          organization_id(id, name, representative_name)
+          individual_id(id, name, email, phone_number),
+          organization_id(
+            id, 
+            name, 
+            representative_name, 
+            representative_position, 
+            business_number, 
+            phone, 
+            email, 
+            address
+          )
         `
         )
         .eq("case_id", caseId);
@@ -204,12 +213,19 @@ export default function CasePage() {
 
       // 의뢰인 정보 가공
       const processedClients = clientsData.map((client) => {
+        console.log("원본 의뢰인 데이터:", client);
+
         return {
           ...client,
           client_type: client.individual_id ? "individual" : "organization",
           individual_name: client.individual_id?.name,
           organization_name: client.organization_id?.name,
           representative_name: client.organization_id?.representative_name,
+          representative_position: client.organization_id?.representative_position,
+          business_number: client.organization_id?.business_number,
+          phone: client.individual_id?.phone_number || client.organization_id?.phone || "",
+          email: client.individual_id?.email || client.organization_id?.email || "",
+          address: client.organization_id?.address || "",
         };
       });
 
@@ -243,8 +259,11 @@ export default function CasePage() {
       setClients(processedClients || []);
     } catch (error) {
       console.error("케이스 정보 가져오기 실패:", error);
+      console.error("오류 상세 정보:", JSON.stringify(error, null, 2));
+      console.error("오류 stack:", error.stack);
+
       toast.error("케이스 정보 가져오기 실패", {
-        description: error.message,
+        description: error.message || "알 수 없는 오류가 발생했습니다",
       });
     } finally {
       setLoading(false);
@@ -773,6 +792,19 @@ export default function CasePage() {
         position,
       } = partyData;
 
+      console.log("당사자 저장 데이터:", {
+        partyType,
+        entityType,
+        name,
+        companyName,
+        phone,
+        email,
+        address,
+        residentNumber,
+        corporateNumber,
+        position,
+      });
+
       // 필수 필드 검증
       if (!partyType) {
         toast.error("당사자 유형을 선택해주세요.");
@@ -827,6 +859,8 @@ export default function CasePage() {
         return;
       }
 
+      console.log("저장된 당사자:", newParty);
+
       // 성공적으로 당사자가 추가되면 목록 새로고침
       fetchCaseDetails();
       setShowPartyModal(false);
@@ -840,11 +874,9 @@ export default function CasePage() {
     }
   };
 
-  // 당사자 폼 상태 초기화 함수
+  // 당사자 추가 후 폼 초기화
   const resetPartyForm = () => {
-    setEditMode(false);
-    setEditPartyId(null);
-    setPartyType("");
+    setPartyType("plaintiff");
     setEntityType("individual");
     setName("");
     setCompanyName("");
@@ -1362,20 +1394,23 @@ export default function CasePage() {
           setName={setName}
           companyName={companyName}
           setCompanyName={setCompanyName}
-          representative={representative}
-          setRepresentative={setRepresentative}
-          businessNumber={businessNumber}
-          setBusinessNumber={setBusinessNumber}
           phone={phone}
           setPhone={setPhone}
           email={email}
           setEmail={setEmail}
           address={address}
           setAddress={setAddress}
+          residentNumber={residentNumber}
+          setResidentNumber={setResidentNumber}
+          corporateNumber={corporateNumber}
+          setCorporateNumber={setCorporateNumber}
+          position={position}
+          setPosition={setPosition}
           handleAddParty={handleAddParty}
           handleEditParty={handleEditParty}
           editMode={editMode}
           editPartyId={editPartyId}
+          clients={clients}
         />
 
         {/* 채권금액 상세보기 모달 */}
