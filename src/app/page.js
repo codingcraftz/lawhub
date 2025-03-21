@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,10 +20,15 @@ import {
   Users,
   ArrowUpRight,
   CalendarRange,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 export default function Home() {
+  const [isCompanyInfoOpen, setIsCompanyInfoOpen] = useState(false);
+
   return (
     <>
       <main className="container mx-auto px-4 py-12">
@@ -37,7 +44,7 @@ export default function Home() {
               소송진행의 시작
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400">
-              로허브는 법무법인과 기업에게 민사소송 및 채권관리를 위한 종합적인 솔루션을 제공합니다.
+              LawHub은 법무법인과 기업에게 민사소송 및 채권관리를 위한 종합적인 솔루션을 제공합니다.
             </p>
             <div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
               <Link href="/login">
@@ -46,15 +53,6 @@ export default function Home() {
                   className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 shadow-md"
                 >
                   시작하기
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-sm"
-                >
-                  문의하기
                 </Button>
               </Link>
             </div>
@@ -74,7 +72,7 @@ export default function Home() {
               주요 기능
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-2xl mx-auto">
-              로허브는 민사소송과 채권관리의 모든 단계를 관리하고 추적할 수 있는 종합 기능을
+              LawHub은 민사소송과 채권관리의 모든 단계를 관리하고 추적할 수 있는 종합 기능을
               제공합니다.
             </p>
           </div>
@@ -223,7 +221,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(109,103,220,0.1),rgba(255,255,255,0))]"></div>
             <div className="relative z-10">
               <h2 className="text-3xl font-bold mb-8 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
-                로허브를 사용하면 얻을 수 있는 혜택
+                LawHub을 사용하면 얻을 수 있는 혜택
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm flex items-start">
@@ -271,24 +269,15 @@ export default function Home() {
             <div className="relative z-10 max-w-2xl mx-auto">
               <h2 className="text-3xl font-bold text-white mb-4">효율적인 사건관리의 시작</h2>
               <p className="text-blue-100 mb-8">
-                지금 로허브에 가입하고 체계적인 민사소송 및 채권관리 시스템을 경험해보세요.
+                지금 LawHub에 가입하고 체계적인 민사소송 및 채권관리 시스템을 경험해보세요.
               </p>
-              <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+              <div className="flex justify-center">
                 <Link href="/login">
                   <Button
                     size="lg"
                     className="w-full sm:w-auto bg-white text-blue-600 hover:bg-gray-100 dark:bg-white dark:text-blue-600 dark:hover:bg-gray-100"
                   >
                     무료로 시작하기
-                  </Button>
-                </Link>
-                <Link href="/contact">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto border-white text-white hover:bg-white/10"
-                  >
-                    문의하기
                   </Button>
                 </Link>
               </div>
@@ -300,30 +289,47 @@ export default function Home() {
       {/* 푸터 */}
       <footer className="bg-gray-100 dark:bg-gray-900 py-12 mt-20">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h3 className="text-xl font-bold">로허브</h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                효율적인 민사소송 및 채권 관리 시스템
-              </p>
-            </div>
-            <div className="flex space-x-8 text-gray-600 dark:text-gray-400">
-              <Link href="/about" className="hover:text-primary">
-                회사 소개
-              </Link>
-              <Link href="/privacy" className="hover:text-primary">
-                개인정보처리방침
-              </Link>
-              <Link href="/terms" className="hover:text-primary">
-                이용약관
-              </Link>
-              <Link href="/contact" className="hover:text-primary">
-                문의하기
-              </Link>
-            </div>
+          <div className="flex flex-col items-center mb-8">
+            <h3 className="text-xl font-bold">LawHub</h3>
+            <p className="text-gray-600 dark:text-gray-400 mt-2 text-center">
+              효율적인 민사소송 및 채권 관리 시스템
+            </p>
           </div>
-          <div className="border-t border-gray-200 dark:border-gray-800 mt-8 pt-8 text-center text-gray-600 dark:text-gray-400">
-            <p>© {new Date().getFullYear()} 로허브. All rights reserved.</p>
+
+          <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-8">
+            <Link href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-primary">
+              개인정보처리방침
+            </Link>
+            <Link href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-primary">
+              이용약관
+            </Link>
+            <button
+              onClick={() => setIsCompanyInfoOpen(!isCompanyInfoOpen)}
+              className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+            >
+              사업자 정보{" "}
+              {isCompanyInfoOpen ? (
+                <ChevronUp className="ml-1 h-4 w-4" />
+              ) : (
+                <ChevronDown className="ml-1 h-4 w-4" />
+              )}
+            </button>
+          </div>
+
+          {isCompanyInfoOpen && (
+            <div className="border-t border-b border-gray-200 dark:border-gray-700 py-4 mb-8">
+              <div className="max-w-lg mx-auto space-y-1 text-sm text-gray-600 dark:text-gray-400 text-center">
+                <p>대표이사: 황현기</p>
+                <p>전화: 010-8315-9644 (대표전화)</p>
+                <p>사업자등록번호: 855-96-01265</p>
+                <p>주소: 서울 특별시 강서구 양천로65길 41-22, 220호(염창동, JK블라썸)</p>
+                <p>이메일: Lawyeroffice29@naver.com</p>
+              </div>
+            </div>
+          )}
+
+          <div className="text-center text-gray-600 dark:text-gray-400 text-sm">
+            <p>© {new Date().getFullYear()} LawHub. All rights reserved.</p>
           </div>
         </div>
       </footer>

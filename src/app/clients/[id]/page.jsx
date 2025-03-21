@@ -8,6 +8,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getStatusById } from "@/utils/constants";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -401,7 +402,6 @@ export default function ClientDetailPage() {
           .select(
             `
             *,
-            status_info:status_id(name, color),
             parties:test_case_parties(
               id,
               party_type,
@@ -418,32 +418,40 @@ export default function ClientDetailPage() {
 
         // 사건 데이터 처리 및 당사자 정보 추가
         const enrichedCases = casesData.map((caseItem) => {
-          // 당사자 정보 처리
-          const parties = caseItem.parties || [];
-          const creditor = parties.find((p) =>
+          // 해당 사건의 모든 당사자
+          const caseParties = caseItem.parties || [];
+
+          // 채권자와 채무자 찾기
+          const creditor = caseParties.find((p) =>
             ["creditor", "plaintiff", "applicant"].includes(p.party_type)
           );
-          const debtor = parties.find((p) =>
+
+          const debtor = caseParties.find((p) =>
             ["debtor", "defendant", "respondent"].includes(p.party_type)
           );
 
-          const creditorName = creditor
-            ? creditor.entity_type === "individual"
-              ? creditor.name
-              : creditor.company_name
-            : null;
-
-          const debtorName = debtor
-            ? debtor.entity_type === "individual"
-              ? debtor.name
-              : debtor.company_name
-            : null;
+          // status_id가 있으면 constants에서 상태 정보 가져오기
+          let statusInfo = { name: "알 수 없음", color: "#999999" };
+          if (caseItem.status_id) {
+            statusInfo = getStatusById(caseItem.status_id);
+          }
 
           return {
             ...caseItem,
-            creditor_name: creditorName,
-            debtor_name: debtorName,
-            debt_category: caseItem.debt_category || "normal",
+            creditor_name: creditor
+              ? creditor.entity_type === "individual"
+                ? creditor.name
+                : creditor.company_name
+              : null,
+            debtor_name: debtor
+              ? debtor.entity_type === "individual"
+                ? debtor.name
+                : debtor.company_name
+              : null,
+            status_info: {
+              name: statusInfo.name,
+              color: statusInfo.color,
+            },
           };
         });
 

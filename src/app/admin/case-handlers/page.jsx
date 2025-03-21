@@ -6,6 +6,7 @@ import { supabase } from "@/utils/supabase";
 import { useUser } from "@/contexts/UserContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getStatusById } from "@/utils/constants";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,8 @@ export default function CaseHandlersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [staffCurrentPage, setStaffCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
@@ -115,132 +118,57 @@ export default function CaseHandlersPage() {
   }, [user, router]);
 
   // 사건 목록 가져오기 - 검색 시에만 호출
-  const fetchCases = async (searchQuery) => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
-      toast.error("검색어는 2글자 이상 입력해주세요.");
-      return;
-    }
-
-    setIsFetchingCases(true);
+  const fetchCases = async () => {
+    setLoading(true);
     try {
-      // 1. 먼저 당사자 이름으로 사건 검색
-      const { data: partiesData, error: partiesError } = await supabase
-        .from("test_case_parties")
-        .select("*, case:case_id(*)")
-        .or(`name.ilike.%${searchQuery}%,company_name.ilike.%${searchQuery}%`)
-        .order("created_at", { ascending: false });
+      console.log("담당자 관리 페이지 - 사건 정보 로딩 중...");
 
-      if (partiesError) throw partiesError;
-
-      // 검색된 사건 ID 추출 (중복 제거)
-      const caseIds = new Set();
-      if (partiesData) {
-        partiesData.forEach((party) => {
-          if (party.case && party.case.id) {
-            caseIds.add(party.case.id);
-          }
-        });
-      }
-
-      // 검색 결과가 없는 경우
-      if (caseIds.size === 0) {
-        setCases([]);
-        setFilteredCases([]);
-        setCurrentPage(1);
-        setIsFetchingCases(false);
-        return;
-      }
-
-      // 2. 검색된 모든 사건 ID에 대한 전체 당사자 정보 가져오기
-      const caseIdsArray = Array.from(caseIds);
-      const { data: allPartiesData, error: allPartiesError } = await supabase
-        .from("test_case_parties")
-        .select("*")
-        .in("case_id", caseIdsArray);
-
-      if (allPartiesError) throw allPartiesError;
-
-      // 3. 사건 정보 가져오기
+      // 모든 사건 가져오기
       const { data: casesData, error: casesError } = await supabase
         .from("test_cases")
-        .select("*, status_info:status_id(*)")
-        .in("id", caseIdsArray)
+        .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (casesError) throw casesError;
 
-      // 4. 이자 정보 가져오기
-      const { data: interestsData, error: interestsError } = await supabase
-        .from("test_case_interests")
-        .select("*")
-        .in("case_id", caseIdsArray);
+      // 담당자 정보 가져오기
+      const { data: handlersData, error: handlersError } = await supabase
+        .from("test_case_handlers")
+        .select("case_id, user_id, user:user_id(id, name, profile_image)");
 
-      if (interestsError) throw interestsError;
+      if (handlersError) throw handlersError;
 
-      // 5. 모든 정보를 결합하여 최종 사건 목록 생성
-      const enrichedCases = casesData.map((caseItem) => {
-        // 해당 사건의 모든 당사자
-        const caseParties = allPartiesData.filter((p) => p.case_id === caseItem.id) || [];
+      // 모든 사건 정보에 담당자 정보와 상태 정보 추가하기
+      const casesWithHandlers = casesData.map((caseItem) => {
+        // 담당자 정보 추가
+        const handlers = handlersData.filter((h) => h.case_id === caseItem.id) || [];
 
-        // 채권자와 채무자 찾기
-        const creditor = caseParties.find((p) =>
-          ["creditor", "plaintiff", "applicant"].includes(p.party_type)
-        );
-
-        const debtor = caseParties.find((p) =>
-          ["debtor", "defendant", "respondent"].includes(p.party_type)
-        );
-
-        // 원금
-        const principal = parseFloat(caseItem.principal_amount || 0);
-
-        // 이자 계산
-        const caseInterests = interestsData
-          ? interestsData.filter((i) => i.case_id === caseItem.id)
-          : [];
-
-        let totalInterest = 0;
-
-        caseInterests.forEach((interest) => {
-          const rate = parseFloat(interest.rate || 0) / 100;
-          totalInterest += principal * rate;
-        });
+        // status_id로 상태 정보 가져오기
+        let statusInfo = { name: "알 수 없음", color: "#999999" };
+        if (caseItem.status_id) {
+          statusInfo = getStatusById(caseItem.status_id);
+        }
 
         return {
           ...caseItem,
-          creditor_name: creditor
-            ? creditor.entity_type === "individual"
-              ? creditor.name
-              : creditor.company_name
-            : null,
-          debtor_name: debtor
-            ? debtor.entity_type === "individual"
-              ? debtor.name
-              : debtor.company_name
-            : null,
-          total_debt: principal + totalInterest,
-          // 검색어와 일치하는 당사자 표시를 위한 플래그
-          search_matched_creditor:
-            creditor &&
-            ((creditor.name && creditor.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-              (creditor.company_name &&
-                creditor.company_name.toLowerCase().includes(searchQuery.toLowerCase()))),
-          search_matched_debtor:
-            debtor &&
-            ((debtor.name && debtor.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-              (debtor.company_name &&
-                debtor.company_name.toLowerCase().includes(searchQuery.toLowerCase()))),
+          handlers: handlers.map((h) => h.user),
+          status_info: {
+            name: statusInfo.name,
+            color: statusInfo.color,
+          },
         };
       });
 
-      setCases(enrichedCases);
-      setFilteredCases(enrichedCases);
-      setCurrentPage(1); // 검색 결과가 변경되면 첫 페이지로 이동
+      setCases(casesWithHandlers);
+      setFilteredCases(casesWithHandlers);
+      setTotalItems(casesWithHandlers.length);
+      setTotalPages(Math.ceil(casesWithHandlers.length / itemsPerPage));
     } catch (error) {
-      console.error("사건 정보 가져오기 실패:", error);
+      console.error("사건 정보 로딩 실패:", error);
       toast.error("사건 정보를 불러오는데 실패했습니다");
     } finally {
-      setIsFetchingCases(false);
+      setLoading(false);
     }
   };
 
@@ -1029,7 +957,7 @@ export default function CaseHandlersPage() {
                         <Button
                           onClick={() => {
                             if (searchTerm.trim().length >= 2) {
-                              fetchCases(searchTerm);
+                              fetchCases();
                               setActiveTab("cases");
                             } else {
                               toast.error("검색어는 2글자 이상 입력해주세요.");
@@ -1300,7 +1228,7 @@ export default function CaseHandlersPage() {
                     <Button
                       onClick={() => {
                         if (searchTerm.trim().length >= 2) {
-                          fetchCases(searchTerm);
+                          fetchCases();
                         } else {
                           toast.error("검색어는 2글자 이상 입력해주세요.");
                         }

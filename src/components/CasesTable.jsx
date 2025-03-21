@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import { supabase } from "@/utils/supabase";
+import { getStatusByValue, getCaseTypeByValue, getDebtCategoryByValue } from "@/utils/constants";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -141,151 +142,106 @@ export function CasesTable({
     setFilteredCases(filtered);
   }, [cases, statusFilter, searchTerm]);
 
-  // 페이지 사이즈 변경 핸들러
-  const handlePageSizeChange = (value) => {
-    // 페이지 사이즈 변경은 상위 컴포넌트로 전달
-    if (onPageSizeChange) {
-      onPageSizeChange(value);
-    } else if (onPageChange) {
-      // 이전 버전 호환성 유지
-      onPageChange(1);
-    }
-  };
-
   // 사건 유형에 따른 배지 색상 및 아이콘
   const getCaseTypeBadge = (type) => {
-    switch (type) {
-      case "civil":
-        return (
-          <Badge className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/50 border border-blue-200 dark:border-blue-800/50">
-            <FileText className="mr-1 h-3 w-3" /> 민사
-          </Badge>
-        );
-      case "payment_order":
-        return (
-          <Badge className="bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-800/50 border border-purple-200 dark:border-purple-800/50">
-            <GanttChartSquare className="mr-1 h-3 w-3" /> 지급명령
-          </Badge>
-        );
-      case "debt":
-        return (
-          <Badge className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-800/50 border border-emerald-200 dark:border-emerald-800/50">
-            <Briefcase className="mr-1 h-3 w-3" /> 채권
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700">
-            {type}
-          </Badge>
-        );
-    }
-  };
-
-  // 상태에 따른 배지 색상
-  const getCaseStatusBadge = (status, color) => {
-    let icon = null;
-    let badgeClass = "";
-
-    if (color) {
+    if (!type) {
       return (
-        <Badge
-          style={{ backgroundColor: color, color: "#fff" }}
-          className="text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1"
-        >
-          {status}
+        <Badge className="border bg-gray-100 text-gray-700 border-gray-200 text-xs whitespace-nowrap flex items-center">
+          <FileText className="mr-1 h-3 w-3" />
+          기타
         </Badge>
       );
     }
 
-    switch (status) {
-      case "in_progress":
-      case "active": // 이전 상태값 호환성 유지
-        icon = <Timer className="mr-1 h-3 w-3" />;
-        badgeClass =
-          "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50";
-        return (
-          <Badge
-            className={`border ${badgeClass} text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1`}
-          >
-            {icon}
-            진행중
-          </Badge>
-        );
-      case "pending":
-        icon = <Hourglass className="mr-1 h-3 w-3" />;
-        badgeClass =
-          "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50";
-        return (
-          <Badge
-            className={`border ${badgeClass} text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1`}
-          >
-            {icon}
-            대기중
-          </Badge>
-        );
-      case "completed":
-      case "closed": // 이전 상태값 호환성 유지
-        icon = <CheckCircle2 className="mr-1 h-3 w-3" />;
-        badgeClass =
-          "bg-green-100 text-green-700 border-green-200 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50";
-        return (
-          <Badge
-            className={`border ${badgeClass} text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1`}
-          >
-            {icon}
-            완료
-          </Badge>
-        );
+    // 타입 정보 가져오기
+    const typeInfo = getCaseTypeByValue(type);
+
+    // 타입별 아이콘 설정
+    let IconComponent = null;
+    switch (type) {
+      case "civil":
+        IconComponent = FileText;
+        break;
+      case "payment_order":
+        IconComponent = GanttChartSquare;
+        break;
+      case "debt":
+        IconComponent = Briefcase;
+        break;
       default:
-        icon = <AlertCircle className="mr-1 h-3 w-3" />;
-        badgeClass =
-          "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
-        return (
-          <Badge
-            className={`border ${badgeClass} text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1`}
-          >
-            {icon}
-            {status}
-          </Badge>
-        );
+        IconComponent = FileText;
+        break;
     }
+
+    return (
+      <Badge
+        className={cn("text-xs whitespace-nowrap flex items-center border", typeInfo.className)}
+      >
+        <IconComponent className="mr-1 h-3 w-3" />
+        {typeInfo.name}
+      </Badge>
+    );
   };
 
-  // 채권 분류 배지 함수 추가
-  const getDebtCategoryBadge = (category) => {
-    switch (category) {
-      case "normal":
-        return (
-          <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50 text-xs whitespace-nowrap">
-            정상채권
-          </Badge>
-        );
-      case "bad":
-        return (
-          <Badge className="bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/50 text-xs whitespace-nowrap">
-            악성채권
-          </Badge>
-        );
-      case "interest":
-        return (
-          <Badge className="bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50 text-xs whitespace-nowrap">
-            관심채권
-          </Badge>
-        );
-      case "special":
-        return (
-          <Badge className="bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800/50 text-xs whitespace-nowrap">
-            특수채권
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50 text-xs whitespace-nowrap">
-            정상채권
-          </Badge>
-        );
+  // 상태에 따른 배지 색상
+  const getCaseStatusBadge = (status) => {
+    // 상태값이 없는 경우 기본값 처리
+    if (!status) {
+      return (
+        <Badge className="border bg-gray-100 text-gray-700 border-gray-200 text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1">
+          <AlertCircle className="mr-1 h-3 w-3" />알 수 없음
+        </Badge>
+      );
     }
+
+    // 상태 정보 가져오기
+    const statusInfo = getStatusByValue(status);
+
+    // 아이콘 컴포넌트 설정
+    let IconComponent = null;
+    switch (statusInfo.icon) {
+      case "Timer":
+        IconComponent = Timer;
+        break;
+      case "Hourglass":
+        IconComponent = Hourglass;
+        break;
+      case "CheckCircle2":
+        IconComponent = CheckCircle2;
+        break;
+      case "AlertCircle":
+      default:
+        IconComponent = AlertCircle;
+        break;
+    }
+
+    return (
+      <Badge
+        className={cn(
+          "text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1 border",
+          statusInfo.className
+        )}
+      >
+        <IconComponent className="mr-1 h-3 w-3" />
+        {statusInfo.name}
+      </Badge>
+    );
+  };
+
+  // 채권 유형에 따른 배지 색상 및 아이콘
+  const getCaseDebtCategory = (category) => {
+    if (!category) {
+      return null;
+    }
+
+    // 채권 카테고리 정보 가져오기
+    const categoryInfo = getDebtCategoryByValue(category);
+
+    return (
+      <Badge className={cn("text-xs whitespace-nowrap border", categoryInfo.className)}>
+        {categoryInfo.name}
+      </Badge>
+    );
   };
 
   // 모달 상태 추가
@@ -486,39 +442,20 @@ export function CasesTable({
             <Table className="w-full">
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <TableHead className="w-[12%] text-center pl-6">상태</TableHead>
-                  <TableHead className="w-[33%] pl-4">당사자</TableHead>
-                  <TableHead className="w-[18%] text-right pr-6">원리금</TableHead>
-                  <TableHead className="hidden sm:table-cell w-[18%] text-right pr-6">
-                    회수금
-                  </TableHead>
-                  <TableHead className="w-[12%] text-center">회수율</TableHead>
-                  <TableHead className="w-[90px] pr-4 text-center">관리</TableHead>
+                  <TableHead className="w-[10%] text-center pl-6">상태</TableHead>
+                  <TableHead className="w-[25%] pl-4">당사자</TableHead>
+                  <TableHead className="w-[15%] text-right">원리금</TableHead>
+                  <TableHead className="hidden sm:table-cell w-[15%] text-right">회수금</TableHead>
+                  <TableHead className="w-[15%] text-center">회수율</TableHead>
+                  <TableHead className="w-[10%] text-center">분류</TableHead>
+                  <TableHead className="w-[5%] text-center">알림</TableHead>
+                  <TableHead className="w-[5%] text-center pr-4">관리</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCases.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-8 text-muted-foreground sm:hidden"
-                    >
-                      {searchTerm ? (
-                        <div className="flex flex-col items-center">
-                          <Search className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                          <p>검색 결과가 없습니다.</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Briefcase className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                          <p>등록된 사건이 없습니다.</p>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-8 text-muted-foreground hidden sm:table-cell"
-                    >
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? (
                         <div className="flex flex-col items-center">
                           <Search className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
@@ -543,7 +480,7 @@ export function CasesTable({
                       >
                         <TableCell className="pl-6 py-3">
                           <div className="flex justify-center">
-                            {getCaseStatusBadge(caseItem.status, caseItem.status_info?.color)}
+                            {getCaseStatusBadge(caseItem.status)}
                           </div>
                         </TableCell>
                         <TableCell className="pl-4 py-3">
@@ -552,11 +489,11 @@ export function CasesTable({
                               <div className="flex items-center">
                                 <Badge
                                   variant="outline"
-                                  className="bg-blue-50 text-blue-600 border-blue-200 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0"
+                                  className="bg-blue-50 text-blue-600 border-blue-200 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
                                 >
                                   채권자
                                 </Badge>
-                                <span className="text-sm truncate max-w-[250px]">
+                                <span className="text-sm truncate max-w-[190px]">
                                   {caseItem.creditor_name || "-"}
                                 </span>
                               </div>
@@ -567,98 +504,139 @@ export function CasesTable({
                                 >
                                   채무자
                                 </Badge>
-                                <span className="text-sm truncate max-w-[250px]">
+                                <span className="text-sm truncate max-w-[190px]">
                                   {caseItem.debtor_name || "-"}
                                 </span>
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap text-right pr-6 py-3">
+                        <TableCell className="whitespace-nowrap text-right py-3">
                           <span className="font-medium text-gray-900 dark:text-gray-100 text-sm md:text-base">
                             {formatCurrency(caseItem.principal_amount)}
                           </span>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell whitespace-nowrap text-right pr-6 py-3">
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap text-right py-3">
                           <span className="font-medium text-gray-700 dark:text-gray-300 text-sm md:text-base">
                             {formatCurrency(caseItem.recovered_amount)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center py-3">
-                          <Badge className="bg-gray-100 text-gray-700 border border-gray-200 text-xs min-w-[55px] flex justify-center mx-auto py-1">
-                            {caseItem.principal_amount && caseItem.recovered_amount
-                              ? Math.round(
-                                  (caseItem.recovered_amount / caseItem.principal_amount) * 100
-                                )
-                              : 0}
-                            %
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right p-0 pr-4 py-3 w-[90px]">
-                          <div className="flex items-center justify-end space-x-2">
-                            {/* 알림 버튼 - 메뉴 바깥에 배치 */}
-                            {getUnreadNotificationCount(caseItem.id) > 0 ? (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => handleNotificationClick(e, caseItem)}
-                                className="h-7 w-7 rounded-full bg-amber-100 hover:bg-amber-200 relative border border-amber-300 animate-pulse"
-                              >
-                                <Bell className="h-4 w-4 text-amber-600" />
-                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-[10px] text-white rounded-full flex items-center justify-center font-bold shadow-sm">
-                                  {getUnreadNotificationCount(caseItem.id)}
-                                </span>
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => handleNotificationClick(e, caseItem)}
-                                className="h-7 w-7 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
-                                title="알림 보기"
-                              >
-                                <Bell className="h-4 w-4" />
-                              </Button>
-                            )}
+                          {(() => {
+                            const recoveryRate =
+                              caseItem.principal_amount && caseItem.recovered_amount
+                                ? Math.round(
+                                    (caseItem.recovered_amount / caseItem.principal_amount) * 100
+                                  )
+                                : 0;
 
-                            {/* 기존 메뉴 버튼 */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="h-7 w-7 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                                  title="더 보기"
+                            // 회수율에 따른 배지 색상 결정
+                            let badgeClassName =
+                              "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+                            let progressColor = "bg-gray-200 dark:bg-gray-700";
+
+                            if (recoveryRate > 0) {
+                              badgeClassName =
+                                "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
+                              progressColor = "bg-blue-500 dark:bg-blue-600";
+                            }
+                            if (recoveryRate >= 50) {
+                              badgeClassName =
+                                "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
+                              progressColor = "bg-amber-500 dark:bg-amber-600";
+                            }
+                            if (recoveryRate >= 80) {
+                              badgeClassName =
+                                "bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
+                              progressColor = "bg-green-500 dark:bg-green-600";
+                            }
+
+                            return (
+                              <div className="flex flex-col items-center">
+                                <Badge
+                                  className={`${badgeClassName} text-xs min-w-[55px] flex justify-center mx-auto py-1 mb-1`}
                                 >
-                                  <MoreHorizontal className="h-4 w-4 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem
-                                  onClick={(e) => handleMenuAction("detail", caseItem, e)}
-                                  className="cursor-pointer"
-                                >
-                                  <ExternalLink className="h-4 w-4 mr-2 text-blue-500" />
-                                  <span>상세페이지 이동</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => handleMenuAction("lawsuit", caseItem, e)}
-                                  className="cursor-pointer"
-                                >
-                                  <Scale className="h-4 w-4 mr-2 text-indigo-500" />
-                                  <span>소송정보 보기</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => handleMenuAction("recovery", caseItem, e)}
-                                  className="cursor-pointer"
-                                >
-                                  <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-500" />
-                                  <span>채권정보 보기</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                                  {recoveryRate}%
+                                </Badge>
+                                <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5">
+                                  <div
+                                    className={`h-1.5 rounded-full ${progressColor}`}
+                                    style={{ width: `${recoveryRate}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-center py-3">
+                          {/* 채권 유형 표시 */}
+                          {caseItem.case_type === "debt" &&
+                            getCaseDebtCategory(caseItem.debt_category)}
+                        </TableCell>
+                        <TableCell className="text-center py-3">
+                          {/* 알림 버튼 */}
+                          {getUnreadNotificationCount(caseItem.id) > 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleNotificationClick(e, caseItem)}
+                              className="h-7 w-7 rounded-full bg-amber-100 hover:bg-amber-200 relative border border-amber-300 animate-pulse"
+                            >
+                              <Bell className="h-4 w-4 text-amber-600" />
+                              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-[10px] text-white rounded-full flex items-center justify-center font-bold shadow-sm">
+                                {getUnreadNotificationCount(caseItem.id)}
+                              </span>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleNotificationClick(e, caseItem)}
+                              className="h-7 w-7 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
+                              title="알림 보기"
+                            >
+                              <Bell className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center py-3 pr-4">
+                          {/* 기존 메뉴 버튼 */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-7 w-7 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                                title="더 보기"
+                              >
+                                <MoreHorizontal className="h-4 w-4 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem
+                                onClick={(e) => handleMenuAction("detail", caseItem, e)}
+                                className="cursor-pointer"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2 text-blue-500" />
+                                <span>상세페이지 이동</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => handleMenuAction("lawsuit", caseItem, e)}
+                                className="cursor-pointer"
+                              >
+                                <Scale className="h-4 w-4 mr-2 text-indigo-500" />
+                                <span>소송정보 보기</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => handleMenuAction("recovery", caseItem, e)}
+                                className="cursor-pointer"
+                              >
+                                <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-500" />
+                                <span>채권정보 보기</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -678,18 +656,6 @@ export function CasesTable({
               </div>
 
               <div className="flex items-center gap-4 w-full sm:w-auto">
-                <Select value={casesPerPage.toString()} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-[110px] h-8">
-                    <SelectValue placeholder="페이지 크기" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10개씩 보기</SelectItem>
-                    <SelectItem value="20">20개씩 보기</SelectItem>
-                    <SelectItem value="30">30개씩 보기</SelectItem>
-                    <SelectItem value="50">50개씩 보기</SelectItem>
-                  </SelectContent>
-                </Select>
-
                 <div className="flex justify-center flex-1 sm:flex-none">
                   <div className="flex gap-1">
                     <Button

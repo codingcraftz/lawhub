@@ -41,13 +41,8 @@ export default function StatusChangeModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">진행중</SelectItem>
-                <SelectItem value="pending">대기중</SelectItem>
-                <SelectItem value="filed">접수완료</SelectItem>
                 <SelectItem value="in_progress">진행중</SelectItem>
-                <SelectItem value="decision">결정</SelectItem>
                 <SelectItem value="completed">완료</SelectItem>
-                <SelectItem value="appeal">항소</SelectItem>
-                <SelectItem value="closed">종결</SelectItem>
               </SelectContent>
             </Select>
           </div>

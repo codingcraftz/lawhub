@@ -64,6 +64,7 @@ import {
   ScrollThumb,
 } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getStatusById } from "@/utils/constants";
 
 import CaseProgressTimeline from "./components/CaseProgressTimeline";
 import RecoveryActivities from "./components/RecoveryActivities";
@@ -138,14 +139,30 @@ export default function CasePage() {
   const fetchCaseDetails = async () => {
     setLoading(true);
     try {
-      // 기본 정보 가져오기
-      const { data: caseData, error: caseError } = await supabase
+      // 사건 정보 및 관련 데이터 가져오기
+      const { data, error } = await supabase
         .from("test_cases")
-        .select("*, status_info:status_id(name, color)")
+        .select("*")
         .eq("id", caseId)
         .single();
 
-      if (caseError) throw caseError;
+      if (error) throw error;
+
+      // 사건 정보가 없는 경우
+      if (!data) {
+        toast.error("사건 정보를 찾을 수 없습니다");
+        router.push("/cases");
+        return;
+      }
+
+      // status_id가 있으면 constants에서 상태 정보 가져오기
+      if (data.status_id) {
+        const statusInfo = getStatusById(data.status_id);
+        data.status_info = {
+          name: statusInfo.name,
+          color: statusInfo.color,
+        };
+      }
 
       // 당사자 정보 가져오기
       const { data: partiesData, error: partiesError } = await supabase
@@ -199,17 +216,12 @@ export default function CasePage() {
       // 이자 정보 처리 - 사용자 화면에 표시할 이자 금액 계산 추가
       const processedInterests = interestsData.map((interest) => {
         let amount = 0;
-        if (
-          interest.start_date &&
-          interest.end_date &&
-          interest.rate &&
-          caseData.principal_amount
-        ) {
+        if (interest.start_date && interest.end_date && interest.rate && data.principal_amount) {
           const days = differenceInDays(new Date(interest.end_date), new Date(interest.start_date));
           if (days > 0) {
             // 일할 계산: 원금 * 이자율 * (일수 / 365)
             amount = Math.round(
-              Number(caseData.principal_amount) * (Number(interest.rate) / 100) * (days / 365)
+              Number(data.principal_amount) * (Number(interest.rate) / 100) * (days / 365)
             );
           }
         }
@@ -221,7 +233,7 @@ export default function CasePage() {
 
       // caseData에 이자와 비용 정보 포함
       const enrichedCaseData = {
-        ...caseData,
+        ...data,
         interests: processedInterests || [],
         expenses: expensesData || [],
       };
@@ -1058,22 +1070,12 @@ export default function CasePage() {
                         getStatusColor(caseData.status)
                       )}
                     >
-                      {caseData.status === "active"
+                      {caseData.status === "in_progress"
                         ? "진행중"
-                        : caseData.status === "closed"
-                        ? "종결"
                         : caseData.status === "pending"
                         ? "대기중"
-                        : caseData.status === "filed"
-                        ? "접수완료"
-                        : caseData.status === "in_progress"
-                        ? "진행중"
-                        : caseData.status === "decision"
-                        ? "결정"
                         : caseData.status === "completed"
                         ? "완료"
-                        : caseData.status === "appeal"
-                        ? "항소"
                         : caseData.status || "미정"}
                     </Badge>
                   )}

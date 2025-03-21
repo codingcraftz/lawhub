@@ -47,17 +47,17 @@
 
 ## 사건 테이블 (test_cases)
 
-| 컬럼명           | 데이터 타입              | 설명                                                 |
-| ---------------- | ------------------------ | ---------------------------------------------------- |
-| id               | uuid                     | 사건 고유 식별자                                     |
-| case_type        | character varying        | 사건 유형 (civil, debt_collection 등)                |
-| status           | character varying        | 상태 (pending, in_progress, completed, cancelled 등) |
-| filing_date      | date                     | 접수일                                               |
-| principal_amount | numeric                  | 청구 금액                                            |
-| created_at       | timestamp with time zone | 생성 시간                                            |
-| updated_at       | timestamp with time zone | 수정 시간                                            |
-| status_id        | uuid                     | 상태 ID (외래키, test_case_statuses 테이블)          |
-| debt_category    | text                     | 채권 분류 (normal, bad, interest, special 등)        |
+| 컬럼명           | 데이터 타입              | 설명                                                  |
+| ---------------- | ------------------------ | ----------------------------------------------------- |
+| id               | uuid                     | 사건 고유 식별자                                      |
+| case_type        | character varying        | 사건 유형 (civil, debt_collection 등)                 |
+| status           | character varying        | 상태 (pending, in_progress, completed, cancelled 등)  |
+| status_id        | character varying        | 상태 ID (constants.js의 CASE_STATUS에 정의된 값 참조) |
+| filing_date      | date                     | 접수일                                                |
+| principal_amount | numeric                  | 청구 금액                                             |
+| created_at       | timestamp with time zone | 생성 시간                                             |
+| updated_at       | timestamp with time zone | 수정 시간                                             |
+| debt_category    | text                     | 채권 분류 (normal, bad, interest, special 등)         |
 
 ## 사건 당사자 테이블 (test_case_parties)
 

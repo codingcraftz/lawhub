@@ -3,8 +3,8 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import { format, formatDistanceToNow } from "date-fns";
+import ko from "date-fns/locale/ko";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -84,6 +84,7 @@ import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/contexts/UserContext";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { getStatusById } from "@/utils/constants";
 
 // useSearchParams를 사용하는 부분을 별도 컴포넌트로 분리
 function CasesContent() {
@@ -143,7 +144,6 @@ function CasesContent() {
       let query = supabase.from("test_cases").select(
         `
           *,
-          status_info:status_id(name, color),
           clients:test_case_clients(
             id,
             client_type,
@@ -159,8 +159,7 @@ function CasesContent() {
             name,
             company_name
           )
-        `,
-        { count: "exact" }
+        `
       );
 
       // 필터링 적용
@@ -350,44 +349,46 @@ function CasesContent() {
 
   const getCaseStatusBadge = (status, color) => {
     let icon = null;
-    let bgClass = "";
-    let textClass = "";
-    let borderClass = "";
+    let badgeClass = "";
 
+    // color가 있으면 직접 사용
     if (color) {
       return <Badge style={{ backgroundColor: color, color: "#fff" }}>{status}</Badge>;
     }
 
+    // status가 UUID 형태인 경우 constants에서 가져오기
+    if (status && status.length > 10) {
+      const statusInfo = getStatusById(status);
+      return (
+        <Badge style={{ backgroundColor: statusInfo.color, color: "#fff" }}>
+          {statusInfo.name}
+        </Badge>
+      );
+    }
+
+    // 그렇지 않으면 기존 로직 사용
     switch (status) {
       case "in_progress":
       case "active": // 이전 상태값 호환성 유지
         icon = <Timer className="mr-1 h-3 w-3" />;
-        bgClass = "bg-primary/10 hover:bg-primary/20";
-        textClass = "text-primary";
-        borderClass = "border-primary/20";
+        badgeClass = "bg-primary/10 hover:bg-primary/20";
         break;
       case "pending":
         icon = <Hourglass className="mr-1 h-3 w-3" />;
-        bgClass = "bg-warning/10 hover:bg-warning/20";
-        textClass = "text-warning-foreground";
-        borderClass = "border-warning/20";
+        badgeClass = "bg-warning/10 hover:bg-warning/20";
         break;
       case "completed":
       case "closed": // 이전 상태값 호환성 유지
         icon = <CheckCircle2 className="mr-1 h-3 w-3" />;
-        bgClass = "bg-secondary/30 hover:bg-secondary/40";
-        textClass = "text-secondary-foreground";
-        borderClass = "border-secondary/30";
+        badgeClass = "bg-secondary/30 hover:bg-secondary/40";
         break;
       default:
         icon = <AlertCircle className="mr-1 h-3 w-3" />;
-        bgClass = "bg-muted hover:bg-muted/80";
-        textClass = "text-muted-foreground";
-        borderClass = "border-muted";
+        badgeClass = "bg-muted hover:bg-muted/80";
     }
 
     return (
-      <Badge className={`${bgClass} ${textClass} border ${borderClass}`}>
+      <Badge className={`${badgeClass} text-muted-foreground border`}>
         {icon}
         {status === "active" || status === "in_progress"
           ? "진행중"

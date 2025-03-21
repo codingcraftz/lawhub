@@ -1029,8 +1029,7 @@ export default function MyCasesPage() {
           `
           *,
           case:case_id(
-            *,
-            status_info:status_id(name, color)
+            *
           )
         `
         )
@@ -1063,8 +1062,7 @@ export default function MyCasesPage() {
             `
             *,
             case:case_id(
-              *,
-              status_info:status_id(name, color)
+              *
             ),
             organization:organization_id(*)
           `
@@ -1088,14 +1086,12 @@ export default function MyCasesPage() {
 
         if (handlersError) throw handlersError;
 
-        // 담당자로 지정된 사건 ID 목록
         const handledCaseIds = userHandlers.map((h) => h.case_id);
 
-        // 담당 사건 정보 가져오기 (외부 직원은 담당 사건만 접근 가능)
         if (handledCaseIds.length > 0) {
           const { data: handledCasesData, error: handledCasesError } = await supabase
             .from("test_cases")
-            .select("*, status_info:status_id(name, color)")
+            .select("*")
             .in("id", handledCaseIds);
 
           if (handledCasesError) throw handledCasesError;
