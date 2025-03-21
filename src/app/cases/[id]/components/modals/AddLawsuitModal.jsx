@@ -40,12 +40,9 @@ const LAWSUIT_TYPES = [
 ];
 
 const LAWSUIT_STATUS = [
-  { value: "pending", label: "접수 대기" },
-  { value: "filed", label: "접수 완료" },
+  { value: "pending", label: "대기중" },
   { value: "in_progress", label: "진행 중" },
-  { value: "decision", label: "결정/판결" },
   { value: "completed", label: "종결" },
-  { value: "appeal", label: "항소/상고" },
 ];
 
 // 당사자 유형에 따른 한국어 텍스트
@@ -85,14 +82,46 @@ export default function AddLawsuitModal({
   const { user } = useUser();
   const isEditMode = !!editingLawsuit;
 
+  // 디버깅을 위한 로그 추가
+  useEffect(() => {
+    if (isEditMode) {
+      console.log("수정 모드 활성화: editingLawsuit =", editingLawsuit);
+    }
+  }, [editingLawsuit, isEditMode]);
+
   const [formData, setFormData] = useState({
-    lawsuit_type: editingLawsuit?.lawsuit_type || "civil",
-    court_name: editingLawsuit?.court_name || "",
-    case_number: editingLawsuit?.case_number || "",
-    filing_date: editingLawsuit?.filing_date ? new Date(editingLawsuit.filing_date) : new Date(),
-    description: editingLawsuit?.description || "",
-    status: editingLawsuit?.status || "pending",
+    lawsuit_type: "",
+    court_name: "",
+    case_number: "",
+    filing_date: new Date(),
+    description: "",
+    status: "pending",
   });
+
+  // 수정 모드일 때 폼 데이터 초기화
+  useEffect(() => {
+    if (isEditMode && editingLawsuit) {
+      console.log("소송 정보 폼 초기화: 수정 모드", editingLawsuit);
+      setFormData({
+        lawsuit_type: editingLawsuit.lawsuit_type || "civil",
+        court_name: editingLawsuit.court_name || "",
+        case_number: editingLawsuit.case_number || "",
+        filing_date: editingLawsuit.filing_date ? new Date(editingLawsuit.filing_date) : new Date(),
+        description: editingLawsuit.description || "",
+        status: editingLawsuit.status || "pending",
+      });
+    } else {
+      console.log("소송 정보 폼 초기화: 추가 모드");
+      setFormData({
+        lawsuit_type: "civil",
+        court_name: "",
+        case_number: "",
+        filing_date: new Date(),
+        description: "",
+        status: "pending",
+      });
+    }
+  }, [editingLawsuit, isEditMode]);
 
   const [selectedParties, setSelectedParties] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,27 +138,44 @@ export default function AddLawsuitModal({
         // 기존 소송 당사자 정보 불러오기
         const loadPartyDetails = async () => {
           try {
-            const partyIds = editingLawsuit.test_lawsuit_parties.map((lp) => lp.party_id);
+            // 당사자 정보와 party_type 결합 - 당사자 정보가 이미 불러와진 경우 활용
+            if (
+              editingLawsuit.test_lawsuit_parties.length > 0 &&
+              editingLawsuit.test_lawsuit_parties[0].party
+            ) {
+              // 이미 party 정보가 포함된 경우 (fetchLawsuits에서 조인한 경우)
+              const partiesWithType = editingLawsuit.test_lawsuit_parties.map((lawsuitParty) => {
+                return {
+                  ...lawsuitParty.party,
+                  lawsuit_party_type: lawsuitParty.party_type,
+                };
+              });
 
-            const { data, error } = await supabase
-              .from("test_case_parties")
-              .select("*")
-              .in("id", partyIds);
+              setSelectedParties(partiesWithType);
+            } else {
+              // 기존 로직 - party 정보가 없는 경우 별도로 조회
+              const partyIds = editingLawsuit.test_lawsuit_parties.map((lp) => lp.party_id);
 
-            if (error) throw error;
+              const { data, error } = await supabase
+                .from("test_case_parties")
+                .select("*")
+                .in("id", partyIds);
 
-            // 당사자 정보와 party_type 결합
-            const partiesWithType = data.map((party) => {
-              const lawsuitParty = editingLawsuit.test_lawsuit_parties.find(
-                (lp) => lp.party_id === party.id
-              );
-              return {
-                ...party,
-                lawsuit_party_type: lawsuitParty.party_type,
-              };
-            });
+              if (error) throw error;
 
-            setSelectedParties(partiesWithType);
+              // 당사자 정보와 party_type 결합
+              const partiesWithType = data.map((party) => {
+                const lawsuitParty = editingLawsuit.test_lawsuit_parties.find(
+                  (lp) => lp.party_id === party.id
+                );
+                return {
+                  ...party,
+                  lawsuit_party_type: lawsuitParty.party_type,
+                };
+              });
+
+              setSelectedParties(partiesWithType);
+            }
           } catch (error) {
             console.error("소송 당사자 정보 불러오기 실패:", error);
             toast.error("당사자 정보를 불러오는데 실패했습니다");
@@ -439,6 +485,10 @@ export default function AddLawsuitModal({
     setIsSubmitting(true);
 
     try {
+      console.log("소송 저장 시작: 모드 =", isEditMode ? "수정" : "추가");
+      console.log("저장할 소송 데이터: ", formData);
+      console.log("저장할 당사자 정보: ", selectedParties);
+
       // 소송 정보 데이터베이스에 저장
       const newLawsuit = {
         case_id: caseId,
@@ -455,7 +505,7 @@ export default function AddLawsuitModal({
       let oldStatus = null;
 
       if (isEditMode) {
-        console.log("소송 정보 수정 시작");
+        console.log("소송 정보 수정 시작, ID =", editingLawsuit.id);
         // 수정 전 기존 상태 가져오기
         const { data: oldData, error: oldError } = await supabase
           .from("test_case_lawsuits")
@@ -476,14 +526,20 @@ export default function AddLawsuitModal({
 
         if (error) throw error;
         lawsuit = data[0];
+        console.log("소송 정보 업데이트 성공, 업데이트된 데이터:", lawsuit);
 
         // 기존 당사자 연결 삭제
+        console.log("기존 당사자 연결 삭제 시작");
         const { error: deleteError } = await supabase
           .from("test_lawsuit_parties")
           .delete()
           .eq("lawsuit_id", editingLawsuit.id);
 
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error("당사자 연결 삭제 실패:", deleteError);
+          throw deleteError;
+        }
+        console.log("기존 당사자 연결 삭제 성공");
       } else {
         console.log("새 소송 정보 추가 시작");
         // 새 소송 정보 추가
@@ -494,10 +550,12 @@ export default function AddLawsuitModal({
 
         if (error) throw error;
         lawsuit = data[0];
+        console.log("새 소송 정보 추가 성공, 추가된 데이터:", lawsuit);
       }
 
       // 선택된 당사자 연결
       if (selectedParties.length > 0) {
+        console.log("당사자 연결 시작, 연결할 당사자 수:", selectedParties.length);
         const lawsuitParties = selectedParties.map((party) => ({
           lawsuit_id: lawsuit.id,
           party_id: party.id,
@@ -508,7 +566,13 @@ export default function AddLawsuitModal({
           .from("test_lawsuit_parties")
           .insert(lawsuitParties);
 
-        if (partyError) throw partyError;
+        if (partyError) {
+          console.error("당사자 연결 실패:", partyError);
+          throw partyError;
+        }
+        console.log("당사자 연결 성공");
+      } else {
+        console.log("연결할 당사자가 없음");
       }
 
       // 알림 생성
@@ -522,7 +586,7 @@ export default function AddLawsuitModal({
 
       toast.success(isEditMode ? "소송이 수정되었습니다" : "소송이 추가되었습니다");
 
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(lawsuit);
       // 모달 닫기 전에 모든 팝업도 닫기
       setShowPartySelector(false);
       onOpenChange(false);

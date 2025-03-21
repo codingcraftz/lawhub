@@ -34,44 +34,15 @@ import { useUser } from "@/contexts/UserContext";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ScrollArea,
-  ScrollBar,
-  ScrollViewport,
-  ScrollCorner,
-  ScrollThumb,
-} from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getStatusById } from "@/utils/constants";
 
-import CaseProgressTimeline from "./components/CaseProgressTimeline";
 import RecoveryActivities from "./components/RecoveryActivities";
-import CaseNotifications from "./components/CaseNotifications";
 import CaseDashboard from "./components/CaseDashboard";
 import LawsuitManager from "./components/LawsuitManager";
-import CaseDocuments from "./components/CaseDocuments";
 
 // 모달 컴포넌트 import
 import ClientDetailModal from "./components/modals/ClientDetailModal";
@@ -393,14 +364,9 @@ export default function CasePage() {
   // 상태에 따른 배지 색상 매핑
   const getStatusColor = (status) => {
     const statusMap = {
-      active: "bg-blue-500 hover:bg-blue-600",
       pending: "bg-amber-500 hover:bg-amber-600",
-      closed: "bg-gray-500 hover:bg-gray-600",
-      filed: "bg-emerald-500 hover:bg-emerald-600",
       in_progress: "bg-violet-500 hover:bg-violet-600",
-      decision: "bg-sky-500 hover:bg-sky-600",
       completed: "bg-green-500 hover:bg-green-600",
-      appeal: "bg-orange-500 hover:bg-orange-600",
     };
 
     return statusMap[status] || "bg-slate-500 hover:bg-slate-600";

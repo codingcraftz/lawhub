@@ -40,7 +40,7 @@ export default function StatusChangeModal({
                 <SelectValue placeholder="상태 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">진행중</SelectItem>
+                <SelectItem value="pending">대기중</SelectItem>
                 <SelectItem value="in_progress">진행중</SelectItem>
                 <SelectItem value="completed">완료</SelectItem>
               </SelectContent>

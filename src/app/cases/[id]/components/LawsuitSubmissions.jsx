@@ -7,81 +7,35 @@ import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { format, isSameDay, isBefore, isAfter } from "date-fns";
 import { ko } from "date-fns/locale";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
-  RefreshCw,
-  Trash2,
-  File,
   FileText,
   Download,
-  Upload,
   ArrowDown,
   ArrowUp,
   Calendar,
-  Building,
-  User,
-  ChevronDown,
-  ChevronUp,
   Eye,
   Edit,
-  Scale,
-  Gavel,
-  Circle,
-  ArrowRight,
+  List,
+  Trash,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
 
-export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onEdit }) {
-  const router = useRouter();
+export default function CaseTimeline({
+  lawsuit,
+  viewOnly = false,
+  onSuccess,
+  onEdit,
+  onScheduleEdit,
+  onScheduleAdd,
+}) {
   const { user } = useUser();
 
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [fileToUpload, setFileToUpload] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +46,28 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     submission_date: new Date(),
     description: "",
   });
+  const [editingSubmissionId, setEditingSubmissionId] = useState(null);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+
+  // 기일 관련 상태 추가
+  const [schedules, setSchedules] = useState([]);
+  const [scheduleFormData, setScheduleFormData] = useState({
+    title: "",
+    event_type: "", // 사용자 입력값으로 변경
+    event_date: new Date(),
+    location: "",
+    description: "",
+  });
+
+  // 날짜 포맷 함수
+  const formatDate = (date) => {
+    return format(date, "yyyy-MM-dd HH:mm");
+  };
+
+  // 한국어 날짜 포맷 함수
+  const formatDateKorean = (date) => {
+    return format(date, "yyyy년 MM월 dd일", { locale: ko });
+  };
 
   // 문서 유형 관련 상수
   const submissionTypes = [
@@ -118,22 +94,50 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     ],
   };
 
-  // 소송 유형 표시
-  const getLawsuitTypeText = (type) => {
-    const types = {
-      civil: "민사소송",
-      payment_order: "지급명령",
-      property_disclosure: "재산명시",
-      execution: "강제집행",
-    };
-    return types[type] || type;
-  };
-
   useEffect(() => {
     if (user && lawsuit?.id) {
       fetchSubmissions();
+      fetchSchedules(); // 기일 데이터 가져오기
     }
   }, [user, lawsuit]);
+
+  // 기일 추가 이벤트 리스너
+  useEffect(() => {
+    const handleAddScheduleEvent = (e) => {
+      // 상위 컴포넌트에 기일 추가 요청
+      if (onScheduleAdd) {
+        onScheduleAdd();
+      }
+    };
+
+    const element = document.getElementById("timeline-component");
+    if (element) {
+      element.addEventListener("add-schedule", handleAddScheduleEvent);
+
+      return () => {
+        element.removeEventListener("add-schedule", handleAddScheduleEvent);
+      };
+    }
+  }, [onScheduleAdd]);
+
+  // 타임라인 새로고침 이벤트 리스너
+  useEffect(() => {
+    const handleRefreshTimeline = () => {
+      if (lawsuit?.id) {
+        fetchSubmissions();
+        fetchSchedules();
+      }
+    };
+
+    const element = document.getElementById("timeline-component");
+    if (element) {
+      element.addEventListener("refresh-timeline", handleRefreshTimeline);
+
+      return () => {
+        element.removeEventListener("refresh-timeline", handleRefreshTimeline);
+      };
+    }
+  }, [lawsuit]);
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -161,41 +165,21 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     }
   };
 
-  const handleInputChange = (field, value) => {
-    setFormData({
-      ...formData,
-      [field]: value,
-    });
-    // 입력 시 오류 초기화
-    if (formErrors[field]) {
-      setFormErrors({
-        ...formErrors,
-        [field]: null,
-      });
-    }
-  };
+  // 기일 데이터 가져오기
+  const fetchSchedules = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("test_schedules")
+        .select("*")
+        .eq("lawsuit_id", lawsuit.id)
+        .order("event_date", { ascending: false });
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) {
-      setFileToUpload(null);
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("파일 크기 초과", {
-        description: "10MB 이하의 파일만 업로드할 수 있습니다.",
-      });
-      e.target.value = "";
-      return;
-    }
-
-    setFileToUpload(file);
-
-    if (formErrors.file) {
-      setFormErrors({
-        ...formErrors,
-        file: null,
+      if (error) throw error;
+      setSchedules(data || []);
+    } catch (error) {
+      console.error("기일 조회 실패:", error);
+      toast.error("기일 조회 실패", {
+        description: error.message,
       });
     }
   };
@@ -227,70 +211,6 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(filePath);
 
     return urlData.publicUrl;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      toast.error("권한이 없습니다", {
-        description: "관리자 또는 직원만 타임라인을 추가할 수 있습니다",
-      });
-      return;
-    }
-
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-
-    try {
-      let fileUrl = null;
-      if (fileToUpload) {
-        fileUrl = await uploadFile(fileToUpload);
-      }
-
-      const newSubmission = {
-        lawsuit_id: lawsuit.id,
-        submission_type: formData.submission_type,
-        document_type: formData.document_type,
-        submission_date: formData.submission_date.toISOString(),
-        from_entity: formData.submission_type === "송달문서" ? "법원" : "본인",
-        to_entity: formData.submission_type === "송달문서" ? "본인" : "법원",
-        description: formData.description.trim() || null,
-        file_url: fileUrl,
-        created_by: user.id,
-      };
-
-      const { data, error } = await supabase
-        .from("test_lawsuit_submissions")
-        .insert(newSubmission)
-        .select();
-
-      if (error) throw error;
-
-      toast.success("타임라인에 추가되었습니다", {
-        description: "내역이 성공적으로 추가되었습니다.",
-      });
-
-      // 폼 초기화 및 다이얼로그 닫기
-      resetForm();
-      setShowAddModal(false);
-
-      // 성공 콜백 호출
-      if (onSuccess) {
-        onSuccess();
-      }
-
-      // 새로운 송달/제출 내역 목록 가져오기
-      fetchSubmissions();
-    } catch (error) {
-      console.error("타임라인 추가 실패:", error);
-      toast.error("타임라인 추가 실패", {
-        description: error.message,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleDelete = async (submissionId) => {
@@ -350,6 +270,7 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
     });
     setFileToUpload(null);
     setFormErrors({});
+    setEditingSubmissionId(null); // 편집 모드 리셋
   };
 
   const getFilteredSubmissions = () => {
@@ -358,188 +279,419 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
   };
 
   const getSubmissionTypeIcon = (type) => {
-    const submissionType = submissionTypes.find((t) => t.value === type);
-    const Icon = submissionType?.icon || FileText;
-    return <Icon className="h-4 w-4" />;
+    if (type === "송달문서") return <ArrowDown className="h-4 w-4" />;
+    if (type === "제출문서") return <ArrowUp className="h-4 w-4" />;
+    if (type === "기일") return <Calendar className="h-4 w-4" />;
+    return <FileText className="h-4 w-4" />;
   };
 
-  // 타임라인 항목 배경색 설정
-  const getTimelineItemBg = (type) => {
-    if (type === "송달문서")
-      return "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30";
-    return "bg-green-50/40 dark:bg-green-900/10 border-green-100 dark:border-green-800/30";
+  const getSubmissionTypeColor = (type) => {
+    if (type === "송달문서") return "bg-blue-100 dark:bg-blue-900/20";
+    if (type === "제출문서") return "bg-green-100 dark:bg-green-900/20";
+    if (type === "기일") return "bg-amber-100 dark:bg-amber-900/20";
+    return "bg-slate-100 dark:bg-slate-800";
   };
 
-  // 타임라인 항목 아이콘 배경색 설정
-  const getTimelineIconBg = (type) => {
-    if (type === "송달문서") return "bg-blue-500 dark:bg-blue-600";
-    return "bg-green-500 dark:bg-green-600";
+  // 필터링된 일정 얻기
+  const getFilteredSchedules = () => {
+    if (activeTab === "all" || activeTab === "기일") return schedules;
+    return [];
   };
 
-  // 날짜 그룹으로 타임라인 항목 정렬
-  const groupSubmissionsByDate = (submissions) => {
-    const sorted = [...submissions].sort(
-      (a, b) => new Date(b.submission_date) - new Date(a.submission_date)
+  // 타임라인 항목 렌더링
+  const renderTimelineItem = (item) => {
+    const isSchedule = item.hasOwnProperty("event_type");
+    const itemType = isSchedule ? item.event_type : item.submission_type;
+    const submissionIcon = getSubmissionTypeIcon(isSchedule ? "기일" : itemType);
+    const bgColor = getSubmissionTypeColor(isSchedule ? "기일" : itemType);
+    const itemBgClass = getItemBackgroundClass(isSchedule ? "기일" : itemType);
+
+    return (
+      <div
+        key={isSchedule ? `schedule-${item.id}` : `submission-${item.id}`}
+        className={`p-3 my-2 rounded-lg border relative ${itemBgClass}`}
+      >
+        {/* 타임라인 항목 아이콘 */}
+        <div className="absolute -left-[40px] top-4 z-10">
+          <div
+            className={`h-6 w-6 rounded-full ${bgColor} flex items-center justify-center text-white`}
+          >
+            {submissionIcon}
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="flex items-center gap-1 h-6">
+                {submissionIcon}
+                <span>{isSchedule ? item.event_type : itemType}</span>
+              </Badge>
+
+              {isSchedule && (
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(item.event_date), "HH:mm", { locale: ko })}
+                </span>
+              )}
+
+              {!isSchedule && item.document_number && (
+                <Badge variant="outline" className="text-xs">
+                  문서번호: {item.document_number}
+                </Badge>
+              )}
+
+              {isSchedule && item.location && (
+                <span className="text-xs text-muted-foreground">장소: {item.location}</span>
+              )}
+            </div>
+
+            {!isSchedule && (
+              <div className="mt-1 text-sm font-medium">
+                {item.document_type || item.document_name || "문서"}
+              </div>
+            )}
+
+            {item.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.description}</p>
+            )}
+
+            {!isSchedule && item.file_url && (
+              <div className="flex gap-1 mt-2">
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
+                  <a href={item.file_url} target="_blank" rel="noopener noreferrer">
+                    <Eye className="h-3 w-3 mr-1" />
+                    보기
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
+                  <a href={item.file_url} download>
+                    <Download className="h-3 w-3 mr-1" />
+                    다운로드
+                  </a>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {user && (user.role === "admin" || user.role === "staff") && (
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => (isSchedule ? handleEditSchedule(item) : handleEditSubmission(item))}
+              >
+                <Edit className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => (isSchedule ? handleDeleteSchedule(item.id) : handleDelete(item.id))}
+              >
+                <Trash className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
     );
+  };
 
-    const groups = {};
-    sorted.forEach((submission) => {
-      const date = format(new Date(submission.submission_date), "yyyy-MM-dd");
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-      groups[date].push(submission);
-    });
-
-    // 날짜 그룹을 최신 날짜가 먼저 오도록 정렬
-    return Object.entries(groups)
-      .map(([date, items]) => ({
-        date,
-        items,
-      }))
-      .sort((a, b) => new Date(b.date) - new Date(a.date)); // 최신 날짜가 상단에 오도록 정렬
+  // 항목 유형에 따른 배경색 클래스 가져오기
+  const getItemBackgroundClass = (type) => {
+    switch (type) {
+      case "송달문서":
+        return "bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30";
+      case "제출문서":
+        return "bg-green-50/40 dark:bg-green-900/10 border-green-100 dark:border-green-800/30";
+      case "기일":
+        return "bg-amber-50/40 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30";
+      default:
+        return "bg-gray-50/40 dark:bg-gray-900/10 border-gray-100 dark:border-gray-800/30";
+    }
   };
 
   // 타임라인 렌더링
   const renderTimeline = () => {
+    const filteredSchedules = getFilteredSchedules();
     const filteredSubmissions = getFilteredSubmissions();
-    const groupedData = groupSubmissionsByDate(filteredSubmissions);
 
-    if (loading) {
+    if ((filteredSchedules.length === 0 && filteredSubmissions.length === 0) || loading) {
       return (
-        <div className="space-y-4 pt-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[100px] w-full" />
-          ))}
+        <div className="rounded-lg border bg-background/50 p-4 text-center">
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <Calendar className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">등록된 항목이 없습니다</p>
+            {(user?.role === "admin" || user?.role === "staff") && (
+              <div className="flex gap-2 mt-1">
+                <Button
+                  onClick={() => onScheduleAdd(true)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  기일 추가
+                </Button>
+                <Button
+                  onClick={() => onSuccess(true)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  문서 추가
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
 
-    if (filteredSubmissions.length === 0) {
-      return (
-        <div className="text-center py-10 border rounded-md bg-white/90 dark:bg-slate-900/90 shadow-sm backdrop-blur-sm">
-          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-2">
-            {activeTab !== "all"
-              ? `등록된 ${activeTab}가 없습니다`
-              : "등록된 타임라인 항목이 없습니다"}
-          </p>
-        </div>
-      );
-    }
+    // 일정과 문서 합치고 정렬
+    const timelineItems = [...filteredSchedules, ...filteredSubmissions].sort((a, b) => {
+      const dateA = a.hasOwnProperty("event_date")
+        ? new Date(a.event_date)
+        : new Date(a.submission_date);
+      const dateB = b.hasOwnProperty("event_date")
+        ? new Date(b.event_date)
+        : new Date(b.submission_date);
+      return dateB - dateA;
+    });
+
+    // 날짜별로 그룹화
+    const groupedItems = {};
+    timelineItems.forEach((item) => {
+      const date = item.hasOwnProperty("event_date")
+        ? format(new Date(item.event_date), "yyyy-MM-dd")
+        : format(new Date(item.submission_date), "yyyy-MM-dd");
+
+      if (!groupedItems[date]) {
+        groupedItems[date] = [];
+      }
+      groupedItems[date].push(item);
+    });
 
     return (
-      <div className="space-y-8 relative py-2">
-        {/* 타임라인 수직선 */}
-        <div className="absolute top-0 bottom-0 left-[24px] w-[2px] bg-border z-0"></div>
-
-        {groupedData.map((group, groupIndex) => (
-          <div key={group.date} className="mb-6">
-            <div className="flex mb-2 items-center z-10 relative">
-              <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center mr-3 border-2 border-background shadow-sm">
-                <Calendar className="h-5 w-5 text-foreground/70" />
+      <div className="space-y-6">
+        {Object.keys(groupedItems).map((date) => {
+          const formattedDate = formatDateKorean(new Date(date));
+          return (
+            <div key={date} className="relative pb-2">
+              <div className="mb-3 flex items-center">
+                <h3 className="text-sm font-semibold bg-background px-2 py-1 rounded-md border shadow-sm">
+                  {formattedDate}
+                </h3>
               </div>
-              <h3 className="font-medium text-foreground">
-                {format(new Date(group.date), "yyyy년 MM월 dd일", { locale: ko })}
-              </h3>
+              <div className="relative pl-12 border-l-2 border-border ml-3 space-y-1">
+                {groupedItems[date].map((item) => renderTimelineItem(item))}
+              </div>
             </div>
-
-            <div className="space-y-3 ml-14">
-              {group.items.map((item, itemIndex) => (
-                <div
-                  key={item.id}
-                  className={`p-4 rounded-lg border relative ${getTimelineItemBg(
-                    item.submission_type
-                  )}`}
-                >
-                  {/* 타임라인 항목 아이콘 */}
-                  <div className="absolute -left-[40px] top-4 z-10">
-                    <div
-                      className={`h-6 w-6 rounded-full ${getTimelineIconBg(
-                        item.submission_type
-                      )} flex items-center justify-center text-white`}
-                    >
-                      {getSubmissionTypeIcon(item.submission_type)}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap gap-2 items-center mb-1">
-                        <Badge
-                          variant={item.submission_type === "송달문서" ? "outline" : "secondary"}
-                          className="flex items-center gap-1"
-                        >
-                          {getSubmissionTypeIcon(item.submission_type)}
-                          <span>{item.submission_type}</span>
-                        </Badge>
-                        <Badge variant="outline">{item.document_type}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(item.submission_date), "HH:mm", { locale: ko })}
-                        </span>
-                      </div>
-
-                      {item.description && (
-                        <p className="text-sm text-foreground/90 mt-2 rounded">
-                          {item.description}
-                        </p>
-                      )}
-
-                      {item.file_url && (
-                        <a
-                          href={item.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center text-xs gap-1 mt-2 text-blue-600 hover:text-blue-800 rounded w-fit"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          <span>문서 보기</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {user && (user.role === "admin" || user.role === "staff") && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => onEdit && onEdit(item)}
-                        >
-                          <Edit size={16} />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Trash2 size={16} />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>타임라인 항목 삭제</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                이 타임라인 항목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수
-                                없습니다.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>취소</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(item.id)}>
-                                삭제
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
+  };
+
+  // 기일 폼 유효성 검사
+  const validateScheduleForm = () => {
+    const errors = {};
+
+    if (!scheduleFormData.title) errors.title = "제목을 입력해주세요";
+    if (!scheduleFormData.event_type) errors.event_type = "기일 유형을 입력해주세요";
+    if (!scheduleFormData.event_date) errors.event_date = "날짜를 선택해주세요";
+    if (!scheduleFormData.location) errors.location = "장소를 입력해주세요";
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // 문서 수정 핸들러
+  const handleEditSubmission = (submission) => {
+    // 상세 데이터 가져오는 API 호출
+    getSubmissionDetail(submission.id).then((detailData) => {
+      if (!detailData) {
+        console.error("문서 상세 정보를 가져오지 못했습니다.", submission.id);
+        toast.error("문서 정보를 가져오지 못했습니다", {
+          description: "나중에 다시 시도해주세요.",
+        });
+        return;
+      }
+
+      // 인쇄용 상세 데이터 설정
+      onEdit(detailData);
+      setEditingSubmissionId(detailData.id);
+    });
+  };
+
+  // 제출/송달 문서 상세 조회
+  const getSubmissionDetail = async (submissionId) => {
+    try {
+      const { data, error } = await supabase
+        .from("test_lawsuit_submissions")
+        .select(
+          `
+          *,
+          created_by_user:created_by(id, name, email)
+        `
+        )
+        .eq("id", submissionId)
+        .single();
+
+      if (error) {
+        console.error("문서 상세 정보 조회 실패:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("문서 상세 정보 조회 중 오류 발생:", error);
+      return null;
+    }
+  };
+
+  // 기일 수정 처리 함수 추가
+  const handleEditSchedule = (schedule) => {
+    if (!user || (user.role !== "admin" && user.role !== "staff")) {
+      toast.error("권한이 없습니다", {
+        description: "관리자 또는 직원만 기일을 수정할 수 있습니다",
+      });
+      return;
+    }
+
+    if (onScheduleEdit) {
+      // 부모 컴포넌트의 수정 함수 호출
+      onScheduleEdit(schedule);
+    } else {
+      console.error("onScheduleEdit 함수가 없습니다");
+      // 폴백: 직접 모달 처리
+      setScheduleFormData({
+        title: schedule.title,
+        event_type: schedule.event_type,
+        event_date: new Date(schedule.event_date),
+        location: schedule.location || "",
+        description: schedule.description || "",
+      });
+
+      // 편집 모드로 설정하고 모달 열기
+      setEditingScheduleId(schedule.id);
+      onScheduleAdd(true);
+    }
+  };
+
+  // 기일 삭제 처리
+  const handleDeleteSchedule = async (scheduleId) => {
+    if (!user || (user.role !== "admin" && user.role !== "staff")) {
+      toast.error("권한이 없습니다", {
+        description: "관리자 또는 직원만 기일을 삭제할 수 있습니다",
+      });
+      return;
+    }
+
+    try {
+      // 기일 항목 삭제
+      const { error } = await supabase.from("test_schedules").delete().eq("id", scheduleId);
+
+      if (error) throw error;
+
+      toast.success("기일이 삭제되었습니다", {
+        description: "기일이 성공적으로 삭제되었습니다.",
+      });
+
+      // 업데이트된 목록 가져오기
+      fetchSchedules();
+    } catch (error) {
+      console.error("기일 삭제 실패:", error);
+      toast.error("기일 삭제 실패", {
+        description: error.message,
+      });
+    }
+  };
+
+  // 소송의 당사자 정보 가져오기
+  const getLawsuitParties = async (lawsuitId) => {
+    try {
+      console.log("당사자 정보 조회 시작: lawsuitId =", lawsuitId);
+
+      // 소송 당사자 관계 조회
+      const { data: lawsuitParties, error: lawsuitPartiesError } = await supabase
+        .from("test_lawsuit_parties")
+        .select("party_id, party_type")
+        .eq("lawsuit_id", lawsuitId);
+
+      if (lawsuitPartiesError) throw lawsuitPartiesError;
+      if (!lawsuitParties || lawsuitParties.length === 0) {
+        console.log("소송 당사자 관계가 없습니다.");
+        return { creditor: null, debtor: null };
+      }
+
+      console.log("소송 당사자 관계:", lawsuitParties);
+
+      // 당사자 ID 목록 추출
+      const partyIds = lawsuitParties.map((p) => p.party_id);
+      console.log("당사자 ID 목록:", partyIds);
+
+      // 당사자 상세 정보 조회
+      const { data: partiesData, error: partiesError } = await supabase
+        .from("test_case_parties")
+        .select("*")
+        .in("id", partyIds);
+
+      if (partiesError) throw partiesError;
+      console.log("당사자 상세 정보:", partiesData);
+
+      // 당사자 관계와 상세 정보 결합
+      const parties = partiesData.map((party) => {
+        const lawsuitParty = lawsuitParties.find((lp) => lp.party_id === party.id);
+        return {
+          ...party,
+          party_type: lawsuitParty?.party_type,
+        };
+      });
+
+      console.log("결합된 당사자 정보:", parties);
+
+      // 원고/채권자/신청인 및 피고/채무자/피신청인 찾기
+      let creditor = null;
+      let debtor = null;
+
+      parties.forEach((party) => {
+        if (["plaintiff", "creditor", "applicant"].includes(party.party_type)) {
+          creditor = party;
+        } else if (["defendant", "debtor", "respondent"].includes(party.party_type)) {
+          debtor = party;
+        }
+      });
+
+      console.log("찾은 당사자 정보:", { creditor, debtor });
+
+      return { creditor, debtor };
+    } catch (error) {
+      console.error("당사자 정보 조회 실패:", error);
+      return { creditor: null, debtor: null };
+    }
+  };
+
+  // 당사자 유형에 따른 레이블 반환
+  const getPartyTypeLabel = (partyType) => {
+    switch (partyType) {
+      case "plaintiff":
+        return "원고";
+      case "defendant":
+        return "피고";
+      case "creditor":
+        return "채권자";
+      case "debtor":
+        return "채무자";
+      case "applicant":
+        return "신청인";
+      case "respondent":
+        return "피신청인";
+      default:
+        return partyType;
+    }
   };
 
   if (!lawsuit) {
@@ -551,29 +703,40 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
   }
 
   return (
-    <Card className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
+    <Card
+      className="w-full border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm"
+      id="timeline-component"
+    >
       <CardContent className="pt-4">
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-gray-50 dark:bg-gray-900/50 border rounded-lg overflow-hidden">
+          <TabsList className="grid grid-cols-4 w-full bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             <TabsTrigger
               value="all"
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
+              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-md"
             >
-              전체
+              <List className="h-3.5 w-3.5" />
+              <span className="text-xs">전체</span>
             </TabsTrigger>
             <TabsTrigger
               value="송달문서"
-              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
+              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-md"
             >
-              <ArrowDown className="h-4 w-4" />
-              송달문서
+              <ArrowDown className="h-3.5 w-3.5" />
+              <span className="text-xs">송달문서</span>
             </TabsTrigger>
             <TabsTrigger
               value="제출문서"
-              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
+              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-md"
             >
-              <ArrowUp className="h-4 w-4" />
-              제출문서
+              <ArrowUp className="h-3.5 w-3.5" />
+              <span className="text-xs">제출문서</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="기일"
+              className="flex items-center gap-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-md"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="text-xs">기일</span>
             </TabsTrigger>
           </TabsList>
 
@@ -584,6 +747,9 @@ export default function CaseTimeline({ lawsuit, viewOnly = false, onSuccess, onE
             {renderTimeline()}
           </TabsContent>
           <TabsContent value="제출문서" className="mt-4">
+            {renderTimeline()}
+          </TabsContent>
+          <TabsContent value="기일" className="mt-4">
             {renderTimeline()}
           </TabsContent>
         </Tabs>

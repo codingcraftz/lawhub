@@ -21,6 +21,7 @@ import { ko } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/contexts/UserContext";
 
 // 스토리지 버킷 이름을 정의합니다
 const BUCKET_NAME = "case-files";
@@ -41,6 +42,7 @@ export default function AddSubmissionModal({
   lawsuitType,
   editingSubmission = null,
 }) {
+  const { user } = useUser();
   const isEditMode = !!editingSubmission;
   const [formData, setFormData] = useState({
     submission_type: editingSubmission?.submission_type || "송달문서",
@@ -67,7 +69,20 @@ export default function AddSubmissionModal({
   // 모달이 열릴 때 폼 데이터 초기화 및 사건/소송 정보 가져오기
   useEffect(() => {
     if (open) {
-      if (!editingSubmission) {
+      if (isEditMode && editingSubmission) {
+        // 수정 모드인 경우 기존 데이터로 초기화
+        setFormData({
+          submission_type: editingSubmission.submission_type || "송달문서",
+          document_type: editingSubmission.document_type || "",
+          submission_date: editingSubmission.submission_date
+            ? new Date(editingSubmission.submission_date)
+            : new Date(),
+          description: editingSubmission.description || "",
+        });
+        setFileToUpload(null);
+        setFormErrors({});
+      } else {
+        // 추가 모드인 경우 기본값으로 초기화
         setFormData({
           submission_type: "송달문서",
           document_type: "",
@@ -81,7 +96,7 @@ export default function AddSubmissionModal({
       // 사건 및 소송 정보 로드
       fetchCaseAndLawsuitDetails();
     }
-  }, [open, editingSubmission]);
+  }, [open, isEditMode, editingSubmission]);
 
   // 사건 및 소송 정보 가져오기
   const fetchCaseAndLawsuitDetails = async () => {
@@ -166,193 +181,65 @@ export default function AddSubmissionModal({
   const validateForm = () => {
     const errors = {};
 
-    if (!formData.submission_type) errors.submission_type = "유형을 선택해주세요";
-    if (!formData.document_type) errors.document_type = "문서 유형을 입력해주세요";
-    if (!formData.submission_date) errors.submission_date = "송달/제출일을 선택해주세요";
+    // 필수 필드 검증
+    if (!formData.submission_type) {
+      errors.submission_type = "제출 유형을 선택해주세요";
+    }
+
+    if (!formData.document_type) {
+      errors.document_type = "문서 유형을 선택해주세요";
+    }
+
+    if (!formData.submission_date) {
+      errors.submission_date = "제출 날짜를 선택해주세요";
+    }
+
+    // 파일 검증 (수정 모드에서는 파일이 없어도 됨)
+    if (!isEditMode && !fileToUpload && !formData.description) {
+      errors.file = "파일을 업로드하거나 설명을 입력해주세요";
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   // 알림 생성 함수
-  const createNotification = async (actionType) => {
-    if (!caseDetails || !lawsuitDetails) {
-      console.error("사건/소송 정보가 없습니다.", { caseDetails, lawsuitDetails });
-      return;
-    }
-
+  const createNotification = async (action, submission) => {
     try {
-      const LAWSUIT_TYPES = {
-        civil: { label: "민사소송", variant: "default" },
-        payment_order: { label: "지급명령", variant: "secondary" },
-        property_disclosure: { label: "재산명시", variant: "outline" },
-        execution: { label: "강제집행", variant: "destructive" },
-      };
+      // 소송에 관련된 당사자 정보 가져오기
+      const { data: lawsuitData, error: lawsuitError } = await supabase
+        .from("test_lawsuits")
+        .select("case_number, creditor_id, debtor_id")
+        .eq("id", lawsuitId)
+        .single();
 
-      const lawsuitTypeLabel = LAWSUIT_TYPES[lawsuitType]?.label || lawsuitType;
+      if (lawsuitError) throw lawsuitError;
 
-      const creditorsApplicants = parties
-        .filter((party) => ["plaintiff", "creditor", "applicant"].includes(party.party_type))
-        .map((party) => (party.entity_type === "individual" ? party.name : party.company_name));
+      // 알림을 받을 사용자 ID 목록 (양 당사자 + 관리자)
+      const userIds = [lawsuitData.creditor_id, lawsuitData.debtor_id];
 
-      console.log("parties", parties);
+      // 중복 제거 및 현재 사용자 제외
+      const uniqueUserIds = [...new Set(userIds)].filter((id) => id !== user?.id);
 
-      const debtorsRespondents = parties
-        .filter((party) => ["defendant", "debtor", "respondent"].includes(party.party_type))
-        .map((party) => (party.entity_type === "individual" ? party.name : party.company_name));
+      if (uniqueUserIds.length === 0) return;
 
-      // 쉼표로 연결
-      const plaintiffFormatted = creditorsApplicants.join(", ");
-      const defendantFormatted = debtorsRespondents.join(", ");
+      // 알림 내용 설정
+      const actionVerb = action === "create" ? "추가" : "업데이트";
+      const notificationData = uniqueUserIds.map((userId) => ({
+        user_id: userId,
+        title: `문서 ${actionVerb}`,
+        content: `사건 ${lawsuitData.case_number}에 ${submission.document_type} 문서가 ${actionVerb}되었습니다.`,
+        link: `/cases/${caseId}/lawsuit/${lawsuitId}`,
+        read: false,
+        created_at: new Date().toISOString(),
+      }));
 
-      // 원고 & 피고 그룹이 없으면 알림 생성 X
-      if (!plaintiffFormatted || !defendantFormatted) return;
+      // 알림 데이터 저장
+      const { error: notificationError } = await supabase
+        .from("test_notifications")
+        .insert(notificationData);
 
-      // 알림 제목 형식: [타입] 사건번호_원고(피고)
-      let title = `[${lawsuitTypeLabel}] ${lawsuitDetails.case_number}`;
-
-      let message = "";
-      if (formData.submission_type === "송달문서") {
-        message = `${formData.document_type}_${plaintiffFormatted}(${defendantFormatted})을(를) 송달 받았습니다.`;
-      } else {
-        message = `${formData.document_type}_${plaintiffFormatted}(${defendantFormatted})을(를) 제출했습니다.`;
-      }
-
-      console.log("생성할 알림:", {
-        title,
-        message,
-      });
-
-      // =======================================================================
-      // 알림 대상자(의뢰인 + 담당자) 수집
-      // =======================================================================
-
-      // 모든 의뢰인 정보를 수집하기 위한 작업 배열
-      const clientFetchPromises = [];
-      const userIds = new Set(); // 중복 방지를 위해 Set 사용
-
-      // 개인 및 법인/그룹 의뢰인 모두 처리
-      if (!caseDetails.clients || caseDetails.clients.length === 0) {
-        console.warn("의뢰인 정보가 없습니다:", caseDetails);
-        return;
-      }
-
-      caseDetails.clients.forEach((client) => {
-        if (client.individual_id) {
-          // 개인 의뢰인
-          userIds.add(client.individual_id.id);
-        } else if (client.organization_id) {
-          // 조직 의뢰인인 경우 조직 멤버 조회 작업 추가
-          const promise = supabase
-            .from("test_organization_members")
-            .select("user_id")
-            .eq("organization_id", client.organization_id.id)
-            .then(({ data, error }) => {
-              if (error) {
-                console.error(`조직 ${client.organization_id.id} 멤버 조회 실패:`, error);
-                return [];
-              }
-              return data || [];
-            });
-
-          clientFetchPromises.push(promise);
-        }
-      });
-
-      // 모든 조직 멤버 조회 작업 실행
-      const orgMembersResults = await Promise.all(clientFetchPromises);
-
-      // 조직 멤버 ID 추가
-      orgMembersResults.forEach((members) => {
-        members.forEach((member) => {
-          if (member.user_id) {
-            userIds.add(member.user_id);
-          }
-        });
-      });
-
-      // 사건 담당자 조회 및 추가
-      const { data: handlersData, error: handlersError } = await supabase
-        .from("test_case_handlers")
-        .select("user_id")
-        .eq("case_id", caseId);
-
-      if (!handlersError && handlersData) {
-        handlersData.forEach((handler) => {
-          if (handler.user_id) {
-            userIds.add(handler.user_id);
-          }
-        });
-      } else if (handlersError) {
-        console.error("사건 담당자 조회 실패:", handlersError);
-      }
-
-      // Set을 배열로 변환
-      const uniqueUserIds = Array.from(userIds);
-
-      if (uniqueUserIds.length === 0) {
-        console.warn("알림을 받을 사용자가 없습니다.");
-        return;
-      }
-
-      console.log("알림을 받을 사용자:", uniqueUserIds);
-
-      // 생성된 제출 정보의 ID 가져오기
-      let submissionId = null;
-
-      if (isEditMode && editingSubmission) {
-        submissionId = editingSubmission.id;
-      } else {
-        // 최근 생성된 제출 정보 가져오기
-        const { data: latestSubmission, error: latestError } = await supabase
-          .from("test_lawsuit_submissions")
-          .select("id")
-          .eq("lawsuit_id", lawsuitId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (latestError) {
-          console.error("최근 생성된 제출 정보 조회 실패:", latestError);
-        } else if (latestSubmission) {
-          submissionId = latestSubmission.id;
-        }
-      }
-
-      // 각 사용자에 대한 알림 생성
-      const notificationPromises = uniqueUserIds.map(async (userId) => {
-        const notification = {
-          user_id: userId,
-          case_id: caseId,
-          title: title,
-          message: message,
-          notification_type: "lawsuit_update",
-          is_read: false,
-        };
-
-        try {
-          const { data, error } = await supabase
-            .from("test_case_notifications")
-            .insert(notification);
-
-          if (error) {
-            console.error(`사용자 ${userId}에 대한 알림 생성 실패:`, error);
-            return { success: false, userId, error };
-          } else {
-            return { success: true, userId };
-          }
-        } catch (err) {
-          console.error(`사용자 ${userId}에 대한 알림 생성 중 예외 발생:`, err);
-          return { success: false, userId, error: err };
-        }
-      });
-
-      const results = await Promise.all(notificationPromises);
-      console.log("알림 생성 결과:", results);
-
-      // 성공/실패 카운트
-      const successCount = results.filter((r) => r.success).length;
-      console.log(`알림 생성 완료: ${successCount}/${results.length} 성공`);
+      if (notificationError) throw notificationError;
     } catch (error) {
       console.error("알림 생성 실패:", error);
     }
@@ -364,91 +251,108 @@ export default function AddSubmissionModal({
     setIsSubmitting(true);
 
     try {
-      let fileUrl = editingSubmission?.file_url || null;
+      // 기존 파일 URL 유지 또는 null로 설정
+      let fileUrl = isEditMode ? editingSubmission.file_url || null : null;
 
-      // 파일이 있는 경우 업로드
+      // 파일 업로드 처리
       if (fileToUpload) {
-        try {
-          // 파일 이름에 타임스탬프 추가하여 중복 방지
-          const fileExt = fileToUpload.name.split(".").pop();
-          const fileName = `${caseId}/${lawsuitId}/${Math.random()
-            .toString(36)
-            .substring(2)}.${fileExt}`;
-          const filePath = `lawsuit-submissions/${fileName}`;
+        // 파일 이름에 타임스탬프 추가하여 중복 방지
+        const fileExt = fileToUpload.name.split(".").pop();
+        const fileName = `${caseId}/${lawsuitId}/${Math.random()
+          .toString(36)
+          .substring(2)}.${fileExt}`;
+        const filePath = `lawsuit-submissions/${fileName}`;
 
-          const { error: uploadError } = await supabase.storage
-            .from(BUCKET_NAME)
-            .upload(filePath, fileToUpload);
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(filePath, fileToUpload);
 
-          if (uploadError) throw uploadError;
-
-          // 파일 URL 생성
-          const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-          fileUrl = urlData.publicUrl;
-        } catch (uploadError) {
-          console.error("파일 업로드 실패:", uploadError);
-          toast.error("파일 업로드 실패", {
-            description: "내역은 저장되지만, 파일 업로드에 실패했습니다.",
-          });
+        if (uploadError) {
+          console.error("파일 업로드 오류:", uploadError);
+          throw uploadError;
         }
+
+        // 파일 URL 생성
+        const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+        fileUrl = urlData.publicUrl;
       }
 
-      if (isEditMode) {
-        // 수정 모드
-        const { error } = await supabase
+      // 현재 사용자 ID 가져오기
+      const currentUser = user?.id;
+
+      // 데이터 준비
+      const submissionData = {
+        lawsuit_id: lawsuitId,
+        submission_type: formData.submission_type,
+        document_type: formData.document_type,
+        submission_date: formData.submission_date.toISOString().split("T")[0],
+        description: formData.description,
+        file_url: fileUrl,
+      };
+
+      // 수정 모드인지 신규 추가인지 확인
+      if (isEditMode && editingSubmission) {
+        // 기존 데이터와 비교하여 변경점 확인
+        const originalSubmission = editingSubmission;
+        const typeChanged =
+          originalSubmission.submission_type !== submissionData.submission_type ||
+          originalSubmission.document_type !== submissionData.document_type;
+
+        // 파일 URL이 변경되지 않았다면 업데이트 데이터에서 제외
+        if (fileUrl === originalSubmission.file_url) {
+          delete submissionData.file_url;
+        }
+
+        // 문서 업데이트
+        const { data: updatedSubmission, error } = await supabase
           .from("test_lawsuit_submissions")
-          .update({
-            submission_type: formData.submission_type,
-            document_type: formData.document_type,
-            submission_date: formData.submission_date.toISOString().split("T")[0],
-            description: formData.description,
-            file_url: fileUrl,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingSubmission.id);
+          .update(submissionData)
+          .eq("id", editingSubmission.id)
+          .select()
+          .single();
 
-        if (error) throw error;
-
-        toast.success("타임라인 항목이 수정되었습니다");
-
-        // 문서 유형이나 제출 유형이 변경된 경우에만 알림 생성
-        if (
-          formData.submission_type !== editingSubmission.submission_type ||
-          formData.document_type !== editingSubmission.document_type
-        ) {
-          await createNotification("update");
+        if (error) {
+          console.error("문서 업데이트 실패:", error);
+          throw error;
         }
+
+        // 문서 유형이 변경된 경우에만 알림 생성
+        if (typeChanged) {
+          await createNotification("update", updatedSubmission);
+        }
+
+        toast.success("문서가 수정되었습니다");
+
+        if (onSuccess) onSuccess(updatedSubmission);
       } else {
-        // 추가 모드
-        const currentUser = JSON.parse(localStorage.getItem("supabase.auth.token"))?.currentSession
-          ?.user?.id;
+        // 작성자 정보 추가
+        submissionData.created_by = currentUser;
 
-        const { error } = await supabase.from("test_lawsuit_submissions").insert({
-          lawsuit_id: lawsuitId,
-          submission_type: formData.submission_type,
-          document_type: formData.document_type,
-          submission_date: formData.submission_date.toISOString().split("T")[0],
-          description: formData.description.trim() || null,
-          file_url: fileUrl,
-          created_by: currentUser,
-        });
+        // 새 문서 추가
+        const { data: newSubmission, error } = await supabase
+          .from("test_lawsuit_submissions")
+          .insert(submissionData)
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("문서 추가 실패:", error);
+          throw error;
+        }
 
-        toast.success("타임라인 항목이 추가되었습니다");
+        // 새 문서에 대한 알림 생성
+        await createNotification("create", newSubmission);
 
-        // 알림 생성
-        await createNotification("create");
+        toast.success("문서가 추가되었습니다");
+
+        if (onSuccess) onSuccess(newSubmission);
       }
 
-      // 성공 콜백 호출
-      if (onSuccess) onSuccess();
-
-      // 모달 닫기
+      // 모달 닫기 및 상태 초기화
       onOpenChange(false);
     } catch (error) {
-      console.error("타임라인 항목 저장 실패:", error);
-      toast.error("타임라인 항목 저장 실패", {
+      console.error("문서 저장 실패:", error);
+      toast.error(isEditMode ? "문서 수정 실패" : "문서 추가 실패", {
         description: error.message,
       });
     } finally {

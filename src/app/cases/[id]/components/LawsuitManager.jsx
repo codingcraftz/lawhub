@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // 모달 컴포넌트 가져오기
 import AddSubmissionModal from "./modals/AddSubmissionModal";
 import AddLawsuitModal from "./modals/AddLawsuitModal";
+import ScheduleFormModal from "./modals/ScheduleFormModal";
 // CaseTimeline 컴포넌트 가져오기
 import CaseTimeline from "./LawsuitSubmissions";
 
@@ -38,12 +39,9 @@ const LAWSUIT_TYPES = {
 };
 
 const LAWSUIT_STATUS = {
-  pending: { label: "예정", variant: "outline" },
-  filed: { label: "접수", variant: "secondary" },
+  pending: { label: "대기중", variant: "outline" },
   in_progress: { label: "진행", variant: "default" },
-  decision: { label: "결정", variant: "success" },
   completed: { label: "완료", variant: "destructive" },
-  appeal: { label: "항소", variant: "warning" },
 };
 
 const PARTY_ORDER = {
@@ -69,6 +67,9 @@ export default function LawsuitManager({ caseId }) {
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [showAddLawsuitModal, setShowAddLawsuitModal] = useState(false);
   const [editingLawsuit, setEditingLawsuit] = useState(null);
+  // 기일 모달 관련 상태 추가
+  const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
 
   // 스토리지 버킷 이름 정의
   const BUCKET_NAME = "case-files";
@@ -97,7 +98,13 @@ export default function LawsuitManager({ caseId }) {
           test_lawsuit_parties(
             id,
             party_id,
-            party_type
+            party_type,
+            party:party_id(
+              id,
+              name,
+              company_name,
+              entity_type
+            )
           )
         `
         )
@@ -186,6 +193,18 @@ export default function LawsuitManager({ caseId }) {
     setShowAddSubmissionModal(true);
   };
 
+  // 기일 추가 핸들러
+  const handleAddSchedule = () => {
+    setEditingSchedule(null);
+    setShowAddScheduleModal(true);
+  };
+
+  // 기일 편집 핸들러
+  const handleEditSchedule = (schedule) => {
+    setEditingSchedule(schedule);
+    setShowAddScheduleModal(true);
+  };
+
   const getPartyTypeLabel = (partyType) => {
     switch (partyType) {
       case "plaintiff":
@@ -269,83 +288,32 @@ export default function LawsuitManager({ caseId }) {
     }
   };
 
-  const handleDownloadFile = async (fileUrl, fileName) => {
-    try {
-      // fileUrl이 전체 URL인 경우 경로만 추출
-      let filePath = fileUrl;
-      if (fileUrl.startsWith("http")) {
-        // URL에서 파일 경로 추출 (bucket URL 이후의 부분)
-        const match = fileUrl.match(/\/storage\/v1\/object\/public\/case-files\/(.+)/);
-        if (match && match[1]) {
-          filePath = match[1];
-        } else {
-          // URL 형식이 다른 경우 직접 열기
-          window.open(fileUrl, "_blank");
-          return;
-        }
-      }
-
-      console.log("다운로드 시도:", filePath);
-      const { data, error } = await supabase.storage.from(BUCKET_NAME).download(filePath);
-
-      if (error) {
-        console.error("파일 다운로드 오류:", error);
-        // 기존 URL이 다른 버킷(case-documents 또는 lawsuit-documents)을 사용하는 경우 시도
-        if (error.message.includes("does not exist")) {
-          // 이전 버킷들에서 다운로드 시도
-          for (const oldBucket of ["case-documents", "lawsuit-documents"]) {
-            try {
-              console.log(`${oldBucket} 버킷에서 다운로드 시도`);
-              const { data: oldData } = await supabase.storage.from(oldBucket).download(fileUrl);
-
-              if (oldData) {
-                // 파일 다운로드 처리
-                const url = URL.createObjectURL(oldData);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = fileName || fileUrl.split("/").pop();
-                document.body.appendChild(a);
-                a.click();
-                URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                return;
-              }
-            } catch (oldError) {
-              console.log(`${oldBucket} 버킷에서 다운로드 실패:`, oldError);
-            }
-          }
-        }
-
-        throw error;
-      }
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName || filePath.split("/").pop();
-      document.body.appendChild(a);
-      a.click();
-      URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("파일 다운로드 실패:", error);
-      toast.error("파일 다운로드에 실패했습니다", {
-        description: error.message,
-      });
-    }
-  };
-
-  const handleSubmissionSuccess = () => {
+  const handleSubmissionSuccess = (data) => {
     if (activeTab) {
+      // 현재 활성화된 소송의 타임라인 새로고침을 트리거
+      const lawsuit = lawsuits.find((l) => l.id === activeTab);
+      if (lawsuit) {
+        const element = document.getElementById("timeline-component");
+        if (element) {
+          const event = new CustomEvent("refresh-timeline", {
+            detail: { lawsuitId: activeTab },
+          });
+          element.dispatchEvent(event);
+        }
+      }
+
       // 타임라인이 업데이트되었음을 알림
       toast.success("타임라인 항목이 업데이트되었습니다");
-      // CaseTimeline 컴포넌트가 자체적으로 최신 데이터를 로드하도록 함
     }
   };
 
   const handleLawsuitSuccess = (addedLawsuit) => {
     fetchLawsuits(); // 소송 목록 다시 가져오기
-    // setActiveTab(addedLawsuit.id); // 새로 추가/수정된 소송으로 탭 전환
+
+    // 수정된 소송이 현재 선택된 소송이면 당사자 목록도 새로고침
+    if (addedLawsuit && addedLawsuit.id === activeTab) {
+      fetchParties();
+    }
   };
 
   const renderLawsuitInfo = (lawsuit) => {
@@ -382,12 +350,20 @@ export default function LawsuitManager({ caseId }) {
               (() => {
                 // lawsuit 내부에서 실시간으로 데이터 그룹화
                 const groupedParties = lawsuit.test_lawsuit_parties.reduce((acc, partyRel) => {
-                  const party = parties.find((p) => p.id === partyRel.party_id);
+                  // party 정보가 partyRel.party에 있는 경우 (조인된 경우)
+                  const party = partyRel.party || parties.find((p) => p.id === partyRel.party_id);
                   if (!party) return acc;
 
                   const label = getPartyTypeLabel(partyRel.party_type);
                   if (!acc[label]) acc[label] = [];
-                  acc[label].push(party.name);
+
+                  // entity_type에 따라 이름 표시 방법 결정
+                  const partyName =
+                    party.entity_type === "individual"
+                      ? party.name
+                      : party.company_name || "이름 정보 없음";
+
+                  acc[label].push(partyName);
                   return acc;
                 }, {});
 
@@ -453,19 +429,27 @@ export default function LawsuitManager({ caseId }) {
           <div className="flex justify-between items-center">
             <h3 className="font-medium text-lg ">소송 진행 타임라인</h3>
             {user && (user.role === "admin" || user.role === "staff") && (
-              <Button size="sm" onClick={handleAddSubmission}>
-                <Plus className="h-4 w-4 mr-1" />
-                내역 추가
-              </Button>
+              <div className="flex space-x-2">
+                <Button size="sm" onClick={handleAddSchedule}>
+                  <Calendar className="h-4 w-4 mr-1" />
+                  기일 추가
+                </Button>
+                <Button size="sm" onClick={handleAddSubmission}>
+                  문서 추가
+                </Button>
+              </div>
             )}
           </div>
           <CaseTimeline
+            id="timeline-component"
             lawsuit={lawsuits.find((l) => l.id === activeTab)}
             viewOnly={!(user && (user.role === "admin" || user.role === "staff"))}
             onSuccess={() => {
               toast.success("타임라인이 업데이트되었습니다");
             }}
             onEdit={handleEditSubmission}
+            onScheduleEdit={handleEditSchedule}
+            onScheduleAdd={handleAddSchedule}
           />
         </div>
       </div>
@@ -642,6 +626,17 @@ export default function LawsuitManager({ caseId }) {
           caseId={caseId}
           parties={parties}
           editingLawsuit={editingLawsuit}
+        />
+      )}
+
+      {/* 기일 추가/수정 모달 */}
+      {showAddScheduleModal && (
+        <ScheduleFormModal
+          open={showAddScheduleModal}
+          onOpenChange={setShowAddScheduleModal}
+          onSuccess={handleSubmissionSuccess}
+          lawsuit={lawsuits.find((l) => l.id === activeTab)}
+          editingSchedule={editingSchedule}
         />
       )}
     </Card>

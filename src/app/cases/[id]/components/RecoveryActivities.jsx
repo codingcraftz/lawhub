@@ -54,6 +54,7 @@ import {
   Link as LinkIcon,
   PaperclipIcon,
   Calendar as CalendarIcon2,
+  Eye,
 } from "lucide-react";
 import { format as dateFnsFormat, parseISO } from "date-fns";
 import { AlertCircle, CircleDollarSign, FileText, Phone, User2 } from "lucide-react";
@@ -399,15 +400,20 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false,
                       )}
 
                       {item.file_url && (
-                        <a
-                          href={item.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center text-xs gap-1 mt-2 text-blue-600 hover:text-blue-800 rounded w-fit"
-                        >
-                          <PaperclipIcon className="h-3.5 w-3.5" />
-                          <span>첨부파일</span>
-                        </a>
+                        <div className="flex gap-1 mt-2">
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
+                            <a href={item.file_url} target="_blank" rel="noopener noreferrer">
+                              <Eye className="h-3 w-3 mr-1" />
+                              보기
+                            </a>
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
+                            <a href={item.file_url} download>
+                              <Download className="h-3 w-3 mr-1" />
+                              다운로드
+                            </a>
+                          </Button>
+                        </div>
                       )}
                     </div>
 
