@@ -437,19 +437,18 @@ export function CasesTable({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table className="w-full">
+        <CardContent className="p-0 flex flex-col items-center">
+          <div className="overflow-x-auto w-full max-w-[1200px]">
+            <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <TableHead className="w-[10%] text-center pl-6">상태</TableHead>
-                  <TableHead className="w-[25%] pl-4">당사자</TableHead>
-                  <TableHead className="w-[15%] text-right">원리금</TableHead>
-                  <TableHead className="hidden sm:table-cell w-[15%] text-right">회수금</TableHead>
-                  <TableHead className="w-[15%] text-center">회수율</TableHead>
-                  <TableHead className="w-[10%] text-center">분류</TableHead>
-                  <TableHead className="w-[5%] text-center">알림</TableHead>
-                  <TableHead className="w-[5%] text-center pr-4">관리</TableHead>
+                  <TableHead className="pl-4">상태</TableHead>
+                  <TableHead>당사자</TableHead>
+                  <TableHead>원리금</TableHead>
+                  <TableHead>회수금</TableHead>
+                  <TableHead className="hidden sm:table-cell text-center">회수율</TableHead>
+                  <TableHead className="text-center">알림</TableHead>
+                  <TableHead className="text-center">관리</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -478,14 +477,12 @@ export function CasesTable({
                         className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                         onClick={() => router.push(`/cases/${caseItem.id}`)}
                       >
-                        <TableCell className="pl-6 py-3">
-                          <div className="flex justify-center">
-                            {getCaseStatusBadge(caseItem.status)}
-                          </div>
+                        <TableCell className="py-3 pl-4">
+                          {getCaseStatusBadge(caseItem.status)}
                         </TableCell>
-                        <TableCell className="pl-4 py-3">
-                          <div className="flex gap-2 items-center">
-                            <div className="flex flex-col gap-1 w-full">
+                        <TableCell className="py-3">
+                          <div className="flex gap-2 justify-start">
+                            <div className="flex flex-col gap-1">
                               <div className="flex items-center">
                                 <Badge
                                   variant="outline"
@@ -497,7 +494,7 @@ export function CasesTable({
                                   {caseItem.creditor_name || "-"}
                                 </span>
                               </div>
-                              <div className="flex items-center">
+                              <div className="items-center">
                                 <Badge
                                   variant="outline"
                                   className="bg-destructive/10 text-destructive border-destructive/20 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0"
@@ -511,17 +508,17 @@ export function CasesTable({
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap text-right py-3">
+                        <TableCell className="py-3">
                           <span className="font-medium text-gray-900 dark:text-gray-100 text-sm md:text-base">
                             {formatCurrency(caseItem.principal_amount)}
                           </span>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell whitespace-nowrap text-right py-3">
+                        <TableCell className="py-3">
                           <span className="font-medium text-gray-700 dark:text-gray-300 text-sm md:text-base">
                             {formatCurrency(caseItem.recovered_amount)}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="hidden sm:table-cell py-3 ">
                           {(() => {
                             const recoveryRate =
                               caseItem.principal_amount && caseItem.recovered_amount
@@ -567,11 +564,6 @@ export function CasesTable({
                               </div>
                             );
                           })()}
-                        </TableCell>
-                        <TableCell className="text-center py-3">
-                          {/* 채권 유형 표시 */}
-                          {caseItem.case_type === "debt" &&
-                            getCaseDebtCategory(caseItem.debt_category)}
                         </TableCell>
                         <TableCell className="text-center py-3">
                           {/* 알림 버튼 */}
@@ -644,9 +636,8 @@ export function CasesTable({
               </TableBody>
             </Table>
           </div>
-
           {/* 페이지네이션 영역 수정 */}
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 w-full max-w-[1200px]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-3">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 총 {totalItems}개 중{" "}
