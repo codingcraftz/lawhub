@@ -12,17 +12,8 @@ import { formatCurrency } from "@/utils/format";
 import { supabase } from "@/utils/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import CalendarView from "@/components/Calendar";
-import {
-  RefreshCw,
-  DollarSign,
-  PieChart,
-  CreditCard,
-  Percent,
-  BarChart3,
-  Bell,
-} from "lucide-react";
+import { BarChart3, DollarSign, PieChart, CreditCard, Percent } from "lucide-react";
 import { toast } from "sonner";
-import CaseNotifications from "./CaseNotifications";
 
 export default function CaseDashboard({ caseId, caseData }) {
   const [loadingSchedules, setLoadingSchedules] = useState(true);
@@ -30,9 +21,9 @@ export default function CaseDashboard({ caseId, caseData }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [recoveryData, setRecoveryData] = useState({
     principalAmount: caseData?.principal_amount || 0,
-    totalAmount: 0, // 원리금 (채권원금 + 이자 + 비용)
-    recoveredAmount: 0, // 회수금액
-    recoveryRate: 0, // 회수율
+    totalAmount: 0,
+    recoveredAmount: 0,
+    recoveryRate: 0,
     isLoading: true,
   });
 
@@ -41,12 +32,10 @@ export default function CaseDashboard({ caseId, caseData }) {
     fetchSchedules();
   }, [caseId]);
 
-  // 월 변경 시 해당 월의 일정 가져오기
   useEffect(() => {
     fetchSchedules();
   }, [currentMonth]);
 
-  // 일정 정보 가져오기
   const fetchSchedules = async () => {
     setLoadingSchedules(true);
     try {
@@ -75,18 +64,15 @@ export default function CaseDashboard({ caseId, caseData }) {
       if (error) throw error;
       setSchedules(data || []);
     } catch (error) {
-      console.error("일정 정보 조회 실패:", error);
       toast.error("일정 정보 조회에 실패했습니다");
     } finally {
       setLoadingSchedules(false);
     }
   };
 
-  // 회수 데이터 계산
   const calculateRecoveryData = async () => {
     setRecoveryData((prev) => ({ ...prev, isLoading: true }));
     try {
-      // 회수 활동에서 납부 금액 합계 조회
       const { data: recoveryData, error: recoveryError } = await supabase
         .from("test_recovery_activities")
         .select("amount")
@@ -96,7 +82,6 @@ export default function CaseDashboard({ caseId, caseData }) {
 
       if (recoveryError) throw recoveryError;
 
-      // 이자 및 비용 정보 조회
       const { data: interestData, error: interestError } = await supabase
         .from("test_case_interests")
         .select("*")
@@ -111,20 +96,11 @@ export default function CaseDashboard({ caseId, caseData }) {
 
       if (expenseError) throw expenseError;
 
-      // 이자 금액 계산 (간단히 합산)
       const interestAmount = interestData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
-
-      // 비용 합계 계산
       const expenseAmount = expenseData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
-
-      // 원리금 총액 계산 (원금 + 이자 + 비용)
       const principalAmount = caseData?.principal_amount || 0;
       const totalAmount = principalAmount + interestAmount + expenseAmount;
-
-      // 회수 금액 계산
       const recoveredAmount = recoveryData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
-
-      // 회수율 계산 (소수점 2자리까지)
       const recoveryRate = totalAmount > 0 ? (recoveredAmount / totalAmount) * 100 : 0;
 
       setRecoveryData({
@@ -135,25 +111,45 @@ export default function CaseDashboard({ caseId, caseData }) {
         isLoading: false,
       });
     } catch (error) {
-      console.error("회수 데이터 계산 실패:", error);
       setRecoveryData((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
-  // 일정 관련 처리 함수
   const handleAddSchedule = (date) => {
-    // 일정 추가 모달 열기 로직 (후에 구현)
     toast.info("일정 추가 기능은 준비 중입니다");
   };
 
-  const handleEditSchedule = (schedule) => {
-    // 일정 수정 모달 열기 로직 (후에 구현)
-    toast.info("일정 수정 기능은 준비 중입니다");
+  const handleToggleScheduleCompletion = async (schedule) => {
+    try {
+      const { error } = await supabase
+        .from("test_schedules")
+        .update({ is_completed: !schedule.is_completed })
+        .eq("id", schedule.id);
+
+      if (error) throw error;
+
+      toast.success(`일정이 ${schedule.is_completed ? "미완료" : "완료"} 상태로 변경되었습니다`);
+      fetchSchedules();
+    } catch (error) {
+      toast.error("일정 상태 변경에 실패했습니다");
+    }
   };
 
-  const handleDeleteSchedule = (schedule) => {
-    // 일정 삭제 확인 및 처리 로직 (후에 구현)
-    toast.info("일정 삭제 기능은 준비 중입니다");
+  const handleDeleteSchedule = async (schedule) => {
+    try {
+      const { error } = await supabase.from("test_schedules").delete().eq("id", schedule.id);
+
+      if (error) throw error;
+
+      toast.success("일정이 삭제되었습니다");
+      fetchSchedules();
+    } catch (error) {
+      toast.error("일정 삭제에 실패했습니다");
+    }
+  };
+
+  const handleViewSchedule = (schedule) => {
+    // 일정 상세 보기 기능은 Calendar 컴포넌트 내에서 처리
   };
 
   const handleRefreshSchedules = (month) => {
@@ -163,7 +159,6 @@ export default function CaseDashboard({ caseId, caseData }) {
 
   return (
     <div className="space-y-8">
-      {/* 채권 회수 현황 요약 */}
       <Card className="border-0 bg-white/90 dark:bg-slate-900/90 shadow-md rounded-xl overflow-hidden backdrop-blur-sm">
         <CardHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
           <CardTitle className="text-xl font-bold flex items-center">
@@ -252,12 +247,12 @@ export default function CaseDashboard({ caseId, caseData }) {
         </CardFooter>
       </Card>
 
-      {/* 일정 달력 - 새 컴포넌트 사용 */}
       <CalendarView
         schedules={schedules}
         onAddSchedule={handleAddSchedule}
-        onEditSchedule={handleEditSchedule}
+        onEditSchedule={handleToggleScheduleCompletion}
         onDeleteSchedule={handleDeleteSchedule}
+        onViewSchedule={handleViewSchedule}
         isLoading={loadingSchedules}
         onRefresh={handleRefreshSchedules}
         title="사건 일정 달력"

@@ -54,7 +54,6 @@ import {
   Clock,
   DollarSign,
   Users,
-  Star,
 } from "lucide-react";
 
 /**
@@ -367,7 +366,7 @@ const CalendarView = ({
           </div>
 
           <div className="lg:col-span-2">
-            <div className="border rounded-lg p-4 h-full">
+            <div className="border rounded-lg p-4 h-full flex flex-col">
               <h3 className="font-medium text-lg mb-3 flex items-center">
                 {selectedDay ? (
                   <div className="flex items-center justify-between w-full">
@@ -386,213 +385,231 @@ const CalendarView = ({
               <Separator className="my-2" />
 
               {!selectedDay ? (
-                <div className="flex flex-col items-center justify-center h-[300px] text-gray-400">
+                <div className="flex flex-col items-center justify-center flex-grow text-gray-400">
                   <CalendarIcon className="h-10 w-10 mb-2 opacity-20" />
                   <p className="text-sm">일정을 보려면 날짜를 선택하세요</p>
                 </div>
               ) : selectedDayEvents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[300px] text-gray-400">
+                <div className="flex flex-col items-center justify-center flex-grow text-gray-400">
                   <CalendarIcon className="h-10 w-10 mb-2 opacity-20" />
                   <p className="text-sm">이 날에는 일정이 없습니다</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                <div className="space-y-3 overflow-y-auto pr-1 flex-grow max-h-[400px]">
                   {selectedDayEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="border rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-start space-x-2">
-                          <div
-                            className={`rounded-full p-1.5 ${getEventColor(
-                              event.event_type
-                            )} text-white`}
-                          >
-                            {getEventIcon(event.event_type)}
-                          </div>
-                          <div>
-                            <div className="flex items-center">
-                              <p className="font-medium text-sm">{event.title}</p>
-                              {event.is_important && (
-                                <AlertCircle className="h-3.5 w-3.5 ml-1 text-red-500" />
-                              )}
+                    <Dialog key={event.id}>
+                      <DialogTrigger asChild>
+                        <div className="border rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-start space-x-2">
+                              <div
+                                className={`rounded-full p-1.5 ${getEventColor(
+                                  event.event_type
+                                )} text-white`}
+                              >
+                                {getEventIcon(event.event_type)}
+                              </div>
+                              <div>
+                                <div className="flex items-center">
+                                  <p className="font-medium text-sm">{event.title}</p>
+                                  {event.is_important && (
+                                    <AlertCircle className="h-3.5 w-3.5 ml-1 text-red-500" />
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {format(parseISO(event.event_date), "HH:mm", { locale: ko })}
+                                  {event.location && ` · ${event.location}`}
+                                </p>
+                                {event.description && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1.5 line-clamp-2">
+                                    {event.description}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {format(parseISO(event.event_date), "HH:mm", { locale: ko })}
-                              {event.location && ` · ${event.location}`}
-                            </p>
-                            {event.description && (
-                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1.5 line-clamp-2">
-                                {event.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
 
-                        <Dialog>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-48" align="end">
-                              <div className="grid gap-1">
-                                <DialogTrigger asChild>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-48" align="end">
+                                <div className="grid gap-1">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 justify-start"
-                                    onClick={() => handleViewSchedule(event)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewSchedule(event);
+                                    }}
                                   >
                                     <Info className="h-3.5 w-3.5 mr-2" />
                                     자세히 보기
                                   </Button>
-                                </DialogTrigger>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 justify-start text-blue-600 dark:text-blue-400"
-                                  onClick={() => handleEditSchedule(event)}
-                                >
-                                  <Edit className="h-3.5 w-3.5 mr-2" />
-                                  수정
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 justify-start text-red-600 dark:text-red-400"
-                                  onClick={() => handleDeleteSchedule(event)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                  삭제
-                                </Button>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle className="flex items-center">
-                                <div
-                                  className={`rounded-full p-1.5 ${getEventColor(
-                                    event.event_type
-                                  )} text-white mr-2`}
-                                >
-                                  {getEventIcon(event.event_type)}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-8 justify-start ${
+                                      event.is_completed
+                                        ? "text-orange-600 dark:text-orange-400"
+                                        : "text-green-600 dark:text-green-400"
+                                    }`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditSchedule(event);
+                                    }}
+                                  >
+                                    <Clock className="h-3.5 w-3.5 mr-2" />
+                                    {event.is_completed ? "미완료로 변경" : "완료로 변경"}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 justify-start text-red-600 dark:text-red-400"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSchedule(event);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                    삭제
+                                  </Button>
                                 </div>
-                                {event.title}
-                                {event.is_important && (
-                                  <AlertCircle className="h-4 w-4 ml-2 text-red-500" />
-                                )}
-                              </DialogTitle>
-                            </DialogHeader>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
 
-                            <div className="space-y-3 mt-4">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">일정 유형</p>
-                                  <p className="text-sm">
-                                    {getEventTypeInKorean(event.event_type)}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">날짜 및 시간</p>
-                                  <p className="text-sm">
-                                    {format(parseISO(event.event_date), "yyyy년 MM월 dd일 HH:mm", {
-                                      locale: ko,
-                                    })}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {event.location && (
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">장소</p>
-                                  <p className="text-sm">{event.location}</p>
-                                </div>
-                              )}
-
-                              {event.description && (
-                                <div>
-                                  <p className="text-sm font-medium text-gray-500">설명</p>
-                                  <p className="text-sm whitespace-pre-line">{event.description}</p>
-                                </div>
-                              )}
-
-                              {event.event_type === "court_date" && (
-                                <>
-                                  {event.court_name && (
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-500">법원</p>
-                                      <p className="text-sm">{event.court_name}</p>
-                                    </div>
-                                  )}
-
-                                  {event.case_number && (
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-500">사건번호</p>
-                                      <p className="text-sm">{event.case_number}</p>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-
-                              <div className="flex mt-2">
-                                {event.is_completed ? (
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400">
-                                    완료됨
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline">진행중</Badge>
-                                )}
-
-                                {event.is_important && (
-                                  <Badge className="ml-2 bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400">
-                                    중요
-                                  </Badge>
-                                )}
+                          {event.event_type === "court_date" && event.court_name && (
+                            <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+                              <div className="flex items-center">
+                                <Gavel className="h-3 w-3 mr-1 text-gray-500" />
+                                <p className="text-xs text-gray-500">
+                                  {event.court_name} {event.case_number && `(${event.case_number})`}
+                                </p>
                               </div>
                             </div>
+                          )}
 
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => handleEditSchedule(event)}>
-                                <Edit className="h-4 w-4 mr-1" />
-                                수정
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                onClick={() => handleDeleteSchedule(event)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                삭제
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
+                          {event.is_completed && (
+                            <Badge
+                              variant="outline"
+                              className="mt-2 bg-green-50 text-green-700 border-green-200 text-xs"
+                            >
+                              완료됨
+                            </Badge>
+                          )}
+                        </div>
+                      </DialogTrigger>
 
-                      {event.event_type === "court_date" && event.court_name && (
-                        <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center">
-                            <Gavel className="h-3 w-3 mr-1 text-gray-500" />
-                            <p className="text-xs text-gray-500">
-                              {event.court_name} {event.case_number && `(${event.case_number})`}
-                            </p>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center">
+                            <div
+                              className={`rounded-full p-1.5 ${getEventColor(
+                                event.event_type
+                              )} text-white mr-2`}
+                            >
+                              {getEventIcon(event.event_type)}
+                            </div>
+                            {event.title}
+                            {event.is_important && (
+                              <AlertCircle className="h-4 w-4 ml-2 text-red-500" />
+                            )}
+                          </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-3 mt-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">일정 유형</p>
+                              <p className="text-sm">{getEventTypeInKorean(event.event_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">날짜 및 시간</p>
+                              <p className="text-sm">
+                                {format(parseISO(event.event_date), "yyyy년 MM월 dd일 HH:mm", {
+                                  locale: ko,
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          {event.location && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">장소</p>
+                              <p className="text-sm">{event.location}</p>
+                            </div>
+                          )}
+
+                          {event.description && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">설명</p>
+                              <p className="text-sm whitespace-pre-line">{event.description}</p>
+                            </div>
+                          )}
+
+                          {event.event_type === "court_date" && (
+                            <>
+                              {event.court_name && (
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">법원</p>
+                                  <p className="text-sm">{event.court_name}</p>
+                                </div>
+                              )}
+
+                              {event.case_number && (
+                                <div>
+                                  <p className="text-sm font-medium text-gray-500">사건번호</p>
+                                  <p className="text-sm">{event.case_number}</p>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          <div className="flex mt-2">
+                            {event.is_completed ? (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400">
+                                완료됨
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">진행중</Badge>
+                            )}
+
+                            {event.is_important && (
+                              <Badge className="ml-2 bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400">
+                                중요
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                      )}
 
-                      {event.is_completed && (
-                        <Badge
-                          variant="outline"
-                          className="mt-2 bg-green-50 text-green-700 border-green-200 text-xs"
-                        >
-                          완료됨
-                        </Badge>
-                      )}
-                    </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            className={`${
+                              event.is_completed
+                                ? "text-orange-600 border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/20"
+                                : "text-green-600 border-green-200 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/20"
+                            }`}
+                            onClick={() => handleEditSchedule(event)}
+                          >
+                            <Clock className="h-4 w-4 mr-1" />
+                            {event.is_completed ? "미완료로 변경" : "완료로 변경"}
+                          </Button>
+                          <Button variant="destructive" onClick={() => handleDeleteSchedule(event)}>
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            삭제
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   ))}
                 </div>
               )}
