@@ -37,7 +37,7 @@ import {
   BarChart3,
   PieChart,
 } from "lucide-react";
-import { CasesTable } from "@/components/CasesTable";
+import { StaffCasesTable } from "./StaffCasesTable";
 
 // NotificationPanel 컴포넌트 추가 (간소화된 버전)
 function NotificationPanel({ notifications, loading, router }) {
@@ -407,7 +407,11 @@ export default function ClientDetailPage() {
               party_type,
               entity_type,
               name,
-              company_name
+              company_name,
+              kcb_checked,
+              kcb_checked_date,
+              payment_notification_sent,
+              payment_notification_date
             )
           `
           )
@@ -448,6 +452,12 @@ export default function ClientDetailPage() {
                 ? debtor.name
                 : debtor.company_name
               : null,
+            // 채무자의 KCB 조회 정보 추가
+            debtor_kcb_checked: debtor ? debtor.kcb_checked : false,
+            debtor_kcb_checked_date: debtor ? debtor.kcb_checked_date : null,
+            // 채무자의 납부안내 정보 추가
+            debtor_payment_notification_sent: debtor ? debtor.payment_notification_sent : false,
+            debtor_payment_notification_date: debtor ? debtor.payment_notification_date : null,
             status_info: {
               name: statusInfo.name,
               color: statusInfo.color,
@@ -691,36 +701,7 @@ export default function ClientDetailPage() {
           </CardHeader>
         </Card>
       </div>
-
-      {/* 사건 관리 섹션 */}
-      <div className="mb-8">
-        <Card>
-          <CardHeader>
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <div className="flex items-center justify-between">
-                <CardTitle>사건 목록</CardTitle>
-                <TabsList className="grid grid-cols-3 w-64">
-                  <TabsTrigger value="all" className="flex items-center gap-1">
-                    <Briefcase className="h-4 w-4" />
-                    <span>전체</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="active" className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>진행중</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="closed" className="flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>종결</span>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </Tabs>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* CasesTable 컴포넌트 */}
-      <CasesTable
+      <StaffCasesTable
         cases={filteredCases}
         personalCases={cases}
         organizationCases={[]}

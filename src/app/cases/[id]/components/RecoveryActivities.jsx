@@ -79,6 +79,7 @@ import { RecoveryActivityModal } from "./modals";
 export default function RecoveryActivities({ caseId, limit, isDashboard = false, parties }) {
   const router = useRouter();
   const { user } = useUser();
+  console.log("parties", parties);
 
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState([]);
@@ -257,14 +258,14 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false,
     }
   };
 
-  // 활동 추가 모달 열기
+  // 활동 추가 모달 컨트롤
   const handleAddActivity = () => {
     setIsEditing(false);
     setCurrentActivity(null);
     setShowModal(true);
   };
 
-  // 활동 수정 모달 열기
+  // 활동 수정 모달 컨트롤
   const handleEditActivity = (activity) => {
     setIsEditing(true);
     setCurrentActivity(activity);

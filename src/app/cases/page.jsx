@@ -3,20 +3,14 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
-import { format, formatDistanceToNow } from "date-fns";
-import ko from "date-fns/locale/ko";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import {
-  Calendar,
-  CreditCard,
   FileText,
-  Filter,
   PlusCircle,
   RefreshCw,
   Search,
-  SlidersHorizontal,
   ArrowUpRight,
-  Briefcase,
   Scale,
   Clock,
   Check,
@@ -29,26 +23,11 @@ import {
   Users,
   Plus,
   Gavel,
-  AlertTriangle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -57,85 +36,41 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
-import { useUser } from "@/contexts/UserContext";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { getStatusById } from "@/utils/constants";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency } from "@/utils/format";
-import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency as formatUtil } from "@/utils/format";
+import Link from "next/link";
+import { StaffCasesTable } from "../clients/[id]/StaffCasesTable";
 
 function CasesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useUser();
-
-  // URL에서 의뢰인 필터 쿼리 파라미터 가져오기
-  const individualId = searchParams.get("individualId");
-  const organizationId = searchParams.get("organizationId");
-  const clientName = searchParams.get("clientName");
-
-  // UUID 유효성 검사 함수
-  const isValidUUID = (uuid) => {
-    const uuidRegex =
-      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    return uuid && uuidRegex.test(uuid);
-  };
-
-  // URL 파라미터 유효성 검사
-  const validIndividualId = isValidUUID(individualId) ? individualId : null;
-  const validOrganizationId = isValidUUID(organizationId) ? organizationId : null;
 
   const [loading, setLoading] = useState(false);
-  const [cases, setCases] = useState([]);
-  const [totalCases, setTotalCases] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchType, setSearchType] = useState("case_number"); // "case_number" 또는 "party_name"
+  const [searchType, setSearchType] = useState("case_number");
   const [results, setResults] = useState([]);
   const [totalResults, setTotalResults] = useState(0);
 
   useEffect(() => {
-    // URL에서 검색 파라미터 가져오기
     const queryType = searchParams.get("type");
     const queryTerm = searchParams.get("q");
     const queryPage = searchParams.get("page");
+    const queryPageSize = searchParams.get("pageSize");
 
     if (queryType) setSearchType(queryType);
+    if (queryPageSize) setPageSize(parseInt(queryPageSize));
+
     if (queryTerm) {
       setSearchTerm(queryTerm);
-      performSearch(queryTerm, queryType || "case_number", parseInt(queryPage) || 1);
+      const currentPage = queryPage ? parseInt(queryPage) : 1;
+      setPage(currentPage);
+      performSearch(queryTerm, queryType || "case_number", currentPage);
     }
   }, [searchParams]);
 
-  // 검색 실행 함수
   const performSearch = async (term, type, currentPage = 1) => {
     if (!term) {
       setResults([]);
@@ -146,12 +81,10 @@ function CasesContent() {
     setLoading(true);
 
     try {
-      // 페이지네이션 계산
       const from = (currentPage - 1) * pageSize;
       const to = from + pageSize - 1;
 
       if (type === "case_number") {
-        // 사건번호로 검색
         const { data, error, count } = await supabase
           .from("test_case_lawsuits")
           .select(
@@ -177,7 +110,6 @@ function CasesContent() {
 
         if (error) throw error;
 
-        // 데이터 가공 (의뢰인 정보 추출)
         const processedData = data.map((lawsuit) => {
           let clientName = "미등록";
 
@@ -204,7 +136,6 @@ function CasesContent() {
         setResults(processedData);
         setTotalResults(count || 0);
       } else {
-        // 당사자 이름으로 검색
         const { data, error, count } = await supabase
           .from("test_case_parties")
           .select(
@@ -219,7 +150,14 @@ function CasesContent() {
               id,
               status,
               principal_amount,
-              created_at
+              created_at,
+              parties:test_case_parties(
+                id,
+                party_type,
+                entity_type,
+                name,
+                company_name
+              )
             )
           `,
             { count: "exact" }
@@ -229,7 +167,48 @@ function CasesContent() {
 
         if (error) throw error;
 
-        setResults(data);
+        const processedData = data.map((party) => {
+          const allParties = party.cases?.parties || [];
+
+          const creditor = allParties.find((p) =>
+            ["creditor", "plaintiff", "applicant"].includes(p.party_type)
+          );
+
+          const debtor = allParties.find((p) =>
+            ["debtor", "defendant", "respondent"].includes(p.party_type)
+          );
+
+          const creditorName = creditor
+            ? creditor.entity_type === "individual"
+              ? creditor.name
+              : creditor.company_name
+            : "미등록";
+
+          const debtorName = debtor
+            ? debtor.entity_type === "individual"
+              ? debtor.name
+              : debtor.company_name
+            : "미등록";
+
+          return {
+            id: party.cases?.id || party.case_id,
+            case_id: party.case_id,
+            status: party.cases?.status || "unknown",
+            principal_amount: party.cases?.principal_amount || 0,
+            recovered_amount: 0,
+            creditor_name: creditorName,
+            debtor_name: debtorName,
+            created_at: party.cases?.created_at,
+            searched_party: {
+              id: party.id,
+              type: party.party_type,
+              entity_type: party.entity_type,
+              name: party.entity_type === "individual" ? party.name : party.company_name,
+            },
+          };
+        });
+
+        setResults(processedData);
         setTotalResults(count || 0);
       }
     } catch (error) {
@@ -243,13 +222,11 @@ function CasesContent() {
   const handleSearch = (e) => {
     if (e) e.preventDefault();
 
-    // URL 업데이트
     const params = new URLSearchParams();
     if (searchTerm) params.set("q", searchTerm);
     params.set("type", searchType);
     params.set("page", "1");
 
-    // 검색 페이지로 이동하고 검색 실행
     router.push(`/cases?${params.toString()}`);
     performSearch(searchTerm, searchType, 1);
   };
@@ -261,15 +238,32 @@ function CasesContent() {
   const handlePageChange = (newPage) => {
     setPage(newPage);
 
-    // URL 업데이트
     const params = new URLSearchParams(searchParams);
     params.set("page", newPage.toString());
+
+    if (searchTerm) params.set("q", searchTerm);
+    params.set("type", searchType);
 
     router.push(`/cases?${params.toString()}`);
     performSearch(searchTerm, searchType, newPage);
   };
 
-  // 소송 유형 뱃지 렌더링 함수
+  const handlePageSizeChange = (size) => {
+    const newSize = parseInt(size);
+    setPageSize(newSize);
+    setPage(1);
+
+    const params = new URLSearchParams(searchParams);
+    params.set("page", "1");
+    params.set("pageSize", newSize.toString());
+
+    if (searchTerm) params.set("q", searchTerm);
+    params.set("type", searchType);
+
+    router.push(`/cases?${params.toString()}`);
+    performSearch(searchTerm, searchType, 1);
+  };
+
   const renderLawsuitTypeBadge = (type) => {
     switch (type) {
       case "civil":
@@ -317,116 +311,16 @@ function CasesContent() {
     }
   };
 
-  // 상태 뱃지 렌더링 함수
-  const renderStatusBadge = (status) => {
-    switch (status) {
-      case "ongoing":
-        return (
-          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 border">
-            <Timer className="mr-1 h-3 w-3" /> 진행중
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20 border">
-            <Hourglass className="mr-1 h-3 w-3" /> 대기중
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge className="bg-green-500/10 text-green-700 border-green-500/20 border">
-            <CheckCircle2 className="mr-1 h-3 w-3" /> 완료
-          </Badge>
-        );
-      case "postponed":
-        return (
-          <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 border">
-            <AlertCircle className="mr-1 h-3 w-3" /> 연기
-          </Badge>
-        );
-      case "cancelled":
-        return (
-          <Badge className="bg-red-500/10 text-red-700 border-red-500/20 border">
-            <X className="mr-1 h-3 w-3" /> 취소
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-200 text-gray-700 border-gray-300/50 border">
-            {status || "정보없음"}
-          </Badge>
-        );
-    }
-  };
-
-  // 당사자 유형 뱃지 렌더링 함수
-  const renderPartyTypeBadge = (type) => {
-    switch (type) {
-      case "creditor":
-        return (
-          <Badge className="bg-green-500/10 text-green-700 border-green-500/20 border">
-            채권자
-          </Badge>
-        );
-      case "debtor":
-        return (
-          <Badge className="bg-red-500/10 text-red-700 border-red-500/20 border">채무자</Badge>
-        );
-      case "plaintiff":
-        return (
-          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 border">원고</Badge>
-        );
-      case "defendant":
-        return (
-          <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 border">
-            피고
-          </Badge>
-        );
-      case "applicant":
-        return (
-          <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 border">
-            신청인
-          </Badge>
-        );
-      case "respondent":
-        return (
-          <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20 border">
-            피신청인
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-200 text-gray-700 border-gray-300/50 border">
-            {type || "기타"}
-          </Badge>
-        );
-    }
-  };
-
-  // 당사자 이름 렌더링 함수
-  const renderPartyName = (party) => {
-    if (party.entity_type === "individual") {
-      return party.name || "이름 없음";
-    } else {
-      return party.company_name || "회사명 없음";
-    }
-  };
-
-  // 페이지네이션 구성요소
   const PaginationComponent = ({ currentPage, totalPages, onPageChange }) => {
-    // 표시할 페이지 버튼 계산
     const getPageButtons = () => {
-      // 총 페이지가 7개 이하면 모든 페이지 버튼 표시
       if (totalPages <= 7) {
         return Array.from({ length: totalPages }, (_, i) => i + 1);
       }
 
-      // 현재 페이지가 앞쪽에 있을 때
       if (currentPage <= 4) {
         return [1, 2, 3, 4, 5, "...", totalPages];
       }
 
-      // 현재 페이지가 뒤쪽에 있을 때
       if (currentPage >= totalPages - 3) {
         return [
           1,
@@ -439,7 +333,6 @@ function CasesContent() {
         ];
       }
 
-      // 현재 페이지가 중간에 있을 때
       return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
     };
 
@@ -487,27 +380,16 @@ function CasesContent() {
     );
   };
 
+  const formatMoney = (amount) => {
+    return formatUtil(amount);
+  };
+
   return (
     <div className="container py-6 px-4 md:px-6">
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">사건 검색</h1>
-            {(individualId || organizationId) && clientName && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-sm font-normal px-2">
-                  {clientName} 의뢰인의 사건만 표시
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => router.push("/cases")}
-                >
-                  필터 해제
-                </Button>
-              </div>
-            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Link href="/cases/clients">
@@ -553,7 +435,7 @@ function CasesContent() {
           <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">
-                {searchTerm ? (
+                {searchTerm && results.length > 0 ? (
                   <>
                     '{searchTerm}' 검색 결과 ({totalResults}건)
                   </>
@@ -562,9 +444,11 @@ function CasesContent() {
                 )}
               </CardTitle>
               <CardDescription>
-                {searchType === "case_number"
-                  ? "사건번호로 검색한 결과입니다"
-                  : "당사자 이름으로 검색한 결과입니다"}
+                {searchTerm && results.length > 0
+                  ? searchType === "case_number"
+                    ? "사건번호로 검색한 결과입니다"
+                    : "당사자 이름으로 검색한 결과입니다"
+                  : "검색 버튼을 클릭하여 결과를 확인하세요"}
               </CardDescription>
             </CardHeader>
 
@@ -581,7 +465,7 @@ function CasesContent() {
                     ))}
                   </div>
                 </div>
-              ) : results.length === 0 ? (
+              ) : searchTerm && results.length === 0 && searchParams.get("q") ? (
                 <div className="flex flex-col items-center justify-center p-12">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                     <FileText className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -590,9 +474,19 @@ function CasesContent() {
                     검색 결과 없음
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
-                    {searchTerm
-                      ? "검색어와 일치하는 결과가 없습니다. 다른 검색어로 시도해보세요."
-                      : "검색어를 입력하여 사건을 검색하세요."}
+                    '{searchTerm}'에 대한 검색 결과가 없습니다. 다른 검색어로 시도해보세요.
+                  </p>
+                </div>
+              ) : !searchParams.get("q") ? (
+                <div className="flex flex-col items-center justify-center p-12">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    검색어를 입력하세요
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
+                    위 검색창에 검색어를 입력하고 검색 버튼을 클릭하세요.
                   </p>
                 </div>
               ) : (
@@ -620,9 +514,7 @@ function CasesContent() {
                             <TableCell>{item.court_name || "-"}</TableCell>
                             <TableCell className="font-medium">{item.case_number || "-"}</TableCell>
                             <TableCell>{item.clientName || "미등록"}</TableCell>
-                            <TableCell>
-                              {formatCurrency(item.cases?.principal_amount || 0)}
-                            </TableCell>
+                            <TableCell>{formatMoney(item.cases?.principal_amount || 0)}</TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -643,46 +535,24 @@ function CasesContent() {
                   </TabsContent>
 
                   <TabsContent value="party_name">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                          <TableHead>상태</TableHead>
-                          <TableHead>당사자</TableHead>
-                          <TableHead>구분</TableHead>
-                          <TableHead>원리금</TableHead>
-                          <TableHead className="w-[80px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {results.map((item) => (
-                          <TableRow
-                            key={item.id}
-                            className="border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                            onClick={() => router.push(`/cases/${item.case_id}`)}
-                          >
-                            <TableCell>{renderStatusBadge(item.cases?.status)}</TableCell>
-                            <TableCell>{renderPartyName(item)}</TableCell>
-                            <TableCell>{renderPartyTypeBadge(item.party_type)}</TableCell>
-                            <TableCell>
-                              {formatCurrency(item.cases?.principal_amount || 0)}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/cases/${item.case_id}`);
-                                }}
-                                className="opacity-50 hover:opacity-100 transition-opacity"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    {searchType === "party_name" && (
+                      <StaffCasesTable
+                        cases={results}
+                        personalCases={results}
+                        organizationCases={[]}
+                        selectedTab="personal"
+                        searchTerm=""
+                        onSearchChange={() => {}}
+                        currentPage={page}
+                        totalPages={Math.ceil(totalResults / pageSize)}
+                        totalItems={totalResults}
+                        casesPerPage={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        formatCurrency={formatMoney}
+                        notifications={[]}
+                      />
+                    )}
                   </TabsContent>
                 </div>
               )}
@@ -695,11 +565,13 @@ function CasesContent() {
                       {Math.min(page * pageSize, totalResults)}개 표시
                     </div>
 
-                    <PaginationComponent
-                      currentPage={page}
-                      totalPages={Math.ceil(totalResults / pageSize)}
-                      onPageChange={handlePageChange}
-                    />
+                    {searchType === "case_number" && (
+                      <PaginationComponent
+                        currentPage={page}
+                        totalPages={Math.ceil(totalResults / pageSize)}
+                        onPageChange={handlePageChange}
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -711,7 +583,6 @@ function CasesContent() {
   );
 }
 
-// 메인 컴포넌트에서는 Suspense로 감싸서 사용
 export default function CasesPage() {
   return (
     <Suspense

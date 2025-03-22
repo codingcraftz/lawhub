@@ -92,26 +92,30 @@
 
 ## 사건 당사자 테이블 (test_case_parties)
 
-| 컬럼명                        | 데이터 타입              | 설명           |
-| ----------------------------- | ------------------------ | -------------- |
-| id                            | uuid                     | 고유 식별자    |
-| case_id                       | uuid                     | 사건 ID        |
-| party_type                    | text                     | 당사자 유형    |
-| entity_type                   | text                     | 법인 유형      |
-| name                          | character varying        | 이름           |
-| company_name                  | character varying        | 회사명         |
-| corporate_registration_number | character varying        | 사업자등록번호 |
-| position                      | character varying        | 직위           |
-| phone                         | character varying        | 전화번호       |
-| address                       | text                     | 주소           |
-| address_detail                | text                     | 상세주소       |
-| email                         | character varying        | 이메일         |
-| resident_number               | character varying        | 주민등록번호   |
-| corporate_number              | character varying        | 법인번호       |
-| representative_name           | text                     | 대표자명       |
-| representative_position       | text                     | 대표자 직위    |
-| created_at                    | timestamp with time zone | 생성 시간      |
-| updated_at                    | timestamp with time zone | 수정 시간      |
+| 컬럼명                        | 데이터 타입              | 설명               |
+| ----------------------------- | ------------------------ | ------------------ |
+| id                            | uuid                     | 고유 식별자        |
+| case_id                       | uuid                     | 사건 ID            |
+| party_type                    | text                     | 당사자 유형        |
+| entity_type                   | text                     | 법인 유형          |
+| name                          | character varying        | 이름               |
+| company_name                  | character varying        | 회사명             |
+| corporate_registration_number | character varying        | 사업자등록번호     |
+| position                      | character varying        | 직위               |
+| phone                         | character varying        | 전화번호           |
+| address                       | text                     | 주소               |
+| address_detail                | text                     | 상세주소           |
+| email                         | character varying        | 이메일             |
+| resident_number               | character varying        | 주민등록번호       |
+| corporate_number              | character varying        | 법인번호           |
+| representative_name           | text                     | 대표자명           |
+| representative_position       | text                     | 대표자 직위        |
+| kcb_checked                   | boolean                  | KCB 조회 여부      |
+| kcb_checked_date              | date                     | KCB 조회 날짜      |
+| payment_notification_sent     | boolean                  | 변제통보 발송 여부 |
+| payment_notification_date     | date                     | 변제통보 발송 날짜 |
+| created_at                    | timestamp with time zone | 생성 시간          |
+| updated_at                    | timestamp with time zone | 수정 시간          |
 
 ## 채권 청구 테이블 (test_debt_claims)
 

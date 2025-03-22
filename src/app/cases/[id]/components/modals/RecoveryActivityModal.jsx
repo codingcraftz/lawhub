@@ -80,7 +80,7 @@ export default function RecoveryActivityModal({
           description: activity.description,
           amount: activity.amount ? activity.amount.toString() : "",
           notes: activity.notes || "",
-          status: activity.status || "predicted",
+          status: activity.status || "completed",
         });
       } else {
         // 추가 모드: 기본값으로 초기화
@@ -90,7 +90,7 @@ export default function RecoveryActivityModal({
           description: "",
           amount: "",
           notes: "",
-          status: "predicted",
+          status: "completed",
         });
       }
       setFileToUpload(null);
@@ -154,8 +154,40 @@ export default function RecoveryActivityModal({
     }
   };
 
+  // 활동 유형에 따른 기본 설명문 생성 함수
+  const getDefaultDescription = (type) => {
+    switch (type) {
+      case "kcb":
+        return "KCB 조회를 진행하였습니다.";
+      case "message":
+        return "변제 통보를 진행하였습니다.";
+      case "call":
+        return "채무자에게 전화 연락을 하였습니다.";
+      case "visit":
+        return "현장 방문하여 면담을 진행하였습니다.";
+      case "payment":
+        return "납부가 확인되었습니다.";
+      case "letter":
+        return "통지서를 발송하였습니다.";
+      case "legal":
+        return "법적 조치를 진행하였습니다.";
+      default:
+        return "";
+    }
+  };
+
   const handleTypeChange = (value) => {
-    setFormData((prev) => ({ ...prev, activity_type: value }));
+    setFormData((prev) => {
+      // 활동 유형에 따른 기본 내용 설정
+      const defaultDescription = getDefaultDescription(value);
+
+      // 기존 내용이 없을 때만 기본 내용으로 설정하는 대신, 항상 업데이트
+      return {
+        ...prev,
+        activity_type: value,
+        description: defaultDescription,
+      };
+    });
 
     if (formErrors.activity_type) {
       setFormErrors((prev) => ({ ...prev, activity_type: "" }));
@@ -582,6 +614,65 @@ export default function RecoveryActivityModal({
         }
       }
 
+      // 활동 유형과 상태에 따른 당사자 정보 업데이트
+      if (formData.status === "completed") {
+        try {
+          // 채무자 찾기
+          let debtor = null;
+
+          // props로 받은 parties 배열에서 먼저 채무자 찾기
+          if (parties && parties.length > 0) {
+            debtor = parties.find((party) =>
+              ["debtor", "defendant", "respondent"].includes(party.party_type)
+            );
+          }
+
+          // props에서 찾지 못한 경우 caseDetails에서 시도
+          if (!debtor && caseDetails && caseDetails.parties) {
+            debtor = caseDetails.parties.find((party) =>
+              ["debtor", "defendant", "respondent"].includes(party.party_type)
+            );
+          }
+
+          if (debtor) {
+            // 날짜 포맷팅 (YYYY-MM-DD)
+            const formattedDate =
+              formData.date instanceof Date
+                ? format(formData.date, "yyyy-MM-dd")
+                : formData.date.split("T")[0];
+
+            // 활동 유형에 따른 채무자 정보 업데이트
+            if (formData.activity_type === "kcb") {
+              await supabase
+                .from("test_case_parties")
+                .update({
+                  kcb_checked: true,
+                  kcb_checked_date: formattedDate,
+                })
+                .eq("id", debtor.id);
+
+              console.log("채무자 KCB 조회 상태가 업데이트되었습니다.");
+            } else if (
+              formData.activity_type === "letter" ||
+              formData.activity_type === "message"
+            ) {
+              await supabase
+                .from("test_case_parties")
+                .update({
+                  payment_notification_sent: true,
+                  payment_notification_date: formattedDate,
+                })
+                .eq("id", debtor.id);
+
+              console.log("채무자 변제통보 상태가 업데이트되었습니다.");
+            }
+          }
+        } catch (updateError) {
+          console.error("채무자 정보 업데이트 중 오류 발생:", updateError);
+          // 주 기능은 계속 진행하도록 오류를 throw하지 않음
+        }
+      }
+
       // 알림 생성
       await createNotificationForClients(caseId, data[0]);
       await createNotification(data[0], "create");
@@ -650,6 +741,68 @@ export default function RecoveryActivityModal({
           toast.error("파일 업로드 실패", {
             description: "활동은 수정되었지만, 파일 업로드에 실패했습니다.",
           });
+        }
+      }
+
+      // 상태가 미완료에서 완료로 변경된 경우 당사자 정보 업데이트
+      const statusChangedToCompleted =
+        oldActivityData.status !== "completed" && formData.status === "completed";
+
+      if (statusChangedToCompleted) {
+        try {
+          // 채무자 찾기
+          let debtor = null;
+
+          // props로 받은 parties 배열에서 먼저 채무자 찾기
+          if (parties && parties.length > 0) {
+            debtor = parties.find((party) =>
+              ["debtor", "defendant", "respondent"].includes(party.party_type)
+            );
+          }
+
+          // props에서 찾지 못한 경우 caseDetails에서 시도
+          if (!debtor && caseDetails && caseDetails.parties) {
+            debtor = caseDetails.parties.find((party) =>
+              ["debtor", "defendant", "respondent"].includes(party.party_type)
+            );
+          }
+
+          if (debtor) {
+            // 날짜 포맷팅 (YYYY-MM-DD)
+            const formattedDate =
+              formData.date instanceof Date
+                ? format(formData.date, "yyyy-MM-dd")
+                : formData.date.split("T")[0];
+
+            // 활동 유형에 따른 채무자 정보 업데이트
+            if (formData.activity_type === "kcb") {
+              await supabase
+                .from("test_case_parties")
+                .update({
+                  kcb_checked: true,
+                  kcb_checked_date: formattedDate,
+                })
+                .eq("id", debtor.id);
+
+              console.log("채무자 KCB 조회 상태가 업데이트되었습니다.");
+            } else if (
+              formData.activity_type === "letter" ||
+              formData.activity_type === "message"
+            ) {
+              await supabase
+                .from("test_case_parties")
+                .update({
+                  payment_notification_sent: true,
+                  payment_notification_date: formattedDate,
+                })
+                .eq("id", debtor.id);
+
+              console.log("채무자 변제통보 상태가 업데이트되었습니다.");
+            }
+          }
+        } catch (updateError) {
+          console.error("채무자 정보 업데이트 중 오류 발생:", updateError);
+          // 주 기능은 계속 진행하도록 오류를 throw하지 않음
         }
       }
 
