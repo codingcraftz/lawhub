@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/contexts/UserContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,14 +49,12 @@ export default function ClientsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const ITEMS_PER_PAGE = 8;
 
-  // 의뢰인 데이터 가져오기
   useEffect(() => {
     if (user) {
       fetchClients();
     }
   }, [user]);
 
-  // 검색어나 탭 변경시 필터링
   useEffect(() => {
     filterClients();
   }, [searchTerm, activeTab, individualClients, organizationClients]);
@@ -64,7 +62,6 @@ export default function ClientsPage() {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      // 1. 사건 의뢰인 관계 가져오기
       const { data: caseClients, error: clientsError } = await supabase
         .from("test_case_clients")
         .select("*")
@@ -72,7 +69,6 @@ export default function ClientsPage() {
 
       if (clientsError) throw clientsError;
 
-      // 2. 개인 의뢰인 정보 가져오기
       const individualClientIds = caseClients
         .filter((client) => client.client_type === "individual" && client.individual_id)
         .map((client) => client.individual_id);
@@ -87,15 +83,13 @@ export default function ClientsPage() {
 
         if (individualsError) throw individualsError;
 
-        // 각 개인별 사건 수 계산
         const individualWithCaseCounts = await Promise.all(
           individuals.map(async (individual) => {
             const casesCount = caseClients.filter(
               (client) => client.individual_id === individual.id
             ).length;
 
-            // 최근 활동 정보 가져오기
-            const { data: recentActivity, error: activityError } = await supabase
+            const { data: recentActivity } = await supabase
               .from("test_cases")
               .select("created_at, case_info")
               .in(
@@ -121,7 +115,6 @@ export default function ClientsPage() {
         setFilteredIndividuals(individualWithCaseCounts);
       }
 
-      // 3. 조직 의뢰인 정보 가져오기
       const organizationClientIds = caseClients
         .filter((client) => client.client_type === "organization" && client.organization_id)
         .map((client) => client.organization_id);
@@ -136,15 +129,13 @@ export default function ClientsPage() {
 
         if (organizationsError) throw organizationsError;
 
-        // 각 조직별 사건 수 계산
         const organizationsWithCaseCounts = await Promise.all(
           organizations.map(async (organization) => {
             const casesCount = caseClients.filter(
               (client) => client.organization_id === organization.id
             ).length;
 
-            // 최근 활동 정보 가져오기
-            const { data: recentActivity, error: activityError } = await supabase
+            const { data: recentActivity } = await supabase
               .from("test_cases")
               .select("created_at, case_info")
               .in(
@@ -177,10 +168,8 @@ export default function ClientsPage() {
   };
 
   const filterClients = () => {
-    // 검색어 기반 필터링
     const term = searchTerm.toLowerCase().trim();
 
-    // 개인 의뢰인 필터링
     const filteredIndividuals = individualClients.filter((client) => {
       return (
         (client.name && client.name.toLowerCase().includes(term)) ||
@@ -189,7 +178,6 @@ export default function ClientsPage() {
       );
     });
 
-    // 조직 의뢰인 필터링
     const filteredOrganizations = organizationClients.filter((org) => {
       return (
         (org.name && org.name.toLowerCase().includes(term)) ||
@@ -199,7 +187,6 @@ export default function ClientsPage() {
       );
     });
 
-    // 탭에 따라 결과 설정
     if (activeTab === "individuals") {
       setFilteredIndividuals(filteredIndividuals);
       setFilteredOrganizations([]);
@@ -209,7 +196,6 @@ export default function ClientsPage() {
       setFilteredOrganizations(filteredOrganizations);
       setTotalPages(Math.ceil(filteredOrganizations.length / ITEMS_PER_PAGE) || 1);
     } else {
-      // 전체 탭
       setFilteredIndividuals(filteredIndividuals);
       setFilteredOrganizations(filteredOrganizations);
       setTotalPages(
@@ -217,7 +203,6 @@ export default function ClientsPage() {
       );
     }
 
-    // 페이지 초기화 (페이지를 벗어나는 경우 방지)
     const totalItems =
       activeTab === "individuals"
         ? filteredIndividuals.length
@@ -249,10 +234,9 @@ export default function ClientsPage() {
       return;
     }
 
-    router.push(`/clients/${client.id}`);
+    router.push(`/clients/${client.id}?client_type=${client.clientType}`);
   };
 
-  // 현재 페이지에 표시할 데이터 계산
   const getCurrentPageData = () => {
     const allClients = [];
 
@@ -270,7 +254,6 @@ export default function ClientsPage() {
     return allClients.slice(startIndex, endIndex);
   };
 
-  // 페이지네이션 UI 생성
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -283,7 +266,6 @@ export default function ClientsPage() {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
-    // 첫 페이지와 마지막 페이지 버튼 추가
     const showFirstPageJump = startPage > 1;
     const showLastPageJump = endPage < totalPages;
 
@@ -307,7 +289,6 @@ export default function ClientsPage() {
             />
           </PaginationItem>
 
-          {/* 첫 페이지 점프 버튼 */}
           {showFirstPageJump && (
             <>
               <PaginationItem>
@@ -323,7 +304,6 @@ export default function ClientsPage() {
 
           {pages}
 
-          {/* 마지막 페이지 점프 버튼 */}
           {showLastPageJump && (
             <>
               {endPage < totalPages - 1 && (

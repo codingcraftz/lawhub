@@ -176,6 +176,9 @@ export default function ClientDetailPage() {
   const searchParams = useSearchParams();
   const { user } = useUser();
 
+  // URL에서 client_type 파라미터 가져오기
+  const clientTypeFromUrl = searchParams.get("client_type") || null;
+
   // URL에서 현재 페이지, 검색어, 상태 필터 가져오기
   const pageFromUrl = Number(searchParams.get("page")) || 1;
   const searchTermFromUrl = searchParams.get("search") || "";
@@ -185,9 +188,9 @@ export default function ClientDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
-  const [clientType, setClientType] = useState(null); // "individual" 또는 "organization"
-  const [allCases, setAllCases] = useState([]); // 모든 사건 데이터 저장
-  const [filteredCases, setFilteredCases] = useState([]); // 현재 페이지에 표시할 필터링된 데이터
+  const [clientType, setClientType] = useState(clientTypeFromUrl); // URL에서 가져온 타입으로 초기화
+  const [allCases, setAllCases] = useState([]);
+  const [filteredCases, setFilteredCases] = useState([]);
   const [searchTerm, setSearchTerm] = useState(searchTermFromUrl);
   const [activeTab, setActiveTab] = useState(statusFilterFromUrl);
   const [currentPage, setCurrentPage] = useState(pageFromUrl);
@@ -209,17 +212,17 @@ export default function ClientDetailPage() {
     return uuid && uuidRegex.test(uuid);
   };
 
-  // URL 파라미터 업데이트 함수 수정
-  const updateUrlParams = (page, search, status, kcb, notification) => {
-    const params = new URLSearchParams();
-    if (page !== 1) params.set("page", page.toString());
-    if (search) params.set("search", search);
-    if (status !== "all") params.set("status", status);
-    if (kcb !== "all") params.set("kcb", kcb);
-    if (notification !== "all") params.set("notification", notification);
+  // URL 파라미터 업데이트
+  const updateUrlParams = (params) => {
+    const { page, search, status } = params;
 
-    const newUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
-    window.history.pushState({}, "", newUrl);
+    // 기존 client_type 파라미터 유지
+    const clientTypeParam = clientType ? `&client_type=${clientType}` : "";
+
+    const url = `/clients/${params.id}?page=${page}${search ? `&search=${search}` : ""}${
+      status ? `&status=${status}` : ""
+    }${clientTypeParam}`;
+    router.push(url, { scroll: false });
   };
 
   // URL이 변경될 때 상태 업데이트
@@ -333,7 +336,7 @@ export default function ClientDetailPage() {
     if (currentPage > maxPages && maxPages > 0) {
       console.log("페이지 번호 조정:", currentPage, "->", maxPages);
       setCurrentPage(maxPages);
-      updateUrlParams(maxPages, searchTerm, activeTab, kcbFilter, notificationFilter);
+      updateUrlParams({ page: maxPages, search: searchTerm, status: activeTab });
       return; // 페이지 번호가 변경되었으므로 useEffect에 의해 다시 호출됨
     }
 
@@ -356,18 +359,54 @@ export default function ClientDetailPage() {
       // 의뢰인 ID 가져오기
       const clientId = params.id;
 
-      // 의뢰인 정보 가져오기 (개인 의뢰인은 users 테이블에서 조회)
-      const { data: individualData, error: individualError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", clientId)
-        .single();
+      // URL에서 가져온 의뢰인 타입 활용
+      // 개인 의뢰인 / 조직 의뢰인을 미리 알고 있다면 해당 테이블만 조회하여 효율성 향상
+      let individualData = null;
+      let organizationData = null;
+      let individualError = null;
+      let organizationError = null;
 
-      const { data: organizationData, error: organizationError } = await supabase
-        .from("test_organizations")
-        .select("*")
-        .eq("id", clientId)
-        .single();
+      // URL에서 타입 정보가 있으면 해당 타입만 조회
+      if (clientType === "individual") {
+        // 개인 의뢰인 정보만 조회
+        const result = await supabase.from("users").select("*").eq("id", clientId).single();
+
+        individualData = result.data;
+        individualError = result.error;
+
+        console.log("개인 의뢰인 조회 결과:", { individualData, individualError });
+      } else if (clientType === "organization") {
+        // 조직 의뢰인 정보만 조회
+        const result = await supabase
+          .from("test_organizations")
+          .select("*")
+          .eq("id", clientId)
+          .single();
+
+        organizationData = result.data;
+        organizationError = result.error;
+
+        console.log("조직 의뢰인 조회 결과:", { organizationData, organizationError });
+      } else {
+        // 타입 정보가 없으면 둘 다 조회
+        const indResult = await supabase.from("users").select("*").eq("id", clientId).single();
+
+        individualData = indResult.data;
+        individualError = indResult.error;
+
+        console.log("개인 의뢰인 조회 결과:", { individualData, individualError });
+
+        const orgResult = await supabase
+          .from("test_organizations")
+          .select("*")
+          .eq("id", clientId)
+          .single();
+
+        organizationData = orgResult.data;
+        organizationError = orgResult.error;
+
+        console.log("조직 의뢰인 조회 결과:", { organizationData, organizationError });
+      }
 
       // 개인 또는 조직 데이터 설정
       if (individualData) {
@@ -407,6 +446,7 @@ export default function ClientDetailPage() {
 
       if (casesError) {
         console.error("사건 정보 가져오기 실패:", casesError);
+        toast.error("사건 정보를 가져오는데 실패했습니다");
         setAllCases([]);
         return;
       }
@@ -419,6 +459,7 @@ export default function ClientDetailPage() {
 
       // 사건 ID 목록
       const caseIds = casesData.map((item) => item.case_id);
+      console.log("조회할 사건 ID:", caseIds);
 
       // 당사자 정보 가져오기
       const { data: partiesData, error: partiesError } = await supabase
@@ -428,6 +469,7 @@ export default function ClientDetailPage() {
 
       if (partiesError) {
         console.error("당사자 정보 가져오기 실패:", partiesError);
+        toast.error("당사자 정보를 가져오는데 실패했습니다");
       }
 
       // 채권자와 채무자 정보 매핑
@@ -472,6 +514,7 @@ export default function ClientDetailPage() {
 
       if (activitiesError) {
         console.error("회수 활동 정보 가져오기 실패:", activitiesError);
+        toast.error("회수 활동 정보를 가져오는데 실패했습니다");
       }
 
       // 활동 정보로 KCB와 납부안내 상태 매핑
@@ -545,26 +588,26 @@ export default function ClientDetailPage() {
   const handleSearch = (value) => {
     setSearchTerm(value);
     setCurrentPage(1); // 검색 시 첫 페이지로 이동
-    updateUrlParams(1, value, activeTab, kcbFilter, notificationFilter);
+    updateUrlParams({ page: 1, search: value, status: activeTab });
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1); // 탭 변경 시 첫 페이지로 이동
-    updateUrlParams(1, searchTerm, tab, kcbFilter, notificationFilter);
+    updateUrlParams({ page: 1, search: searchTerm, status: tab });
   };
 
   const handlePageChange = (page) => {
     console.log("페이지 변경:", page);
     setCurrentPage(page);
-    updateUrlParams(page, searchTerm, activeTab, kcbFilter, notificationFilter);
+    updateUrlParams({ page: page, search: searchTerm, status: activeTab });
   };
 
   // 페이지 크기 변경 핸들러 추가
   const handlePageSizeChange = (size) => {
     setCasesPerPage(Number(size));
     setCurrentPage(1);
-    updateUrlParams(1, searchTerm, activeTab, kcbFilter, notificationFilter);
+    updateUrlParams({ page: 1, search: searchTerm, status: activeTab });
   };
 
   // 데이터 새로고침 핸들러 (모달에서 사용)
@@ -586,14 +629,20 @@ export default function ClientDetailPage() {
   const handleKcbFilterChange = (value) => {
     setKcbFilter(value);
     setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
-    updateUrlParams(1, searchTerm, activeTab, value, notificationFilter);
+    updateUrlParams({ page: 1, search: searchTerm, status: activeTab, kcb: value });
   };
 
   // 납부안내 필터 변경 핸들러 추가
   const handleNotificationFilterChange = (value) => {
     setNotificationFilter(value);
     setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
-    updateUrlParams(1, searchTerm, activeTab, kcbFilter, value);
+    updateUrlParams({
+      page: 1,
+      search: searchTerm,
+      status: activeTab,
+      kcb: kcbFilter,
+      notification: value,
+    });
   };
 
   if (loading) {
