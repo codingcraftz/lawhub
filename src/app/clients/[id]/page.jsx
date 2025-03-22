@@ -67,11 +67,7 @@ function ClientSummary({ clientData, clientType, cases, totalDebt, loading }) {
                 <Skeleton className="h-3.5 w-24" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
+            <Skeleton className="h-20 w-full mt-2" />
           </div>
         </CardContent>
       </Card>
@@ -116,65 +112,56 @@ function ClientSummary({ clientData, clientType, cases, totalDebt, loading }) {
                 {isIndividual ? "개인" : "기업"}
               </Badge>
             </div>
-            <div className="text-xs text-muted-foreground mt-1 flex items-center">
+            <div className="text-sm mt-1 flex flex-col gap-1">
+              {clientData.phone && (
+                <div className="flex items-center text-gray-700 dark:text-gray-300">
+                  <Phone className="h-3.5 w-3.5 mr-1 text-gray-500" />
+                  <span className="font-medium">{clientData.phone}</span>
+                </div>
+              )}
               {clientData.email && (
-                <div className="flex items-center mr-3">
-                  <Mail className="h-3 w-3 mr-1" />
+                <div className="flex items-center text-gray-700 dark:text-gray-300 text-xs">
+                  <Mail className="h-3.5 w-3.5 mr-1 text-gray-500" />
                   <span className="truncate max-w-[160px]">{clientData.email}</span>
                 </div>
               )}
-              {clientData.phone && (
-                <div className="flex items-center">
-                  <Phone className="h-3 w-3 mr-1" />
-                  <span>{clientData.phone}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center justify-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400 mb-1" />
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{cases.length}</div>
-            <div className="text-xs text-muted-foreground">전체 사건</div>
-          </div>
-
-          <div className="flex flex-col items-center justify-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <Clock className="h-5 w-5 text-green-600 dark:text-green-400 mb-1" />
-            <div className="text-lg font-bold text-green-600 dark:text-green-400">
-              {cases.filter((c) => c.status === "active" || c.status === "in_progress").length}
+        {/* 추가 정보 */}
+        <div className="mt-3 text-sm border-t pt-3">
+          {isIndividual && clientData.birth_date && (
+            <div className="flex items-center mb-2">
+              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+              <span>생년월일: {clientData.birth_date}</span>
             </div>
-            <div className="text-xs text-muted-foreground">진행중</div>
-          </div>
-
-          <div className="flex flex-col items-center justify-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-            <CircleDollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400 mb-1" />
-            <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
-              {formatCurrency(totalDebt)}
-            </div>
-            <div className="text-xs text-muted-foreground">채권 총액</div>
-          </div>
-        </div>
-
-        {/* 추가 정보 (옵션) */}
-        <div className="mt-3 text-xs text-muted-foreground">
+          )}
           {clientData.address && (
-            <div className="flex items-center mb-1">
-              <MapPin className="h-3 w-3 mr-1" />
+            <div className="flex items-center mb-2">
+              <MapPin className="h-4 w-4 mr-2 text-gray-500" />
               <span>{clientData.address}</span>
             </div>
           )}
           {!isIndividual && clientData.representative_name && (
-            <div className="flex items-center mb-1">
-              <User className="h-3 w-3 mr-1" />
+            <div className="flex items-center mb-2">
+              <User className="h-4 w-4 mr-2 text-gray-500" />
               <span>대표: {clientData.representative_name}</span>
             </div>
           )}
           {!isIndividual && clientData.business_number && (
-            <div className="flex items-center">
-              <Briefcase className="h-3 w-3 mr-1" />
+            <div className="flex items-center mb-2">
+              <Briefcase className="h-4 w-4 mr-2 text-gray-500" />
               <span>사업자번호: {clientData.business_number}</span>
+            </div>
+          )}
+          {clientData.created_at && (
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+              <span>
+                등록일:{" "}
+                {format(new Date(clientData.created_at), "yyyy년 MM월 dd일", { locale: ko })}
+              </span>
             </div>
           )}
         </div>
@@ -193,6 +180,8 @@ export default function ClientDetailPage() {
   const pageFromUrl = Number(searchParams.get("page")) || 1;
   const searchTermFromUrl = searchParams.get("search") || "";
   const statusFilterFromUrl = searchParams.get("status") || "all";
+  const kcbFilterFromUrl = searchParams.get("kcb") || "all"; // KCB 필터 추가
+  const notificationFilterFromUrl = searchParams.get("notification") || "all"; // 납부안내 필터 추가
 
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
@@ -209,6 +198,10 @@ export default function ClientDetailPage() {
   const [refetchTrigger, setRefetchTrigger] = useState(0); // 데이터 리프래시를 위한 트리거
   const [tabValue, setTabValue] = useState("cases"); // 상단 탭 상태 추가
 
+  // KCB 조회와 납부안내 발송 필터 상태 추가
+  const [kcbFilter, setKcbFilter] = useState(kcbFilterFromUrl);
+  const [notificationFilter, setNotificationFilter] = useState(notificationFilterFromUrl);
+
   // UUID 유효성 검사 함수
   const isValidUUID = (uuid) => {
     const uuidRegex =
@@ -216,12 +209,14 @@ export default function ClientDetailPage() {
     return uuid && uuidRegex.test(uuid);
   };
 
-  // URL 파라미터 업데이트 함수
-  const updateUrlParams = (page, search, status) => {
+  // URL 파라미터 업데이트 함수 수정
+  const updateUrlParams = (page, search, status, kcb, notification) => {
     const params = new URLSearchParams();
     if (page !== 1) params.set("page", page.toString());
     if (search) params.set("search", search);
     if (status !== "all") params.set("status", status);
+    if (kcb !== "all") params.set("kcb", kcb);
+    if (notification !== "all") params.set("notification", notification);
 
     const newUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
     window.history.pushState({}, "", newUrl);
@@ -232,10 +227,14 @@ export default function ClientDetailPage() {
     const page = Number(searchParams.get("page")) || 1;
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
+    const kcb = searchParams.get("kcb") || "all";
+    const notification = searchParams.get("notification") || "all";
 
     if (page !== currentPage) setCurrentPage(page);
     if (search !== searchTerm) setSearchTerm(search);
     if (status !== activeTab) setActiveTab(status);
+    if (kcb !== kcbFilter) setKcbFilter(kcb);
+    if (notification !== notificationFilter) setNotificationFilter(notification);
   }, [searchParams]);
 
   useEffect(() => {
@@ -257,9 +256,9 @@ export default function ClientDetailPage() {
     if (allCases.length > 0) {
       filterAndPaginateData();
     }
-  }, [allCases, currentPage, searchTerm, activeTab, casesPerPage]);
+  }, [allCases, currentPage, searchTerm, activeTab, casesPerPage, kcbFilter, notificationFilter]);
 
-  // 클라이언트 측에서 데이터 필터링 및 페이지네이션 처리
+  // 클라이언트 측에서 데이터 필터링 및 페이지네이션 처리 수정
   const filterAndPaginateData = () => {
     console.log(
       "클라이언트 측 필터링 - 페이지:",
@@ -267,7 +266,11 @@ export default function ClientDetailPage() {
       "검색어:",
       searchTerm,
       "상태:",
-      activeTab
+      activeTab,
+      "KCB:",
+      kcbFilter,
+      "납부안내:",
+      notificationFilter
     );
 
     // 상태 필터 적용
@@ -285,16 +288,36 @@ export default function ClientDetailPage() {
       );
     }
 
+    // KCB 조회 필터 적용
+    let filteredByKcb = filteredByStatus;
+    if (kcbFilter === "yes") {
+      filteredByKcb = filteredByStatus.filter((caseItem) => caseItem.debtor_kcb_checked);
+    } else if (kcbFilter === "no") {
+      filteredByKcb = filteredByStatus.filter((caseItem) => !caseItem.debtor_kcb_checked);
+    }
+
+    // 납부안내 발송 필터 적용
+    let filteredByNotification = filteredByKcb;
+    if (notificationFilter === "yes") {
+      filteredByNotification = filteredByKcb.filter(
+        (caseItem) => caseItem.debtor_payment_notification_sent
+      );
+    } else if (notificationFilter === "no") {
+      filteredByNotification = filteredByKcb.filter(
+        (caseItem) => !caseItem.debtor_payment_notification_sent
+      );
+    }
+
     // 검색어 필터링 적용
     const filteredBySearch = searchTerm.trim()
-      ? filteredByStatus.filter(
+      ? filteredByNotification.filter(
           (caseItem) =>
             (caseItem.creditor_name &&
               caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (caseItem.debtor_name &&
               caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()))
         )
-      : filteredByStatus;
+      : filteredByNotification;
 
     // 총 아이템 수 설정
     const totalItemCount = filteredBySearch.length;
@@ -310,7 +333,7 @@ export default function ClientDetailPage() {
     if (currentPage > maxPages && maxPages > 0) {
       console.log("페이지 번호 조정:", currentPage, "->", maxPages);
       setCurrentPage(maxPages);
-      updateUrlParams(maxPages, searchTerm, activeTab);
+      updateUrlParams(maxPages, searchTerm, activeTab, kcbFilter, notificationFilter);
       return; // 페이지 번호가 변경되었으므로 useEffect에 의해 다시 호출됨
     }
 
@@ -325,186 +348,195 @@ export default function ClientDetailPage() {
   };
 
   const fetchClientData = async () => {
-    console.log("의뢰인 데이터 및 모든 사건 데이터 가져오기 시작");
-    setLoading(true);
+    if (!user) return;
+
     try {
-      // 먼저 test_case_clients 테이블에서 의뢰인 관계 확인
-      const { data: clientRelations, error: relationsError } = await supabase
-        .from("test_case_clients")
+      setLoading(true);
+
+      // 의뢰인 ID 가져오기
+      const clientId = params.id;
+
+      // 의뢰인 정보 가져오기 (개인 의뢰인은 users 테이블에서 조회)
+      const { data: individualData, error: individualError } = await supabase
+        .from("users")
         .select("*")
-        .or(`individual_id.eq.${params.id},organization_id.eq.${params.id}`);
+        .eq("id", clientId)
+        .single();
 
-      if (relationsError) throw relationsError;
+      const { data: organizationData, error: organizationError } = await supabase
+        .from("test_organizations")
+        .select("*")
+        .eq("id", clientId)
+        .single();
 
-      // 의뢰인 유형 확인
-      let clientInfo = null;
-
-      if (clientRelations && clientRelations.length > 0) {
-        const relation = clientRelations[0];
-
-        if (relation.individual_id === params.id) {
-          setClientType("individual");
-          // 개인 의뢰인 정보 가져오기
-          const { data: individual, error: individualError } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", params.id)
-            .single();
-
-          if (individualError) throw individualError;
-          clientInfo = individual;
-        } else if (relation.organization_id === params.id) {
-          setClientType("organization");
-          // 기업 의뢰인 정보 가져오기
-          const { data: organization, error: organizationError } = await supabase
-            .from("test_organizations")
-            .select("*")
-            .eq("id", params.id)
-            .single();
-
-          if (organizationError) throw organizationError;
-          clientInfo = organization;
-        }
-      }
-
-      if (!clientInfo) {
+      // 개인 또는 조직 데이터 설정
+      if (individualData) {
+        setClientData({
+          ...individualData,
+          phone: individualData.phone_number, // users 테이블은 phone_number 필드 사용
+        });
+        setClientType("individual");
+      } else if (organizationData) {
+        setClientData(organizationData);
+        setClientType("organization");
+      } else {
+        console.error("의뢰인 정보를 찾을 수 없음:", individualError, organizationError);
         toast.error("의뢰인 정보를 찾을 수 없습니다");
         router.push("/clients");
         return;
       }
 
-      setClientData(clientInfo);
-
-      // 의뢰인의 사건 ID 목록 가져오기
-      const caseIds = clientRelations.map((relation) => relation.case_id);
-
-      if (caseIds.length > 0) {
-        console.log("의뢰인 관련 사건 ID 수:", caseIds.length);
-
-        // 모든 사건 데이터를 가져옴 (페이지네이션 없이)
-        const { data: allCasesData, error: allCasesError } = await supabase
-          .from("test_cases")
-          .select(
-            `
-            *,
-            parties:test_case_parties(
-              id,
-              party_type,
-              entity_type,
-              name,
-              company_name,
-              kcb_checked,
-              kcb_checked_date,
-              payment_notification_sent,
-              payment_notification_date
-            )
+      // 해당 의뢰인의 모든 사건 정보 가져오기
+      const { data: casesData, error: casesError } = await supabase
+        .from("test_case_clients")
+        .select(
           `
+          case_id,
+          case:test_cases(
+            id,
+            status,
+            case_type,
+            filing_date,
+            principal_amount,
+            created_at
           )
-          .in("id", caseIds)
-          .order("created_at", { ascending: false });
+        `
+        )
+        .eq(clientType === "individual" ? "individual_id" : "organization_id", clientId)
+        .not("case", "is", null);
 
-        if (allCasesError) throw allCasesError;
+      if (casesError) {
+        console.error("사건 정보 가져오기 실패:", casesError);
+        setAllCases([]);
+        return;
+      }
 
-        // 각 사건의 회수 금액 데이터 가져오기 (payment 유형의 recovery_activities)
-        const recoveryPromises = allCasesData.map(async (caseItem) => {
-          const { data: recoveryData, error: recoveryError } = await supabase
-            .from("test_recovery_activities")
-            .select("amount")
-            .eq("case_id", caseItem.id)
-            .eq("activity_type", "payment")
-            .eq("status", "completed");
+      if (!casesData || casesData.length === 0) {
+        console.log("사건이 없습니다");
+        setAllCases([]);
+        return;
+      }
 
-          if (recoveryError) {
-            console.error(`사건 ${caseItem.id}의 회수 활동 조회 실패:`, recoveryError);
-            return { caseId: caseItem.id, recoveredAmount: 0 };
+      // 사건 ID 목록
+      const caseIds = casesData.map((item) => item.case_id);
+
+      // 당사자 정보 가져오기
+      const { data: partiesData, error: partiesError } = await supabase
+        .from("test_case_parties")
+        .select("*")
+        .in("case_id", caseIds);
+
+      if (partiesError) {
+        console.error("당사자 정보 가져오기 실패:", partiesError);
+      }
+
+      // 채권자와 채무자 정보 매핑
+      const partiesMap = {};
+      if (partiesData) {
+        partiesData.forEach((party) => {
+          if (!partiesMap[party.case_id]) {
+            partiesMap[party.case_id] = [];
           }
+          partiesMap[party.case_id].push(party);
+        });
+      }
 
-          // 회수 금액 합계 계산
-          const recoveredAmount = recoveryData.reduce(
-            (sum, activity) => sum + (activity.amount || 0),
-            0
-          );
-          console.log(`사건 ${caseItem.id}의 회수 금액:`, recoveredAmount);
+      // 채권자와 채무자 이름 추출을 위한 함수
+      const extractPartyNames = (caseId) => {
+        const parties = partiesMap[caseId] || [];
+        let creditorName = null;
+        let debtorName = null;
+        let debtorPhone = null;
 
-          return { caseId: caseItem.id, recoveredAmount };
+        parties.forEach((party) => {
+          const name = party.entity_type === "individual" ? party.name : party.company_name;
+
+          if (["creditor", "plaintiff", "applicant"].includes(party.party_type)) {
+            creditorName = name;
+          } else if (["debtor", "defendant", "respondent"].includes(party.party_type)) {
+            debtorName = name;
+            debtorPhone = party.phone;
+          }
         });
 
-        // 모든 회수 금액 조회 완료 대기
-        const recoveryResults = await Promise.all(recoveryPromises);
+        return { creditorName, debtorName, debtorPhone };
+      };
 
-        // 회수 금액 결과를 맵으로 변환
-        const recoveryMap = recoveryResults.reduce((map, item) => {
-          map[item.caseId] = item.recoveredAmount;
-          return map;
-        }, {});
+      // KCB와 납부안내 정보 가져오기
+      const { data: activitiesData, error: activitiesError } = await supabase
+        .from("test_recovery_activities")
+        .select("*")
+        .in("case_id", caseIds)
+        .in("activity_type", ["kcb", "letter"])
+        .eq("status", "completed");
 
-        // 모든 사건 데이터 처리 및 당사자 정보 추가
-        const allEnrichedCases = allCasesData.map((caseItem) => {
-          // 해당 사건의 모든 당사자
-          const caseParties = caseItem.parties || [];
+      if (activitiesError) {
+        console.error("회수 활동 정보 가져오기 실패:", activitiesError);
+      }
 
-          // 채권자와 채무자 찾기
-          const creditor = caseParties.find((p) =>
-            ["creditor", "plaintiff", "applicant"].includes(p.party_type)
-          );
-
-          const debtor = caseParties.find((p) =>
-            ["debtor", "defendant", "respondent"].includes(p.party_type)
-          );
-
-          // status_id가 있으면 constants에서 상태 정보 가져오기
-          let statusInfo = { name: "알 수 없음", color: "#999999" };
-          if (caseItem.status_id) {
-            statusInfo = getStatusById(caseItem.status_id);
+      // 활동 정보로 KCB와 납부안내 상태 매핑
+      const activitiesMap = {};
+      if (activitiesData) {
+        activitiesData.forEach((activity) => {
+          if (!activitiesMap[activity.case_id]) {
+            activitiesMap[activity.case_id] = {
+              kcbChecked: false,
+              paymentNotificationSent: false,
+            };
           }
+
+          if (activity.activity_type === "kcb") {
+            activitiesMap[activity.case_id].kcbChecked = true;
+          } else if (
+            activity.activity_type === "letter" &&
+            activity.description &&
+            activity.description.includes("납부안내")
+          ) {
+            activitiesMap[activity.case_id].paymentNotificationSent = true;
+          }
+        });
+      }
+
+      // 처리된 사건 데이터 생성
+      const processedCases = casesData
+        .map((item) => {
+          const caseItem = item.case;
+          if (!caseItem) return null;
+
+          const { creditorName, debtorName, debtorPhone } = extractPartyNames(caseItem.id);
+          const activities = activitiesMap[caseItem.id] || {
+            kcbChecked: false,
+            paymentNotificationSent: false,
+          };
 
           return {
-            ...caseItem,
-            creditor_name: creditor
-              ? creditor.entity_type === "individual"
-                ? creditor.name
-                : creditor.company_name
-              : null,
-            debtor_name: debtor
-              ? debtor.entity_type === "individual"
-                ? debtor.name
-                : debtor.company_name
-              : null,
-            // 채무자의 KCB 조회 정보 추가
-            debtor_kcb_checked: debtor ? debtor.kcb_checked : false,
-            debtor_kcb_checked_date: debtor ? debtor.kcb_checked_date : null,
-            // 채무자의 납부안내 정보 추가
-            debtor_payment_notification_sent: debtor ? debtor.payment_notification_sent : false,
-            debtor_payment_notification_date: debtor ? debtor.payment_notification_date : null,
-            // 회수 금액 추가
-            recovered_amount: recoveryMap[caseItem.id] || 0,
-            status_info: {
-              name: statusInfo.name,
-              color: statusInfo.color,
-            },
+            id: caseItem.id,
+            case_number: caseItem.id.substring(0, 8), // id의 앞 8자리를 case_number로 사용
+            status: caseItem.status,
+            case_type: caseItem.case_type,
+            filing_date: caseItem.filing_date,
+            principal_amount: caseItem.principal_amount,
+            created_at: caseItem.created_at,
+            creditor_name: creditorName,
+            debtor_name: debtorName,
+            debtor_phone: debtorPhone,
+            debtor_kcb_checked: activities.kcbChecked,
+            debtor_payment_notification_sent: activities.paymentNotificationSent,
           };
-        });
+        })
+        .filter(Boolean);
 
-        // 전체 사건 데이터 저장
-        setAllCases(allEnrichedCases);
+      // 채권 총액 계산
+      const debtTotal = processedCases.reduce((total, caseItem) => {
+        return total + (caseItem.principal_amount || 0);
+      }, 0);
 
-        // 채권 총액 계산
-        const totalAmount = allEnrichedCases.reduce((sum, caseItem) => {
-          return sum + (parseFloat(caseItem.principal_amount) || 0);
-        }, 0);
-
-        setTotalDebt(totalAmount);
-      } else {
-        // 사건이 없는 경우 초기화
-        setAllCases([]);
-        setFilteredCases([]);
-        setTotalDebt(0);
-        setTotalCases(0);
-        setTotalPages(1);
-      }
+      setAllCases(processedCases);
+      setTotalDebt(debtTotal);
+      console.log("사건 데이터 로드 완료:", processedCases.length);
     } catch (error) {
-      console.error("의뢰인 정보 가져오기 실패:", error);
-      toast.error("의뢰인 정보 가져오기 실패");
+      console.error("클라이언트 데이터 로드 중 오류:", error);
+      toast.error("데이터를 불러오는 중 오류가 발생했습니다");
     } finally {
       setLoading(false);
     }
@@ -513,26 +545,26 @@ export default function ClientDetailPage() {
   const handleSearch = (value) => {
     setSearchTerm(value);
     setCurrentPage(1); // 검색 시 첫 페이지로 이동
-    updateUrlParams(1, value, activeTab);
+    updateUrlParams(1, value, activeTab, kcbFilter, notificationFilter);
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1); // 탭 변경 시 첫 페이지로 이동
-    updateUrlParams(1, searchTerm, tab);
+    updateUrlParams(1, searchTerm, tab, kcbFilter, notificationFilter);
   };
 
   const handlePageChange = (page) => {
     console.log("페이지 변경:", page);
     setCurrentPage(page);
-    updateUrlParams(page, searchTerm, activeTab);
+    updateUrlParams(page, searchTerm, activeTab, kcbFilter, notificationFilter);
   };
 
   // 페이지 크기 변경 핸들러 추가
   const handlePageSizeChange = (size) => {
     setCasesPerPage(Number(size));
     setCurrentPage(1);
-    updateUrlParams(1, searchTerm, activeTab);
+    updateUrlParams(1, searchTerm, activeTab, kcbFilter, notificationFilter);
   };
 
   // 데이터 새로고침 핸들러 (모달에서 사용)
@@ -548,6 +580,20 @@ export default function ClientDetailPage() {
       currency: "KRW",
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  // KCB 필터 변경 핸들러 추가
+  const handleKcbFilterChange = (value) => {
+    setKcbFilter(value);
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+    updateUrlParams(1, searchTerm, activeTab, value, notificationFilter);
+  };
+
+  // 납부안내 필터 변경 핸들러 추가
+  const handleNotificationFilterChange = (value) => {
+    setNotificationFilter(value);
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+    updateUrlParams(1, searchTerm, activeTab, kcbFilter, value);
   };
 
   if (loading) {
@@ -584,76 +630,17 @@ export default function ClientDetailPage() {
         <h1 className="text-2xl font-bold">의뢰인 정보</h1>
       </div>
 
-      {/* 통계 대시보드 (탭 형식) */}
+      {/* 프로필 카드 */}
       <div className="mb-8">
-        <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
-          <CardHeader className="pb-0">
-            <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-50 dark:bg-gray-800/50 p-1 rounded-lg">
-                <TabsTrigger value="cases" className="flex items-center rounded-md">
-                  <Briefcase className="mr-2 h-4 w-4" />
-                  사건 정보
-                </TabsTrigger>
-                <TabsTrigger value="debt" className="flex items-center rounded-md">
-                  <CircleDollarSign className="mr-2 h-4 w-4" />
-                  채권 정보
-                </TabsTrigger>
-              </TabsList>
-
-              {/* 총의뢰 탭 내용 */}
-              <TabsContent value="cases" className="pt-3">
-                <div className="grid grid-cols-1 lg:grid-cols-1 gap-4 px-3 mb-4">
-                  {/* 프로필 카드 */}
-                  <div>
-                    <ClientSummary
-                      clientData={clientData}
-                      clientType={clientType}
-                      cases={filteredCases}
-                      totalDebt={totalDebt}
-                      loading={loading}
-                    />
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* 채권정보 탭 (여기에 채권분류 그래프 추가 예정) */}
-              <TabsContent value="debt" className="pt-4 px-4 pb-2">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                  <Card className="lg:col-span-1 border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
-                    <CardHeader className="pb-2 border-b">
-                      <CardTitle className="text-lg flex items-center">
-                        <CircleDollarSign className="h-5 w-5 mr-2 text-amber-500" /> 채권 총액
-                      </CardTitle>
-                      <CardDescription>원금, 이자, 비용의 합계</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="flex flex-col items-center justify-center py-2">
-                        <div className="text-3xl font-bold text-amber-600 dark:text-amber-400 mb-4">
-                          {formatCurrency(totalDebt)}
-                        </div>
-                        {/* 채권 내역은 필요한 경우 여기에 추가 */}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="lg:col-span-2 border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
-                    <CardHeader className="pb-2 border-b">
-                      <CardTitle className="text-lg flex items-center">
-                        <PieChart className="h-5 w-5 mr-2 text-purple-500" /> 채권 분류
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <p className="text-center text-gray-500 py-8">
-                        채권 분류 데이터를 표시할 예정입니다.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardHeader>
-        </Card>
+        <ClientSummary
+          clientData={clientData}
+          clientType={clientType}
+          cases={filteredCases}
+          totalDebt={totalDebt}
+          loading={loading}
+        />
       </div>
+
       <StaffCasesTable
         cases={filteredCases}
         personalCases={allCases}
@@ -671,6 +658,11 @@ export default function ClientDetailPage() {
         onPageSizeChange={handlePageSizeChange}
         formatCurrency={formatCurrency}
         onRefreshData={handleRefreshData}
+        // KCB 및 납부안내 필터 props 추가
+        kcbFilter={kcbFilter}
+        notificationFilter={notificationFilter}
+        onKcbFilterChange={handleKcbFilterChange}
+        onNotificationFilterChange={handleNotificationFilterChange}
       />
     </div>
   );

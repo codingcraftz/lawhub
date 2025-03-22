@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/contexts/UserContext";
+import FileUploadDropzone from "@/components/ui/file-upload-dropzone";
 
 // 스토리지 버킷 이름을 정의합니다
 const BUCKET_NAME = "case-files";
@@ -156,8 +157,7 @@ export default function AddSubmissionModal({
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (file) => {
     if (!file) return;
 
     // 파일 사이즈 제한 (10MB)
@@ -165,7 +165,6 @@ export default function AddSubmissionModal({
       toast.error("파일 크기 초과", {
         description: "10MB 이하의 파일만 업로드할 수 있습니다.",
       });
-      e.target.value = "";
       return;
     }
 
@@ -477,58 +476,18 @@ export default function AddSubmissionModal({
           <div className="space-y-2">
             <Label htmlFor="file">첨부파일</Label>
             <div className="flex flex-col gap-2">
-              {editingSubmission?.file_url && !fileToUpload && (
-                <div className="border rounded p-2 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FileCheck className="h-4 w-4 mr-2 text-blue-500" />
-                    <span className="text-sm">
-                      기존 파일이 있습니다.{" "}
-                      <Link
-                        href={editingSubmission.file_url}
-                        target="_blank"
-                        className="text-blue-500 hover:underline"
-                      >
-                        보기
-                      </Link>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {fileToUpload ? (
-                <div className="border rounded p-2 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FileCheck className="h-4 w-4 mr-2 text-green-500" />
-                    <span className="text-sm truncate max-w-[280px]">{fileToUpload.name}</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetFileUpload}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <label className="cursor-pointer">
-                  <div className="border border-dashed rounded-md p-4 flex flex-col items-center justify-center gap-2 hover:bg-muted/40 transition-colors">
-                    <Upload className="h-6 w-6 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      {editingSubmission?.file_url
-                        ? "새 파일을 업로드하여 기존 파일 교체"
-                        : "클릭하여 파일 업로드"}
-                    </p>
-                    <input
-                      type="file"
-                      id="submission-file"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                </label>
-              )}
+              <FileUploadDropzone
+                onFileSelect={handleFileChange}
+                onFileRemove={resetFileUpload}
+                selectedFile={fileToUpload}
+                existingFileUrl={editingSubmission?.file_url || null}
+                fileUrlLabel="기존 파일이 있습니다"
+                uploadLabel="파일을 이곳에 끌어서 놓거나 클릭하여 업로드"
+                replaceLabel="파일을 이곳에 끌어서 놓거나 클릭하여 교체"
+                id="submission-file"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                maxSizeMB={10}
+              />
             </div>
           </div>
         </div>

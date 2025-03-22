@@ -90,6 +90,10 @@ export function StaffCasesTable({
   onPageSizeChange,
   formatCurrency,
   onRefreshData,
+  kcbFilter = "all",
+  notificationFilter = "all",
+  onKcbFilterChange,
+  onNotificationFilterChange,
 }) {
   console.log("StaffCasesTable cases:", cases.length, "statusFilter:", statusFilter);
   const router = useRouter();
@@ -104,6 +108,8 @@ export function StaffCasesTable({
       currentPage,
       totalPages,
       statusFilter,
+      kcbFilter,
+      notificationFilter,
       onPageChange: !!onPageChange,
       casesPerPage,
     });
@@ -114,6 +120,8 @@ export function StaffCasesTable({
     currentPage,
     totalPages,
     statusFilter,
+    kcbFilter,
+    notificationFilter,
     onPageChange,
     casesPerPage,
   ]);
@@ -292,7 +300,7 @@ export function StaffCasesTable({
                 className="flex items-center gap-1 h-8 px-2 text-xs sm:text-sm flex-1 sm:flex-none"
               >
                 <ListFilter className="h-4 w-4 sm:mr-1 hidden sm:inline" />
-                전체
+                상태: 전체
               </Button>
               <Button
                 variant={statusFilter === "active" ? "default" : "outline"}
@@ -313,6 +321,76 @@ export function StaffCasesTable({
                 완료
               </Button>
 
+              <Select
+                value={kcbFilter}
+                onValueChange={(value) => onKcbFilterChange && onKcbFilterChange(value)}
+              >
+                <SelectTrigger className="h-8 px-2 text-xs sm:text-sm w-[110px] sm:w-[120px]">
+                  <span className="flex items-center gap-1">
+                    <span className="hidden sm:inline">KCB 조회:</span>
+                    <span className="sm:hidden">KCB:</span>
+                    {kcbFilter === "all" && "전체"}
+                    {kcbFilter === "yes" && (
+                      <Badge
+                        variant="outline"
+                        className="bg-green-50 text-green-600 border-green-200 text-xs"
+                      >
+                        Y
+                      </Badge>
+                    )}
+                    {kcbFilter === "no" && (
+                      <Badge
+                        variant="outline"
+                        className="bg-gray-50 text-gray-500 border-gray-200 text-xs"
+                      >
+                        N
+                      </Badge>
+                    )}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="yes">확인됨 (Y)</SelectItem>
+                  <SelectItem value="no">미확인 (N)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={notificationFilter}
+                onValueChange={(value) =>
+                  onNotificationFilterChange && onNotificationFilterChange(value)
+                }
+              >
+                <SelectTrigger className="h-8 px-2 text-xs sm:text-sm w-[110px] sm:w-[130px]">
+                  <span className="flex items-center gap-1">
+                    <span className="hidden sm:inline">납부안내:</span>
+                    <span className="sm:hidden">안내:</span>
+                    {notificationFilter === "all" && "전체"}
+                    {notificationFilter === "yes" && (
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-600 border-blue-200 text-xs"
+                      >
+                        Y
+                      </Badge>
+                    )}
+                    {notificationFilter === "no" && (
+                      <Badge
+                        variant="outline"
+                        className="bg-gray-50 text-gray-500 border-gray-200 text-xs"
+                      >
+                        N
+                      </Badge>
+                    )}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="yes">발송됨 (Y)</SelectItem>
+                  <SelectItem value="no">미발송 (N)</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* 검색어 표시 및 취소 배지 추가 */}
               {searchTerm && (
                 <div className="flex-1 sm:flex-none flex justify-end">
@@ -329,6 +407,48 @@ export function StaffCasesTable({
                         setInputSearchTerm("");
                         onSearchChange && onSearchChange("");
                       }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                </div>
+              )}
+
+              {/* KCB 필터 배지 */}
+              {kcbFilter !== "all" && (
+                <div className="flex-1 sm:flex-none flex justify-end">
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto flex items-center gap-1 px-2 py-1 h-8"
+                  >
+                    <span>KCB: {kcbFilter === "yes" ? "확인됨" : "미확인"}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 p-0 ml-1 hover:bg-gray-200 rounded-full"
+                      onClick={() => onKcbFilterChange && onKcbFilterChange("all")}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                </div>
+              )}
+
+              {/* 납부안내 필터 배지 */}
+              {notificationFilter !== "all" && (
+                <div className="flex-1 sm:flex-none flex justify-end">
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto flex items-center gap-1 px-2 py-1 h-8"
+                  >
+                    <span>납부안내: {notificationFilter === "yes" ? "발송됨" : "미발송"}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 p-0 ml-1 hover:bg-gray-200 rounded-full"
+                      onClick={() =>
+                        onNotificationFilterChange && onNotificationFilterChange("all")
+                      }
                     >
                       <X className="h-3 w-3" />
                     </Button>

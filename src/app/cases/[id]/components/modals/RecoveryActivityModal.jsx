@@ -28,6 +28,7 @@ import { CalendarIcon, Upload, FileCheck, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import FileUploadDropzone from "@/components/ui/file-upload-dropzone";
 
 const activityTypes = [
   { value: "kcb", label: "KCB조회" },
@@ -198,10 +199,51 @@ export default function RecoveryActivityModal({
     setFormData((prev) => ({ ...prev, status: value }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-
+  const handleFileChange = (file) => {
     if (file) {
+      setFileToUpload(file);
+
+      // 파일 미리보기 처리
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFilePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview(null);
+      }
+
+      if (formErrors.file) {
+        setFormErrors({
+          ...formErrors,
+          file: null,
+        });
+      }
+    }
+  };
+
+  // 드래그 앤 드롭 이벤트 핸들러 추가
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.add("border-blue-500", "bg-blue-50/50", "dark:bg-blue-900/20");
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove("border-blue-500", "bg-blue-50/50", "dark:bg-blue-900/20");
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    e.currentTarget.classList.remove("border-blue-500", "bg-blue-50/50", "dark:bg-blue-900/20");
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
       setFileToUpload(file);
 
       // 파일 미리보기 처리
@@ -867,52 +909,18 @@ export default function RecoveryActivityModal({
               첨부 파일 {isEditing && activity?.file_url ? "(기존 파일 교체)" : ""}
             </label>
             <div className="flex flex-col gap-2">
-              {isEditing && activity?.file_url && !fileToUpload && (
-                <div className="border rounded p-2 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FileCheck className="h-4 w-4 mr-2 text-blue-500" />
-                    <span className="text-sm">
-                      기존 파일이 있습니다.{" "}
-                      <Link
-                        href={activity.file_url}
-                        target="_blank"
-                        className="text-blue-500 hover:underline"
-                      >
-                        보기
-                      </Link>
-                    </span>
-                  </div>
-                </div>
-              )}
-              {fileToUpload ? (
-                <div className="border rounded p-2 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FileCheck className="h-4 w-4 mr-2 text-green-500" />
-                    <span className="text-sm truncate max-w-[280px]">{fileToUpload.name}</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetFileUpload}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <label className="cursor-pointer">
-                  <div className="border border-dashed rounded-md p-4 flex flex-col items-center justify-center gap-2 hover:bg-muted/40 transition-colors">
-                    <Upload className="h-6 w-6 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      {isEditing && activity?.file_url
-                        ? "새 파일을 업로드하여 기존 파일 교체"
-                        : "파일을 여기에 끌어다 놓거나 클릭하여 업로드하세요"}
-                    </p>
-                    <input type="file" className="hidden" onChange={handleFileChange} />
-                  </div>
-                </label>
-              )}
+              <FileUploadDropzone
+                onFileSelect={handleFileChange}
+                onFileRemove={resetFileUpload}
+                selectedFile={fileToUpload}
+                existingFileUrl={isEditing && activity?.file_url ? activity.file_url : null}
+                fileUrlLabel="기존 파일이 있습니다"
+                uploadLabel="파일을 이곳에 끌어서 놓거나 클릭하여 업로드"
+                replaceLabel="파일을 이곳에 끌어서 놓거나 클릭하여 교체"
+                id="recovery-file-upload"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                maxSizeMB={10}
+              />
             </div>
           </div>
 
