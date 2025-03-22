@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/contexts/UserContext";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,6 @@ import {
   Search,
   Clock,
   CheckCircle2,
-  Bell,
   FileText,
   ChevronRight,
   CircleDollarSign,
@@ -38,120 +37,6 @@ import {
   PieChart,
 } from "lucide-react";
 import { StaffCasesTable } from "./StaffCasesTable";
-
-// NotificationPanel 컴포넌트 추가 (간소화된 버전)
-function NotificationPanel({ notifications, loading, router }) {
-  // 알림 유형에 따른 아이콘 반환
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case "lawsuit":
-        return <FileText className="h-4 w-4 text-blue-500" />;
-      case "lawsuit_update":
-        return <Clock className="h-4 w-4 text-purple-500" />;
-      case "recovery_activity":
-        return <CircleDollarSign className="h-4 w-4 text-green-500" />;
-      case "deadline":
-        return <Calendar className="h-4 w-4 text-red-500" />;
-      case "document":
-        return <FileText className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Bell className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  return (
-    <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md h-full">
-      <CardHeader className="py-2 px-4 border-b">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-base flex items-center">
-            <Bell className="h-4 w-4 mr-2 text-amber-500" /> 최근 알림
-            {notifications.filter((n) => !n.is_read).length > 0 && (
-              <Badge className="ml-2 bg-amber-500 text-white">
-                {notifications.filter((n) => !n.is_read).length}
-              </Badge>
-            )}
-          </CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="max-h-[220px] overflow-y-auto">
-          {loading ? (
-            <div className="p-3 space-y-2">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex flex-col space-y-1">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              <Bell className="h-5 w-5 mx-auto mb-1 text-gray-300 dark:text-gray-600" />
-              <p className="text-xs text-gray-500 dark:text-gray-400">새로운 알림이 없습니다.</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {notifications.slice(0, 4).map((notification) => (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer",
-                    !notification.is_read && "bg-blue-50/50 dark:bg-blue-900/10"
-                  )}
-                  onClick={() => router.push(`/cases/${notification.case_id}`)}
-                >
-                  <div className="flex gap-2">
-                    <div className="mt-0.5">
-                      {getNotificationIcon(notification.notification_type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <h4
-                          className={cn(
-                            "font-medium text-xs",
-                            !notification.is_read && "font-semibold"
-                          )}
-                        >
-                          {notification.title}
-                        </h4>
-                        {!notification.is_read && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1"></span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-1">
-                        {notification.message}
-                      </p>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-[10px] text-gray-500">
-                          {formatDistanceToNow(new Date(notification.created_at), {
-                            addSuffix: true,
-                            locale: ko,
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {notifications.length > 4 && (
-                <div className="text-center py-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-[10px] h-6"
-                    onClick={() => router.push("/notifications")}
-                  >
-                    더보기 ({notifications.length})
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ClientSummary 컴포넌트를 새로운 디자인으로 수정
 function ClientSummary({ clientData, clientType, cases, totalDebt, loading }) {
@@ -300,22 +185,29 @@ function ClientSummary({ clientData, clientType, cases, totalDebt, loading }) {
 
 export default function ClientDetailPage() {
   const router = useRouter();
-  const { id: clientId } = useParams();
+  const params = useParams();
+  const searchParams = useSearchParams();
   const { user } = useUser();
+
+  // URL에서 현재 페이지, 검색어, 상태 필터 가져오기
+  const pageFromUrl = Number(searchParams.get("page")) || 1;
+  const searchTermFromUrl = searchParams.get("search") || "";
+  const statusFilterFromUrl = searchParams.get("status") || "all";
 
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
   const [clientType, setClientType] = useState(null); // "individual" 또는 "organization"
   const [cases, setCases] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchTermFromUrl);
   const [filteredCases, setFilteredCases] = useState([]);
-  const [activeTab, setActiveTab] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState(statusFilterFromUrl);
+  const [currentPage, setCurrentPage] = useState(pageFromUrl);
   const [totalPages, setTotalPages] = useState(1);
   const [casesPerPage, setCasesPerPage] = useState(10);
   const [totalDebt, setTotalDebt] = useState(0);
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [totalCases, setTotalCases] = useState(0);
+  const [refetchTrigger, setRefetchTrigger] = useState(0); // 데이터 리프래시를 위한 트리거
+  const [tabValue, setTabValue] = useState("cases"); // 상단 탭 상태 추가
 
   // UUID 유효성 검사 함수
   const isValidUUID = (uuid) => {
@@ -324,10 +216,32 @@ export default function ClientDetailPage() {
     return uuid && uuidRegex.test(uuid);
   };
 
+  // URL 파라미터 업데이트 함수
+  const updateUrlParams = (page, search, status) => {
+    const params = new URLSearchParams();
+    if (page !== 1) params.set("page", page.toString());
+    if (search) params.set("search", search);
+    if (status !== "all") params.set("status", status);
+
+    const newUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
+    window.history.pushState({}, "", newUrl);
+  };
+
+  // URL이 변경될 때 상태 업데이트
+  useEffect(() => {
+    const page = Number(searchParams.get("page")) || 1;
+    const search = searchParams.get("search") || "";
+    const status = searchParams.get("status") || "all";
+
+    if (page !== currentPage) setCurrentPage(page);
+    if (search !== searchTerm) setSearchTerm(search);
+    if (status !== activeTab) setActiveTab(status);
+  }, [searchParams]);
+
   useEffect(() => {
     // UUID가 유효하지 않으면 의뢰인 목록 페이지로 리다이렉트
-    if (!isValidUUID(clientId)) {
-      console.error("유효하지 않은 의뢰인 ID:", clientId);
+    if (!isValidUUID(params.id)) {
+      console.error("유효하지 않은 의뢰인 ID:", params.id);
       toast.error("유효하지 않은 의뢰인 ID입니다");
       router.push("/clients");
       return;
@@ -335,22 +249,33 @@ export default function ClientDetailPage() {
 
     if (user) {
       fetchClientData();
-      fetchClientNotifications();
     }
-  }, [user, clientId]);
+  }, [user, params.id]);
 
+  // 검색어나 필터, 페이지가 변경될 때 데이터를 다시 가져옴
   useEffect(() => {
-    filterCases();
-  }, [cases, searchTerm, activeTab]);
+    if (user && clientData) {
+      console.log(
+        "데이터 재요청 - 페이지:",
+        currentPage,
+        "검색어:",
+        searchTerm,
+        "상태:",
+        activeTab
+      );
+      fetchClientData();
+    }
+  }, [currentPage, searchTerm, activeTab, casesPerPage, refetchTrigger]);
 
   const fetchClientData = async () => {
+    console.log("데이터 가져오기 시작 - 페이지:", currentPage, "상태필터:", activeTab);
     setLoading(true);
     try {
       // 먼저 test_case_clients 테이블에서 의뢰인 관계 확인
       const { data: clientRelations, error: relationsError } = await supabase
         .from("test_case_clients")
         .select("*")
-        .or(`individual_id.eq.${clientId},organization_id.eq.${clientId}`);
+        .or(`individual_id.eq.${params.id},organization_id.eq.${params.id}`);
 
       if (relationsError) throw relationsError;
 
@@ -360,24 +285,24 @@ export default function ClientDetailPage() {
       if (clientRelations && clientRelations.length > 0) {
         const relation = clientRelations[0];
 
-        if (relation.individual_id === clientId) {
+        if (relation.individual_id === params.id) {
           setClientType("individual");
           // 개인 의뢰인 정보 가져오기
           const { data: individual, error: individualError } = await supabase
             .from("users")
             .select("*")
-            .eq("id", clientId)
+            .eq("id", params.id)
             .single();
 
           if (individualError) throw individualError;
           clientInfo = individual;
-        } else if (relation.organization_id === clientId) {
+        } else if (relation.organization_id === params.id) {
           setClientType("organization");
           // 기업 의뢰인 정보 가져오기
           const { data: organization, error: organizationError } = await supabase
             .from("test_organizations")
             .select("*")
-            .eq("id", clientId)
+            .eq("id", params.id)
             .single();
 
           if (organizationError) throw organizationError;
@@ -393,11 +318,14 @@ export default function ClientDetailPage() {
 
       setClientData(clientInfo);
 
-      // 의뢰인의 사건 목록 가져오기
+      // 의뢰인의 사건 ID 목록 가져오기
       const caseIds = clientRelations.map((relation) => relation.case_id);
 
       if (caseIds.length > 0) {
-        const { data: casesData, error: casesError } = await supabase
+        console.log("의뢰인 관련 사건 ID 수:", caseIds.length);
+
+        // 모든 사건 데이터를 가져와서 총 개수 및 상태별 개수 계산용
+        const { data: allCasesData, error: allCasesError } = await supabase
           .from("test_cases")
           .select(
             `
@@ -418,10 +346,10 @@ export default function ClientDetailPage() {
           .in("id", caseIds)
           .order("created_at", { ascending: false });
 
-        if (casesError) throw casesError;
+        if (allCasesError) throw allCasesError;
 
-        // 사건 데이터 처리 및 당사자 정보 추가
-        const enrichedCases = casesData.map((caseItem) => {
+        // 모든 사건 데이터 처리 및 당사자 정보 추가
+        const allEnrichedCases = allCasesData.map((caseItem) => {
           // 해당 사건의 모든 당사자
           const caseParties = caseItem.parties || [];
 
@@ -465,18 +393,76 @@ export default function ClientDetailPage() {
           };
         });
 
-        setCases(enrichedCases);
-        setFilteredCases(enrichedCases);
+        // 상태별로 필터링된 사건 데이터
+        let filteredCasesByStatus = [...allEnrichedCases];
+
+        // 상태 필터 적용
+        if (activeTab === "active") {
+          filteredCasesByStatus = allEnrichedCases.filter(
+            (caseItem) =>
+              caseItem.status === "active" ||
+              caseItem.status === "in_progress" ||
+              caseItem.status === "pending"
+          );
+        } else if (activeTab === "completed") {
+          filteredCasesByStatus = allEnrichedCases.filter(
+            (caseItem) => caseItem.status === "completed" || caseItem.status === "closed"
+          );
+        }
+
+        // 검색어 필터링 적용
+        const filteredBySearch = searchTerm.trim()
+          ? filteredCasesByStatus.filter(
+              (caseItem) =>
+                (caseItem.creditor_name &&
+                  caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (caseItem.debtor_name &&
+                  caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()))
+            )
+          : filteredCasesByStatus;
+
+        // 총 아이템 수 설정
+        const totalItemCount = filteredBySearch.length;
+        setTotalCases(totalItemCount);
+
+        // 총 페이지 수 계산
+        const maxPages = Math.ceil(totalItemCount / casesPerPage) || 1;
+        setTotalPages(maxPages);
+
+        console.log("필터링된 사건 수:", totalItemCount, "페이지 수:", maxPages);
+
+        // 현재 페이지가 최대 페이지를 초과하는 경우 조정
+        if (currentPage > maxPages && maxPages > 0) {
+          console.log("페이지 번호 조정:", currentPage, "->", maxPages);
+          setCurrentPage(maxPages);
+          updateUrlParams(maxPages, searchTerm, activeTab);
+          return; // 페이지 번호가 변경되었으므로 useEffect에 의해 다시 호출됨
+        }
+
+        // 현재 페이지에 필요한 데이터만 추출
+        const startIdx = (currentPage - 1) * casesPerPage;
+        const endIdx = Math.min(startIdx + casesPerPage, filteredBySearch.length);
+        const paginatedCases = filteredBySearch.slice(startIdx, endIdx);
+
+        console.log("현재 페이지 데이터 수:", paginatedCases.length);
+
+        // 모든 데이터셋 설정
+        setCases(allEnrichedCases); // 전체 데이터셋 (상태별 카운트용)
+        setFilteredCases(paginatedCases); // 페이지네이션된 현재 페이지 데이터
 
         // 채권 총액 계산
-        const totalAmount = enrichedCases.reduce((sum, caseItem) => {
-          return sum + (parseFloat(caseItem.claim_amount) || 0);
+        const totalAmount = allEnrichedCases.reduce((sum, caseItem) => {
+          return sum + (parseFloat(caseItem.principal_amount) || 0);
         }, 0);
+
         setTotalDebt(totalAmount);
       } else {
+        // 사건이 없는 경우 초기화
         setCases([]);
         setFilteredCases([]);
         setTotalDebt(0);
+        setTotalCases(0);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("의뢰인 정보 가져오기 실패:", error);
@@ -486,96 +472,43 @@ export default function ClientDetailPage() {
     }
   };
 
-  // 의뢰인 관련 알림 가져오기
-  const fetchClientNotifications = async () => {
-    setNotificationsLoading(true);
-    try {
-      // 의뢰인의 사건 ID 목록 가져오기
-      const { data: clientRelations, error: relationsError } = await supabase
-        .from("test_case_clients")
-        .select("case_id")
-        .or(`individual_id.eq.${clientId},organization_id.eq.${clientId}`);
-
-      if (relationsError) throw relationsError;
-
-      if (clientRelations && clientRelations.length > 0) {
-        const caseIds = clientRelations.map((relation) => relation.case_id);
-
-        // 해당 사건들의 알림 가져오기
-        const { data: notificationsData, error: notificationsError } = await supabase
-          .from("test_case_notifications")
-          .select("*")
-          .in("case_id", caseIds)
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        if (notificationsError) throw notificationsError;
-        setNotifications(notificationsData || []);
-      } else {
-        setNotifications([]);
-      }
-    } catch (error) {
-      console.error("의뢰인 알림 가져오기 실패:", error);
-    } finally {
-      setNotificationsLoading(false);
-    }
-  };
+  // 클라이언트측 필터링은 더 이상 필요 없음 (서버에서 모든 필터링 처리)
+  useEffect(() => {
+    // 더 이상 필요 없음
+  }, [cases, searchTerm]);
 
   const filterCases = () => {
-    // 검색어 기반 필터링
-    let filtered = [...cases];
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        (caseItem) =>
-          (caseItem.case_number && caseItem.case_number.toLowerCase().includes(term)) ||
-          (caseItem.case_info && caseItem.case_info.toLowerCase().includes(term)) ||
-          (caseItem.court_name && caseItem.court_name.toLowerCase().includes(term)) ||
-          (caseItem.creditor_name && caseItem.creditor_name.toLowerCase().includes(term)) ||
-          (caseItem.debtor_name && caseItem.debtor_name.toLowerCase().includes(term))
-      );
-    }
-
-    // 탭에 따른 필터링
-    if (activeTab === "active") {
-      filtered = filtered.filter(
-        (caseItem) => caseItem.status === "active" || caseItem.status === "in_progress"
-      );
-    } else if (activeTab === "closed") {
-      filtered = filtered.filter(
-        (caseItem) => caseItem.status === "closed" || caseItem.status === "completed"
-      );
-    }
-
-    setFilteredCases(filtered);
-    setTotalPages(Math.ceil(filtered.length / casesPerPage) || 1);
-
-    // 현재 페이지가 최대 페이지 수를 초과하는 경우 조정
-    const maxPage = Math.ceil(filtered.length / casesPerPage) || 1;
-    if (currentPage > maxPage) {
-      setCurrentPage(1);
-    }
+    // 더 이상 필요 없음
   };
 
   const handleSearch = (value) => {
     setSearchTerm(value);
     setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    updateUrlParams(1, value, activeTab);
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1); // 탭 변경 시 첫 페이지로 이동
+    updateUrlParams(1, searchTerm, tab);
   };
 
   const handlePageChange = (page) => {
+    console.log("페이지 변경:", page);
     setCurrentPage(page);
+    updateUrlParams(page, searchTerm, activeTab);
   };
 
   // 페이지 크기 변경 핸들러 추가
   const handlePageSizeChange = (size) => {
     setCasesPerPage(Number(size));
     setCurrentPage(1);
+    updateUrlParams(1, searchTerm, activeTab);
+  };
+
+  // 데이터 새로고침 핸들러 (모달에서 사용)
+  const handleRefreshData = () => {
+    setRefetchTrigger((prev) => prev + 1);
   };
 
   // 금액 포맷
@@ -626,22 +559,22 @@ export default function ClientDetailPage() {
       <div className="mb-8">
         <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md">
           <CardHeader className="pb-0">
-            <Tabs defaultValue="cases" className="w-full">
+            <Tabs value={tabValue} onValueChange={setTabValue} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-gray-50 dark:bg-gray-800/50 p-1 rounded-lg">
                 <TabsTrigger value="cases" className="flex items-center rounded-md">
                   <Briefcase className="mr-2 h-4 w-4" />
-                  총의뢰 ({cases.length}건)
+                  사건 정보
                 </TabsTrigger>
                 <TabsTrigger value="debt" className="flex items-center rounded-md">
                   <CircleDollarSign className="mr-2 h-4 w-4" />
-                  채권정보 ({formatCurrency(totalDebt).replace("₩", "")})
+                  채권 정보
                 </TabsTrigger>
               </TabsList>
 
               {/* 총의뢰 탭 내용 */}
               <TabsContent value="cases" className="pt-3">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-3 mb-4">
-                  {/* 좌측 - 프로필 카드 */}
+                <div className="grid grid-cols-1 lg:grid-cols-1 gap-4 px-3 mb-4">
+                  {/* 프로필 카드 */}
                   <div>
                     <ClientSummary
                       clientData={clientData}
@@ -649,15 +582,6 @@ export default function ClientDetailPage() {
                       cases={cases}
                       totalDebt={totalDebt}
                       loading={loading}
-                    />
-                  </div>
-
-                  {/* 우측 - 알림 */}
-                  <div>
-                    <NotificationPanel
-                      notifications={notifications}
-                      loading={notificationsLoading}
-                      router={router}
                     />
                   </div>
                 </div>
@@ -706,15 +630,18 @@ export default function ClientDetailPage() {
         personalCases={cases}
         organizationCases={[]}
         selectedTab="personal"
+        statusFilter={activeTab}
         searchTerm={searchTerm}
         onSearchChange={handleSearch}
+        onStatusChange={handleTabChange}
         currentPage={currentPage}
         totalPages={totalPages}
-        totalItems={filteredCases.length}
+        totalItems={totalCases}
         casesPerPage={casesPerPage}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
         formatCurrency={formatCurrency}
+        onRefreshData={handleRefreshData}
       />
     </div>
   );

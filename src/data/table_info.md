@@ -81,6 +81,10 @@
 | corporate_number              | character varying        | 사업자등록번호                                       |
 | representative_name           | text                     | 대표자 이름                                          |
 | representative_position       | text                     | 대표자 직위                                          |
+| kcb_checked                   | boolean                  | KCB 조회 여부                                        |
+| kcb_checked_date              | date                     | KCB 조회일                                           |
+| payment_notification_sent     | boolean                  | 납부 안내 발송 여부                                  |
+| payment_notification_date     | date                     | 납부 안내 발송일                                     |
 
 ## 사건 의뢰인 테이블 (test_case_clients)
 
