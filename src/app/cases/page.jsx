@@ -23,6 +23,10 @@ import {
   Users,
   Plus,
   Gavel,
+  CircleDollarSign,
+  FileSpreadsheet,
+  MoreHorizontal,
+  ExternalLink,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +45,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency as formatUtil } from "@/utils/format";
 import Link from "next/link";
 import { StaffCasesTable } from "../clients/[id]/StaffCasesTable";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// 동적 임포트 추가
+import dynamic from "next/dynamic";
+
+// LawsuitManager와 RecoveryActivities 컴포넌트 동적 임포트
+const LawsuitManager = dynamic(() => import("@/app/cases/[id]/components/LawsuitManager"), {
+  loading: () => <p>소송 정보를 불러오는 중...</p>,
+  ssr: false,
+});
+
+const RecoveryActivities = dynamic(() => import("@/app/cases/[id]/components/RecoveryActivities"), {
+  loading: () => <p>채권 정보를 불러오는 중...</p>,
+  ssr: false,
+});
 
 function CasesContent() {
   const router = useRouter();
@@ -53,6 +86,13 @@ function CasesContent() {
   const [searchType, setSearchType] = useState("case_number");
   const [results, setResults] = useState([]);
   const [totalResults, setTotalResults] = useState(0);
+
+  // 모달 관련 상태 추가
+  const [showLawsuitModal, setShowLawsuitModal] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [selectedCaseId, setSelectedCaseId] = useState(null);
+  const [selectedCaseTitle, setSelectedCaseTitle] = useState("");
+  const [modalRefreshNeeded, setModalRefreshNeeded] = useState(false);
 
   useEffect(() => {
     const queryType = searchParams.get("type");
@@ -68,6 +108,10 @@ function CasesContent() {
       const currentPage = queryPage ? parseInt(queryPage) : 1;
       setPage(currentPage);
       performSearch(queryTerm, queryType || "case_number", currentPage);
+    } else {
+      // 검색어가 없을 때 결과 초기화
+      setResults([]);
+      setTotalResults(0);
     }
   }, [searchParams]);
 
@@ -384,6 +428,138 @@ function CasesContent() {
     return formatUtil(amount);
   };
 
+  // 모달 닫힐 때 새로고침 처리 함수
+  const handleModalClose = (refreshNeeded = false) => {
+    if (refreshNeeded || modalRefreshNeeded) {
+      console.log("모달이 닫히면서 데이터 새로고침 실행");
+      performSearch(searchTerm, searchType, page);
+      setModalRefreshNeeded(false);
+    }
+  };
+
+  // 데이터 변경 감지 함수
+  const handleDataChange = () => {
+    console.log("데이터 변경 감지됨");
+    setModalRefreshNeeded(true);
+  };
+
+  // 메뉴 액션 핸들러
+  const handleMenuAction = (action, caseItem, e) => {
+    if (e) e.stopPropagation(); // 이벤트 버블링 방지
+
+    switch (action) {
+      case "detail":
+        router.push(`/cases/${caseItem.case_id || caseItem.id}`);
+        break;
+      case "lawsuit":
+        setSelectedCaseId(caseItem.case_id || caseItem.id);
+        setSelectedCaseTitle(
+          caseItem.creditor_name && caseItem.debtor_name
+            ? `${caseItem.creditor_name} vs ${caseItem.debtor_name}`
+            : `사건 #${caseItem.case_id || caseItem.id}`
+        );
+        setShowLawsuitModal(true);
+        break;
+      case "recovery":
+        setSelectedCaseId(caseItem.case_id || caseItem.id);
+        setSelectedCaseTitle(
+          caseItem.creditor_name && caseItem.debtor_name
+            ? `${caseItem.creditor_name} vs ${caseItem.debtor_name}`
+            : `사건 #${caseItem.case_id || caseItem.id}`
+        );
+        setShowRecoveryModal(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // 사건 상태에 따른 배지 컴포넌트
+  const getCaseStatusBadge = (status) => {
+    // 상태값이 없는 경우 기본값 처리
+    if (!status) {
+      return (
+        <Badge className="border bg-gray-100 text-gray-700 border-gray-200 text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1">
+          <AlertCircle className="mr-1 h-3 w-3" />알 수 없음
+        </Badge>
+      );
+    }
+
+    let IconComponent = null;
+    let className = "";
+    let name = "알 수 없음";
+
+    switch (status) {
+      case "active":
+      case "in_progress":
+      case "pending":
+        IconComponent = Timer;
+        className = "bg-blue-50 text-blue-600 border-blue-200";
+        name = "진행중";
+        break;
+      case "completed":
+      case "closed":
+        IconComponent = CheckCircle2;
+        className = "bg-green-50 text-green-600 border-green-200";
+        name = "완료";
+        break;
+      default:
+        IconComponent = AlertCircle;
+        className = "bg-gray-100 text-gray-700 border-gray-200";
+        name = "알 수 없음";
+        break;
+    }
+
+    return (
+      <Badge
+        className={cn(
+          "text-xs whitespace-nowrap min-w-[65px] flex justify-center py-1 border",
+          className
+        )}
+      >
+        <IconComponent className="mr-1 h-3 w-3" />
+        {name}
+      </Badge>
+    );
+  };
+
+  // 탭 변경 핸들러 추가
+  const handleTabChange = (value) => {
+    setSearchType(value);
+    setSearchTerm("");
+    setResults([]);
+    setTotalResults(0);
+    setPage(1);
+
+    // URL 파라미터 초기화
+    router.push(`/cases?type=${value}`);
+  };
+
+  // 각 탭에 맞는 검색 안내 텍스트 구성
+  const getSearchPlaceholder = () => {
+    if (searchType === "case_number") {
+      return "사건번호 입력 (예: 2024가단123456)";
+    } else {
+      return "당사자 이름 입력 (개인 또는 회사명)";
+    }
+  };
+
+  // 각 탭에 맞는 검색 안내 메시지 구성
+  const getSearchGuideMessage = () => {
+    if (searchType === "case_number") {
+      return {
+        title: "사건번호를 입력하세요",
+        description: "법원에서 부여된 사건번호를 입력하고 검색 버튼을 클릭하세요.",
+      };
+    } else {
+      return {
+        title: "당사자 이름을 입력하세요",
+        description:
+          "소송 당사자(채권자/채무자)의 이름이나 회사명을 입력하고 검색 버튼을 클릭하세요.",
+      };
+    }
+  };
+
   return (
     <div className="container py-6 px-4 md:px-6">
       <div className="mb-8">
@@ -406,7 +582,7 @@ function CasesContent() {
           </div>
         </div>
 
-        <Tabs value={searchType} onValueChange={setSearchType} className="mt-4">
+        <Tabs value={searchType} onValueChange={handleTabChange} className="mt-4">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="case_number">사건번호</TabsTrigger>
             <TabsTrigger value="party_name">당사자 이름</TabsTrigger>
@@ -417,17 +593,13 @@ function CasesContent() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
               <Input
                 type="search"
-                placeholder={
-                  searchType === "case_number"
-                    ? "사건번호 입력 (예: 2024가단123456)"
-                    : "당사자 이름 입력"
-                }
+                placeholder={getSearchPlaceholder()}
                 className="pl-9 w-full"
                 value={searchTerm}
                 onChange={handleSearchInputChange}
               />
             </div>
-            <Button type="submit" className="ml-2">
+            <Button type="submit" className="ml-2" disabled={!searchTerm.trim()}>
               검색
             </Button>
           </form>
@@ -477,16 +649,16 @@ function CasesContent() {
                     '{searchTerm}'에 대한 검색 결과가 없습니다. 다른 검색어로 시도해보세요.
                   </p>
                 </div>
-              ) : !searchParams.get("q") ? (
+              ) : !searchTerm || !searchParams.get("q") ? (
                 <div className="flex flex-col items-center justify-center p-12">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                     <Search className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                   </div>
                   <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    검색어를 입력하세요
+                    {getSearchGuideMessage().title}
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
-                    위 검색창에 검색어를 입력하고 검색 버튼을 클릭하세요.
+                    {getSearchGuideMessage().description}
                   </p>
                 </div>
               ) : (
@@ -495,12 +667,11 @@ function CasesContent() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                          <TableHead>소송 유형</TableHead>
-                          <TableHead>법원명</TableHead>
-                          <TableHead>사건번호</TableHead>
-                          <TableHead>의뢰인</TableHead>
+                          <TableHead className="pl-4">상태</TableHead>
+                          <TableHead>당사자</TableHead>
                           <TableHead>원리금</TableHead>
-                          <TableHead className="w-[80px]"></TableHead>
+                          <TableHead>소송정보</TableHead>
+                          <TableHead className="text-center">관리</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -510,23 +681,76 @@ function CasesContent() {
                             className="border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
                             onClick={() => router.push(`/cases/${item.case_id}`)}
                           >
-                            <TableCell>{renderLawsuitTypeBadge(item.lawsuit_type)}</TableCell>
-                            <TableCell>{item.court_name || "-"}</TableCell>
-                            <TableCell className="font-medium">{item.case_number || "-"}</TableCell>
-                            <TableCell>{item.clientName || "미등록"}</TableCell>
-                            <TableCell>{formatMoney(item.cases?.principal_amount || 0)}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/cases/${item.case_id}`);
-                                }}
-                                className="opacity-50 hover:opacity-100 transition-opacity"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
+                            <TableCell className="py-3 pl-4">
+                              {getCaseStatusBadge(item.status)}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex gap-2 justify-start">
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center">
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-blue-50 text-blue-600 border-blue-200 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+                                    >
+                                      채권자
+                                    </Badge>
+                                    <span className="text-sm truncate max-w-[190px]">
+                                      {item.clientName || "-"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <span className="font-medium text-gray-900 dark:text-gray-100 text-sm md:text-base">
+                                {formatMoney(item.cases?.principal_amount || 0)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex flex-col">
+                                {renderLawsuitTypeBadge(item.lawsuit_type)}
+                                <div className="mt-1 text-sm text-gray-500">
+                                  {item.court_name ? item.court_name : ""} {item.case_number || ""}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center py-3 pr-4">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="h-7 w-7 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    title="더 보기"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleMenuAction("detail", item, e)}
+                                    className="cursor-pointer"
+                                  >
+                                    <ExternalLink className="h-4 w-4 mr-2 text-blue-500" />
+                                    <span>상세페이지 이동</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleMenuAction("lawsuit", item, e)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Scale className="h-4 w-4 mr-2 text-indigo-500" />
+                                    <span>소송정보 보기</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleMenuAction("recovery", item, e)}
+                                    className="cursor-pointer"
+                                  >
+                                    <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-500" />
+                                    <span>채권정보 보기</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -550,7 +774,7 @@ function CasesContent() {
                         onPageChange={handlePageChange}
                         onPageSizeChange={handlePageSizeChange}
                         formatCurrency={formatMoney}
-                        notifications={[]}
+                        onRefreshData={() => performSearch(searchTerm, searchType, page)}
                       />
                     )}
                   </TabsContent>
@@ -579,6 +803,58 @@ function CasesContent() {
           </Card>
         </Tabs>
       </div>
+
+      {/* 소송 정보 모달 */}
+      <Dialog
+        open={showLawsuitModal}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            console.log("소송 정보 모달 닫힘");
+            handleModalClose(true); // 항상 새로고침 실행하도록 설정
+          }
+          setShowLawsuitModal(isOpen);
+        }}
+      >
+        <DialogContent className="max-w-[95vw] w-[1200px] max-h-[90vh] h-[800px] p-6 overflow-hidden">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Scale className="h-5 w-5 text-indigo-500" />
+              <span>소송 정보: {selectedCaseTitle}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto pr-2" style={{ maxHeight: "calc(800px - 100px)" }}>
+            {selectedCaseId && (
+              <LawsuitManager caseId={selectedCaseId} onDataChange={handleDataChange} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 채권 정보 모달 */}
+      <Dialog
+        open={showRecoveryModal}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            console.log("채권 정보 모달 닫힘");
+            handleModalClose(true); // 항상 새로고침 실행하도록 설정
+          }
+          setShowRecoveryModal(isOpen);
+        }}
+      >
+        <DialogContent className="max-w-[95vw] w-[1200px] max-h-[90vh] h-[800px] p-6 overflow-hidden">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
+              <span>채권 정보: {selectedCaseTitle}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto pr-2" style={{ maxHeight: "calc(800px - 100px)" }}>
+            {selectedCaseId && (
+              <RecoveryActivities caseId={selectedCaseId} onDataChange={handleDataChange} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

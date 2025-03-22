@@ -570,262 +570,119 @@ export default function RecoveryActivityModal({
 
   // 추가 모드 - 데이터 저장
   const handleAdd = async () => {
+    setIsSubmitting(true);
     try {
-      // 납부 금액은 납부 유형일 경우만 저장
-      const newActivity = {
-        case_id: caseId,
-        activity_type: formData.activity_type,
-        date: formData.date.toISOString(),
-        description: formData.description,
-        amount: formData.activity_type === "payment" ? Number(formData.amount) : null,
-        notes: formData.notes,
-        status: formData.status,
-        // created_by를 UUID로 저장
-        created_by: user.id,
-      };
-
-      // 활동 정보 데이터베이스에 저장
-      const { data, error } = await supabase
+      // 활동 생성
+      const { data: activityData, error: activityError } = await supabase
         .from("test_recovery_activities")
-        .insert(newActivity)
-        .select();
+        .insert({
+          case_id: caseId,
+          activity_type: formData.activity_type,
+          date: formData.date.toISOString(),
+          description: formData.description,
+          amount: formData.amount ? parseFloat(formData.amount) : null,
+          notes: formData.notes,
+          created_by: user.id,
+          status: formData.status,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (activityError) throw activityError;
 
-      // 파일이 있으면 업로드
+      // 수행된 작업에 따라 알림 생성
+      await createNotification(activityData, "created");
+
+      // 첨부 파일이 있는 경우 업로드
       if (fileToUpload) {
-        try {
-          const fileUrl = await uploadFile(fileToUpload, caseId, data[0].id);
+        const fileUrl = await uploadFile(fileToUpload, caseId, activityData.id);
+        if (fileUrl) {
+          // 파일 URL 업데이트
+          const { error: updateError } = await supabase
+            .from("test_recovery_activities")
+            .update({ file_url: fileUrl })
+            .eq("id", activityData.id);
 
-          // file_url 필드 업데이트
-          if (fileUrl) {
-            const { error: updateError } = await supabase
-              .from("test_recovery_activities")
-              .update({ file_url: fileUrl })
-              .eq("id", data[0].id);
-
-            if (updateError) throw updateError;
+          if (updateError) {
+            console.error("파일 URL 업데이트 실패:", updateError);
+            toast.error("파일 URL 업데이트에 실패했습니다");
           }
-        } catch (fileError) {
-          console.error("파일 업로드 실패:", fileError);
-          toast.error("파일 업로드 실패", {
-            description: "활동은 추가되었지만, 파일 업로드에 실패했습니다.",
-          });
         }
       }
 
-      // 활동 유형과 상태에 따른 당사자 정보 업데이트
-      if (formData.status === "completed") {
-        try {
-          // 채무자 찾기
-          let debtor = null;
-
-          // props로 받은 parties 배열에서 먼저 채무자 찾기
-          if (parties && parties.length > 0) {
-            debtor = parties.find((party) =>
-              ["debtor", "defendant", "respondent"].includes(party.party_type)
-            );
-          }
-
-          // props에서 찾지 못한 경우 caseDetails에서 시도
-          if (!debtor && caseDetails && caseDetails.parties) {
-            debtor = caseDetails.parties.find((party) =>
-              ["debtor", "defendant", "respondent"].includes(party.party_type)
-            );
-          }
-
-          if (debtor) {
-            // 날짜 포맷팅 (YYYY-MM-DD)
-            const formattedDate =
-              formData.date instanceof Date
-                ? format(formData.date, "yyyy-MM-dd")
-                : formData.date.split("T")[0];
-
-            // 활동 유형에 따른 채무자 정보 업데이트
-            if (formData.activity_type === "kcb") {
-              await supabase
-                .from("test_case_parties")
-                .update({
-                  kcb_checked: true,
-                  kcb_checked_date: formattedDate,
-                })
-                .eq("id", debtor.id);
-
-              console.log("채무자 KCB 조회 상태가 업데이트되었습니다.");
-            } else if (
-              formData.activity_type === "letter" ||
-              formData.activity_type === "message"
-            ) {
-              await supabase
-                .from("test_case_parties")
-                .update({
-                  payment_notification_sent: true,
-                  payment_notification_date: formattedDate,
-                })
-                .eq("id", debtor.id);
-
-              console.log("채무자 변제통보 상태가 업데이트되었습니다.");
-            }
-          }
-        } catch (updateError) {
-          console.error("채무자 정보 업데이트 중 오류 발생:", updateError);
-          // 주 기능은 계속 진행하도록 오류를 throw하지 않음
-        }
-      }
-
-      // 알림 생성
-      await createNotificationForClients(caseId, data[0]);
-      await createNotification(data[0], "create");
-
-      toast.success("회수 활동이 추가되었습니다", {
-        description: "회수 활동이 성공적으로 추가되었습니다.",
-      });
-
-      return true;
+      toast.success("회수 활동이 추가되었습니다");
+      onOpenChange(false);
+      if (onSuccess) onSuccess(activityData);
     } catch (error) {
       console.error("회수 활동 추가 실패:", error);
-      toast.error("회수 활동 추가 실패", {
-        description: error.message,
-      });
-      return false;
+      toast.error("회수 활동 추가에 실패했습니다");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // 수정 모드 - 데이터 업데이트
   const handleUpdate = async () => {
+    setIsSubmitting(true);
     try {
-      // 현재 상태와 새 상태 비교를 위해 기존 활동 정보 가져오기
-      const { data: oldActivityData, error: oldActivityError } = await supabase
+      // 이전 상태 가져오기
+      const { data: previousData, error: fetchError } = await supabase
         .from("test_recovery_activities")
         .select("*")
         .eq("id", activity.id)
         .single();
 
-      if (oldActivityError) throw oldActivityError;
+      if (fetchError) throw fetchError;
 
-      // 업데이트할 데이터 구성
-      const updatedActivity = {
+      const updateData = {
         activity_type: formData.activity_type,
         date: formData.date.toISOString(),
         description: formData.description,
-        amount: formData.amount ? Number(formData.amount) : null,
+        amount: formData.amount ? parseFloat(formData.amount) : null,
         notes: formData.notes,
         status: formData.status,
       };
 
-      // 활동 정보 데이터베이스에 업데이트
-      const { data, error } = await supabase
+      // 활동 업데이트
+      const { data: activityData, error: updateError } = await supabase
         .from("test_recovery_activities")
-        .update(updatedActivity)
+        .update(updateData)
         .eq("id", activity.id)
-        .select();
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // 파일이 있으면 업로드 및 업데이트
+      // 상태 변경 감지 및 알림 생성
+      if (previousData.status !== formData.status) {
+        await createNotification(activityData, "updated", previousData.status);
+      }
+
+      // 첨부 파일이 있는 경우 업로드
       if (fileToUpload) {
-        try {
-          const fileUrl = await uploadFile(fileToUpload, caseId, activity.id);
+        const fileUrl = await uploadFile(fileToUpload, caseId, activity.id);
+        if (fileUrl) {
+          // 파일 URL 업데이트
+          const { error: fileUpdateError } = await supabase
+            .from("test_recovery_activities")
+            .update({ file_url: fileUrl })
+            .eq("id", activity.id);
 
-          // file_url 필드 업데이트
-          if (fileUrl) {
-            const { error: updateError } = await supabase
-              .from("test_recovery_activities")
-              .update({ file_url: fileUrl })
-              .eq("id", activity.id);
-
-            if (updateError) throw updateError;
+          if (fileUpdateError) {
+            console.error("파일 URL 업데이트 실패:", fileUpdateError);
+            toast.error("파일 URL 업데이트에 실패했습니다");
           }
-        } catch (fileError) {
-          console.error("파일 업로드 실패:", fileError);
-          toast.error("파일 업로드 실패", {
-            description: "활동은 수정되었지만, 파일 업로드에 실패했습니다.",
-          });
         }
       }
 
-      // 상태가 미완료에서 완료로 변경된 경우 당사자 정보 업데이트
-      const statusChangedToCompleted =
-        oldActivityData.status !== "completed" && formData.status === "completed";
-
-      if (statusChangedToCompleted) {
-        try {
-          // 채무자 찾기
-          let debtor = null;
-
-          // props로 받은 parties 배열에서 먼저 채무자 찾기
-          if (parties && parties.length > 0) {
-            debtor = parties.find((party) =>
-              ["debtor", "defendant", "respondent"].includes(party.party_type)
-            );
-          }
-
-          // props에서 찾지 못한 경우 caseDetails에서 시도
-          if (!debtor && caseDetails && caseDetails.parties) {
-            debtor = caseDetails.parties.find((party) =>
-              ["debtor", "defendant", "respondent"].includes(party.party_type)
-            );
-          }
-
-          if (debtor) {
-            // 날짜 포맷팅 (YYYY-MM-DD)
-            const formattedDate =
-              formData.date instanceof Date
-                ? format(formData.date, "yyyy-MM-dd")
-                : formData.date.split("T")[0];
-
-            // 활동 유형에 따른 채무자 정보 업데이트
-            if (formData.activity_type === "kcb") {
-              await supabase
-                .from("test_case_parties")
-                .update({
-                  kcb_checked: true,
-                  kcb_checked_date: formattedDate,
-                })
-                .eq("id", debtor.id);
-
-              console.log("채무자 KCB 조회 상태가 업데이트되었습니다.");
-            } else if (
-              formData.activity_type === "letter" ||
-              formData.activity_type === "message"
-            ) {
-              await supabase
-                .from("test_case_parties")
-                .update({
-                  payment_notification_sent: true,
-                  payment_notification_date: formattedDate,
-                })
-                .eq("id", debtor.id);
-
-              console.log("채무자 변제통보 상태가 업데이트되었습니다.");
-            }
-          }
-        } catch (updateError) {
-          console.error("채무자 정보 업데이트 중 오류 발생:", updateError);
-          // 주 기능은 계속 진행하도록 오류를 throw하지 않음
-        }
-      }
-
-      // 상태 변경 확인 - 상태가 변경된 경우에만 알림 생성
-      const statusChanged = oldActivityData.status !== updatedActivity.status;
-      if (statusChanged) {
-        await createNotificationForClients(caseId, data[0]);
-      }
-
-      // 새로운 알림 시스템에도 알림 생성
-      await createNotification(data[0], "update", oldActivityData.status);
-
-      toast.success("회수 활동이 수정되었습니다", {
-        description: "회수 활동이 성공적으로 수정되었습니다.",
-      });
-
-      return true;
+      toast.success("회수 활동이 수정되었습니다");
+      onOpenChange(false);
+      if (onSuccess) onSuccess(activityData);
     } catch (error) {
       console.error("회수 활동 수정 실패:", error);
-      toast.error("회수 활동 수정 실패", {
-        description: error.message,
-      });
-      return false;
+      toast.error("회수 활동 수정에 실패했습니다");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -833,42 +690,31 @@ export default function RecoveryActivityModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!user || (user.role !== "admin" && user.role !== "staff")) {
-      toast.error("권한이 없습니다", {
-        description: "관리자 또는 직원만 회수 활동을 추가/수정할 수 있습니다",
-      });
+    // 폼 유효성 검사
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
-    if (!validateForm()) return;
-
     setIsSubmitting(true);
 
-    let success = false;
-    if (isEditing) {
-      success = await handleUpdate();
-    } else {
-      success = await handleAdd();
+    try {
+      let result;
+      if (isEditing) {
+        result = await handleUpdate();
+      } else {
+        result = await handleAdd();
+      }
+
+      // 모달 닫기와 성공 콜백은 handleAdd, handleUpdate 내부에서 처리합니다
+      // 상위 처리 로직을 제거합니다
+    } catch (error) {
+      console.error("회수 활동 저장 실패:", error);
+      toast.error("회수 활동 저장에 실패했습니다");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (success) {
-      // 폼 초기화 및 다이얼로그 닫기
-      setFormData({
-        activity_type: "",
-        date: new Date(),
-        description: "",
-        amount: "",
-        notes: "",
-        status: "completed",
-      });
-      resetFileUpload();
-      onOpenChange(false);
-
-      // 성공 콜백 호출
-      if (onSuccess) onSuccess();
-    }
-
-    setIsSubmitting(false);
   };
 
   return (

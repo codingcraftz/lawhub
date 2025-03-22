@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase";
 import { useUser } from "@/contexts/UserContext";
 import { format, formatDistanceToNow } from "date-fns";
@@ -452,7 +452,7 @@ function NotificationsPanel({ notifications = [], loading = false, router }) {
                     onClick={() => document.querySelector('[aria-label="알림"]')?.click()}
                   >
                     <Bell className="h-3.5 w-3.5 mr-1.5" />
-                    모든 알림 보기 ({displayNotifications.length})
+                    모든 알림 보기 ({filteredNotifications.length})
                   </Button>
                 </div>
               )}
@@ -716,7 +716,14 @@ function ClientSummary({
 
 export default function MyCasesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
+
+  // URL에서 현재 페이지, 검색어, 탭 정보 가져오기
+  const pageFromUrl = Number(searchParams.get("page")) || 1;
+  const searchTermFromUrl = searchParams.get("search") || "";
+  const selectedTabFromUrl = searchParams.get("tab") || "personal";
+  const selectedOrgFromUrl = searchParams.get("org") || null;
 
   // 알림 유형에 따른 아이콘 반환 - 컴포넌트 내부 함수
   const getNotificationIcon = (type) => {
@@ -741,18 +748,19 @@ export default function MyCasesPage() {
   const [personalCases, setPersonalCases] = useState([]);
   const [organizationCases, setOrganizationCases] = useState([]);
   const [organizations, setOrganizations] = useState([]);
-  const [selectedTab, setSelectedTab] = useState("personal");
-  const [selectedOrg, setSelectedOrg] = useState(null);
+  const [selectedTab, setSelectedTab] = useState(selectedTabFromUrl);
+  const [selectedOrg, setSelectedOrg] = useState(selectedOrgFromUrl);
   const [notifications, setNotifications] = useState([]);
   const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
 
   // 검색 및 페이지네이션을 위한 상태 추가
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState(searchTermFromUrl);
+  const [currentPage, setCurrentPage] = useState(pageFromUrl);
   const [filteredCases, setFilteredCases] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [casesPerPage, setCasesPerPage] = useState(10);
+  const [refetchTrigger, setRefetchTrigger] = useState(0); // 데이터 리프래시를 위한 트리거
 
   // 회수 정보를 위한 상태 추가
   const [recoveryStats, setRecoveryStats] = useState({
@@ -926,6 +934,31 @@ export default function MyCasesPage() {
     }
   };
 
+  // URL 파라미터 업데이트 함수
+  const updateUrlParams = (page, search, tab, org = null) => {
+    const params = new URLSearchParams();
+    if (page !== 1) params.set("page", page.toString());
+    if (search) params.set("search", search);
+    if (tab !== "personal") params.set("tab", tab);
+    if (org) params.set("org", org);
+
+    const newUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
+    window.history.pushState({}, "", newUrl);
+  };
+
+  // URL이 변경될 때 상태 업데이트
+  useEffect(() => {
+    const page = Number(searchParams.get("page")) || 1;
+    const search = searchParams.get("search") || "";
+    const tab = searchParams.get("tab") || "personal";
+    const org = searchParams.get("org") || null;
+
+    if (page !== currentPage) setCurrentPage(page);
+    if (search !== searchTerm) setSearchTerm(search);
+    if (tab !== selectedTab) setSelectedTab(tab);
+    if (org !== selectedOrg) setSelectedOrg(org);
+  }, [searchParams]);
+
   // 현재 선택된 탭이나 조직에 따라 표시할 사건 목록 필터링
   useEffect(() => {
     const currentCases = selectedTab === "personal" ? personalCases : organizationCases;
@@ -951,13 +984,22 @@ export default function MyCasesPage() {
     );
     if (validCurrentPage !== currentPage) {
       setCurrentPage(validCurrentPage);
+      updateUrlParams(validCurrentPage, searchTerm, selectedTab, selectedOrg);
     }
 
     // 현재 페이지에 해당하는 사건만 필터링
     const startIndex = (validCurrentPage - 1) * casesPerPage;
     const paginatedCases = filtered.slice(startIndex, startIndex + casesPerPage);
 
-    setFilteredCases(filtered); // 전체 필터링된 사건을 저장하고, CasesTable 컴포넌트에서 슬라이싱
+    console.log("필터링된 사건 목록:", {
+      탭: selectedTab,
+      조직: selectedOrg,
+      케이스수: currentCases.length,
+      필터링후: filtered.length,
+      페이징후: paginatedCases.length,
+    });
+
+    setFilteredCases(paginatedCases); // 페이지네이션된 사건 목록을 저장
 
     // 선택된 사건들에 대한 통계 재계산
     const currentStats = calculateStats(currentCases);
@@ -979,6 +1021,7 @@ export default function MyCasesPage() {
     currentPage,
     casesPerPage,
     notifications,
+    refetchTrigger, // 데이터 새로고침을 위한 트리거도 포함
   ]);
 
   // 활성화된 탭이나 조직이 변경될 때 알림과 통계 필터링
@@ -1050,34 +1093,81 @@ export default function MyCasesPage() {
     }
   };
 
+  // useEffect 사용해서 데이터 가져오기
   useEffect(() => {
     if (user) {
+      // 초기 데이터 로딩
       fetchCases();
       fetchNotifications();
+      fetchMonthlyRecoveryStats();
     }
   }, [user]);
 
-  // 월별 회수 통계 가져오기
+  // 조직 데이터가 로드된 후 URL 파라미터에 따라 상태 설정
   useEffect(() => {
-    if (selectedTab && (personalCases.length > 0 || organizationCases.length > 0)) {
+    if (organizations.length > 0 && selectedTab === "organization") {
+      // URL에서 org 파라미터 확인
+      const orgIdFromUrl = searchParams.get("org");
+
+      if (orgIdFromUrl) {
+        // URL에 지정된 조직 ID가 있으면 해당 조직 데이터 설정
+        const orgData = organizations.find((org) => org.orgId === orgIdFromUrl);
+        if (orgData) {
+          setOrganizationCases(orgData.cases);
+          setSelectedOrg(orgIdFromUrl);
+          console.log("URL 파라미터에서 조직 설정:", orgIdFromUrl, orgData.cases.length);
+        }
+      } else if (selectedOrg) {
+        // 이미 선택된 조직이 있으면 해당 조직 데이터 설정
+        const orgData = organizations.find((org) => org.orgId === selectedOrg);
+        if (orgData) {
+          setOrganizationCases(orgData.cases);
+          console.log("선택된 조직으로 데이터 설정:", selectedOrg, orgData.cases.length);
+        }
+      } else if (organizations.length > 0) {
+        // 선택된 조직이 없으면 첫 번째 조직 선택
+        setOrganizationCases(organizations[0].cases);
+        setSelectedOrg(organizations[0].orgId);
+        console.log(
+          "첫 번째 조직으로 설정:",
+          organizations[0].orgId,
+          organizations[0].cases.length
+        );
+      }
+    }
+  }, [organizations, selectedTab, searchParams]);
+
+  // 선택된 탭이나 조직이 변경될 때 월별 회수 통계 새로 가져오기
+  useEffect(() => {
+    if (user && (personalCases.length > 0 || organizationCases.length > 0)) {
       fetchMonthlyRecoveryStats();
     }
-  }, [selectedTab, selectedOrg, personalCases, organizationCases]);
+  }, [selectedTab, selectedOrg, personalCases, organizationCases, refetchTrigger]);
 
-  // 월별 회수 통계를 가져오는 함수
+  // 월별 회수 통계 가져오기
   const fetchMonthlyRecoveryStats = async () => {
+    setMonthlyStatsLoading(true);
     try {
-      setMonthlyStatsLoading(true);
-      const currentCases = selectedTab === "personal" ? personalCases : organizationCases;
-      const caseIds = currentCases.map((c) => c.id);
+      // 현재 선택된 사건 목록에서 case IDs 추출
+      let currentCases = [];
+      if (selectedTab === "personal") {
+        currentCases = personalCases;
+      } else if (selectedTab === "organization" && selectedOrg) {
+        const orgData = organizations.find((org) => org.orgId === selectedOrg);
+        if (orgData) {
+          currentCases = orgData.cases;
+        }
+      }
 
-      if (caseIds.length === 0) {
+      // 사건이 없으면 빈 배열 반환
+      if (!currentCases || currentCases.length === 0) {
         setMonthlyRecoveryStats([]);
         setMonthlyStatsLoading(false);
         return;
       }
 
-      // 최근 6개월간의 데이터를 가져오기 위한 날짜 계산
+      const caseIds = currentCases.map((c) => c.id);
+
       const today = new Date();
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(today.getMonth() - 5);
@@ -1356,30 +1446,80 @@ export default function MyCasesPage() {
       setPersonalCases(personalCasesList);
       setOrganizations(filteredOrgCasesByOrg);
 
-      if (filteredOrgCasesByOrg.length > 0) {
-        setOrganizationCases(filteredOrgCasesByOrg[0].cases);
-        setSelectedOrg(filteredOrgCasesByOrg[0].orgId);
+      // 초기 사건 목록 설정
+      let initialCases = [];
+      if (selectedTabFromUrl === "personal" || filteredOrgCasesByOrg.length === 0) {
+        // 개인 탭인 경우 또는 조직이 없는 경우 개인 사건 사용
+        initialCases = personalCasesList;
+
+        // 처음부터 필터링된 사건 목록도 설정
+        let filteredBySearch = personalCasesList;
+        if (searchTermFromUrl.trim()) {
+          const term = searchTermFromUrl.toLowerCase();
+          filteredBySearch = personalCasesList.filter(
+            (c) =>
+              (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+              (c.debtor_name && c.debtor_name.toLowerCase().includes(term))
+          );
+        }
+
+        // 페이지네이션 적용
+        const startIndex = (pageFromUrl - 1) * casesPerPage;
+        const paginatedCases = filteredBySearch.slice(startIndex, startIndex + casesPerPage);
+        setFilteredCases(paginatedCases);
+
+        // 총 페이지 수 업데이트
+        setTotalPages(Math.max(1, Math.ceil(filteredBySearch.length / casesPerPage)));
       } else {
-        setOrganizationCases([]);
+        // 조직 탭인 경우
+        let orgId = selectedOrgFromUrl;
+        let orgCases = [];
+
+        // URL에서 조직 ID가 지정되어 있는 경우
+        if (orgId && filteredOrgCasesByOrg.find((org) => org.orgId === orgId)) {
+          const orgData = filteredOrgCasesByOrg.find((org) => org.orgId === orgId);
+          orgCases = orgData.cases;
+          setSelectedOrg(orgId);
+        } else if (filteredOrgCasesByOrg.length > 0) {
+          // 지정된 조직이 없거나 찾을 수 없는 경우 첫 번째 조직 사용
+          orgId = filteredOrgCasesByOrg[0].orgId;
+          orgCases = filteredOrgCasesByOrg[0].cases;
+          setSelectedOrg(orgId);
+        }
+
+        setOrganizationCases(orgCases);
+        initialCases = orgCases;
+
+        // 처음부터 필터링된 사건 목록도 설정
+        let filteredBySearch = orgCases;
+        if (searchTermFromUrl.trim()) {
+          const term = searchTermFromUrl.toLowerCase();
+          filteredBySearch = orgCases.filter(
+            (c) =>
+              (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+              (c.debtor_name && c.debtor_name.toLowerCase().includes(term))
+          );
+        }
+
+        // 페이지네이션 적용
+        const startIndex = (pageFromUrl - 1) * casesPerPage;
+        const paginatedCases = filteredBySearch.slice(startIndex, startIndex + casesPerPage);
+        setFilteredCases(paginatedCases);
+
+        // 총 페이지 수 업데이트
+        setTotalPages(Math.max(1, Math.ceil(filteredBySearch.length / casesPerPage)));
+
+        console.log("초기 조직 데이터 설정:", {
+          탭: selectedTabFromUrl,
+          조직ID: orgId,
+          케이스수: orgCases.length,
+          필터링후: filteredBySearch.length,
+          페이징후: paginatedCases.length,
+        });
       }
 
-      // 조직 의뢰가 있고 개인 의뢰가 없으면 조직 탭으로 시작
-      if (personalCasesList.length === 0 && filteredOrgCasesByOrg.length > 0) {
-        setSelectedTab("organization");
-      }
-
-      // 초기 통계 계산 - 현재 선택된 탭에 따라 계산
-      const initialCases =
-        selectedTab === "personal"
-          ? personalCasesList
-          : filteredOrgCasesByOrg.length > 0
-          ? filteredOrgCasesByOrg[0].cases
-          : [];
-
-      // 통계 계산
+      // 초기 통계 계산
       const initialStats = calculateStats(initialCases);
-
-      // 채권 분류별 통계 초기화
       setStats(initialStats);
 
       // 초기 회수 정보 계산
@@ -1503,71 +1643,129 @@ export default function MyCasesPage() {
 
   // 조직 변경 핸들러
   const handleOrgChange = (orgId) => {
+    setSelectedOrg(orgId);
+    setCurrentPage(1); // 조직 변경 시 첫 페이지로 이동
+
+    // 선택된 조직의 데이터 설정
     const org = organizations.find((o) => o.orgId === orgId);
     if (org) {
-      setSelectedOrg(orgId);
+      console.log("선택된 조직의 사건 데이터:", org.cases);
       setOrganizationCases(org.cases);
 
-      // 조직 변경 시 페이지와 검색 초기화
-      setCurrentPage(1);
-      setSearchTerm("");
-
-      // 즉시 통계 재계산
-      const currentStats = calculateStats(org.cases);
-      setStats(currentStats);
-      calculateRecoveryStats(org.cases);
-
-      // 알림 필터링도 즉시 업데이트
-      if (notifications.length > 0) {
-        const orgCaseIds = org.cases.map((c) => c.id);
-        const filtered = notifications.filter((n) => orgCaseIds.includes(n.case_id));
-        setFilteredNotifications(filtered);
+      // 필터링된 사건 목록도 즉시 업데이트
+      let filteredBySearch = org.cases;
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        filteredBySearch = org.cases.filter(
+          (c) =>
+            (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+            (c.debtor_name && c.debtor_name.toLowerCase().includes(term))
+        );
       }
+
+      // 페이지네이션 적용
+      const startIndex = 0; // 첫 페이지이므로 0부터 시작
+      const paginatedCases = filteredBySearch.slice(startIndex, startIndex + casesPerPage);
+      setFilteredCases(paginatedCases);
+
+      // 총 페이지 수 업데이트
+      setTotalPages(Math.max(1, Math.ceil(filteredBySearch.length / casesPerPage)));
     }
+
+    updateUrlParams(1, searchTerm, selectedTab, orgId);
   };
 
   // 탭 변경 핸들러
   const handleTabChange = (tab) => {
     setSelectedTab(tab);
-    setCurrentPage(1);
-    setSearchTerm("");
+    setCurrentPage(1); // 탭 변경 시 첫 페이지로 이동
 
-    // 즉시 필터링 수행
-    const currentCases = tab === "personal" ? personalCases : organizationCases;
-    const currentStats = calculateStats(currentCases);
-    setStats(currentStats);
-    calculateRecoveryStats(currentCases);
+    // 탭이 "organization"으로 변경될 때 조직 데이터 확인
+    if (tab === "organization" && organizations.length > 0) {
+      // 선택된 조직이 없으면 첫 번째 조직 선택
+      let orgCases = [];
+      let selectedOrgId = selectedOrg;
 
-    // 알림 필터링도 즉시 업데이트
-    if (notifications.length > 0) {
-      if (tab === "personal") {
-        const personalCaseIds = personalCases.map((c) => c.id);
-        const filtered = notifications.filter((n) => personalCaseIds.includes(n.case_id));
-        setFilteredNotifications(filtered);
-      } else if (tab === "organization" && selectedOrg) {
-        const orgCaseIds = organizationCases.map((c) => c.id);
-        const filtered = notifications.filter((n) => orgCaseIds.includes(n.case_id));
-        setFilteredNotifications(filtered);
+      if (!selectedOrg) {
+        selectedOrgId = organizations[0].orgId;
+        setSelectedOrg(selectedOrgId);
+        orgCases = organizations[0].cases;
+        setOrganizationCases(orgCases);
+      } else {
+        // 선택된 조직에 해당하는 사건 데이터 설정
+        const orgData = organizations.find((org) => org.orgId === selectedOrg);
+        if (orgData) {
+          orgCases = orgData.cases;
+          setOrganizationCases(orgCases);
+        }
       }
+
+      // 필터링된 사건 목록 즉시 업데이트
+      let filteredBySearch = orgCases;
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        filteredBySearch = orgCases.filter(
+          (c) =>
+            (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+            (c.debtor_name && c.debtor_name.toLowerCase().includes(term))
+        );
+      }
+
+      // 페이지네이션 적용
+      const startIndex = 0; // 첫 페이지이므로 0부터 시작
+      const paginatedCases = filteredBySearch.slice(startIndex, startIndex + casesPerPage);
+      setFilteredCases(paginatedCases);
+
+      // 총 페이지 수 업데이트
+      setTotalPages(Math.max(1, Math.ceil(filteredBySearch.length / casesPerPage)));
+    } else if (tab === "personal") {
+      // 개인 탭으로 변경된 경우 개인 사건 데이터로 즉시 업데이트
+      let filteredBySearch = personalCases;
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        filteredBySearch = personalCases.filter(
+          (c) =>
+            (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+            (c.debtor_name && c.debtor_name.toLowerCase().includes(term))
+        );
+      }
+
+      // 페이지네이션 적용
+      const startIndex = 0; // 첫 페이지이므로 0부터 시작
+      const paginatedCases = filteredBySearch.slice(startIndex, startIndex + casesPerPage);
+      setFilteredCases(paginatedCases);
+
+      // 총 페이지 수 업데이트
+      setTotalPages(Math.max(1, Math.ceil(filteredBySearch.length / casesPerPage)));
     }
+
+    updateUrlParams(1, searchTerm, tab, selectedOrg);
   };
 
   // 검색 변경 핸들러
   const handleSearchChange = (value) => {
     console.log("당사자(채권자/채무자) 이름으로 검색합니다.");
     setSearchTerm(value);
-    setCurrentPage(1);
+    setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    updateUrlParams(1, value, selectedTab, selectedOrg);
   };
 
   // 페이지 변경 핸들러
   const handlePageChange = (page) => {
     setCurrentPage(page);
+    updateUrlParams(page, searchTerm, selectedTab, selectedOrg);
+  };
+
+  // 데이터 새로고침 핸들러
+  const handleRefreshData = () => {
+    setRefetchTrigger((prev) => prev + 1);
   };
 
   // 페이지 크기 변경 핸들러
   const handlePageSizeChange = (size) => {
     setCasesPerPage(Number(size));
     setCurrentPage(1); // 페이지 크기 변경 시 첫 페이지로 이동
+    updateUrlParams(1, searchTerm, selectedTab, selectedOrg);
   };
 
   // 사건 유형에 따른 배지 색상 및 아이콘
@@ -2214,12 +2412,23 @@ export default function MyCasesPage() {
           onSearchChange={handleSearchChange}
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={selectedTab === "personal" ? personalCases.length : organizationCases.length}
+          totalItems={
+            selectedTab === "personal"
+              ? searchTerm.trim()
+                ? filteredCases.length
+                : personalCases.length
+              : searchTerm.trim()
+              ? filteredCases.length
+              : selectedOrg
+              ? organizationCases.filter((c) => c.organization_id === selectedOrg).length
+              : organizationCases.length
+          }
           casesPerPage={casesPerPage}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
           formatCurrency={formatCurrency}
           notifications={filteredNotifications}
+          onRefreshData={handleRefreshData}
         />
       </div>
     </div>

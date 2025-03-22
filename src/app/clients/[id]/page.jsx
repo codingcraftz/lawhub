@@ -197,9 +197,9 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
   const [clientType, setClientType] = useState(null); // "individual" 또는 "organization"
-  const [cases, setCases] = useState([]);
+  const [allCases, setAllCases] = useState([]); // 모든 사건 데이터 저장
+  const [filteredCases, setFilteredCases] = useState([]); // 현재 페이지에 표시할 필터링된 데이터
   const [searchTerm, setSearchTerm] = useState(searchTermFromUrl);
-  const [filteredCases, setFilteredCases] = useState([]);
   const [activeTab, setActiveTab] = useState(statusFilterFromUrl);
   const [currentPage, setCurrentPage] = useState(pageFromUrl);
   const [totalPages, setTotalPages] = useState(1);
@@ -250,25 +250,82 @@ export default function ClientDetailPage() {
     if (user) {
       fetchClientData();
     }
-  }, [user, params.id]);
+  }, [user, params.id, refetchTrigger]);
 
-  // 검색어나 필터, 페이지가 변경될 때 데이터를 다시 가져옴
+  // 검색어나 필터, 페이지가 변경될 때 클라이언트 측에서 데이터 필터링
   useEffect(() => {
-    if (user && clientData) {
-      console.log(
-        "데이터 재요청 - 페이지:",
-        currentPage,
-        "검색어:",
-        searchTerm,
-        "상태:",
-        activeTab
-      );
-      fetchClientData();
+    if (allCases.length > 0) {
+      filterAndPaginateData();
     }
-  }, [currentPage, searchTerm, activeTab, casesPerPage, refetchTrigger]);
+  }, [allCases, currentPage, searchTerm, activeTab, casesPerPage]);
+
+  // 클라이언트 측에서 데이터 필터링 및 페이지네이션 처리
+  const filterAndPaginateData = () => {
+    console.log(
+      "클라이언트 측 필터링 - 페이지:",
+      currentPage,
+      "검색어:",
+      searchTerm,
+      "상태:",
+      activeTab
+    );
+
+    // 상태 필터 적용
+    let filteredByStatus = [...allCases];
+    if (activeTab === "active") {
+      filteredByStatus = allCases.filter(
+        (caseItem) =>
+          caseItem.status === "active" ||
+          caseItem.status === "in_progress" ||
+          caseItem.status === "pending"
+      );
+    } else if (activeTab === "completed") {
+      filteredByStatus = allCases.filter(
+        (caseItem) => caseItem.status === "completed" || caseItem.status === "closed"
+      );
+    }
+
+    // 검색어 필터링 적용
+    const filteredBySearch = searchTerm.trim()
+      ? filteredByStatus.filter(
+          (caseItem) =>
+            (caseItem.creditor_name &&
+              caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (caseItem.debtor_name &&
+              caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+      : filteredByStatus;
+
+    // 총 아이템 수 설정
+    const totalItemCount = filteredBySearch.length;
+    setTotalCases(totalItemCount);
+
+    // 총 페이지 수 계산
+    const maxPages = Math.ceil(totalItemCount / casesPerPage) || 1;
+    setTotalPages(maxPages);
+
+    console.log("필터링된 사건 수:", totalItemCount, "페이지 수:", maxPages);
+
+    // 현재 페이지가 최대 페이지를 초과하는 경우 조정
+    if (currentPage > maxPages && maxPages > 0) {
+      console.log("페이지 번호 조정:", currentPage, "->", maxPages);
+      setCurrentPage(maxPages);
+      updateUrlParams(maxPages, searchTerm, activeTab);
+      return; // 페이지 번호가 변경되었으므로 useEffect에 의해 다시 호출됨
+    }
+
+    // 현재 페이지에 필요한 데이터만 추출
+    const startIdx = (currentPage - 1) * casesPerPage;
+    const endIdx = Math.min(startIdx + casesPerPage, filteredBySearch.length);
+    const paginatedCases = filteredBySearch.slice(startIdx, endIdx);
+
+    console.log("현재 페이지 데이터 수:", paginatedCases.length);
+
+    setFilteredCases(paginatedCases);
+  };
 
   const fetchClientData = async () => {
-    console.log("데이터 가져오기 시작 - 페이지:", currentPage, "상태필터:", activeTab);
+    console.log("의뢰인 데이터 및 모든 사건 데이터 가져오기 시작");
     setLoading(true);
     try {
       // 먼저 test_case_clients 테이블에서 의뢰인 관계 확인
@@ -324,7 +381,7 @@ export default function ClientDetailPage() {
       if (caseIds.length > 0) {
         console.log("의뢰인 관련 사건 ID 수:", caseIds.length);
 
-        // 모든 사건 데이터를 가져와서 총 개수 및 상태별 개수 계산용
+        // 모든 사건 데이터를 가져옴 (페이지네이션 없이)
         const { data: allCasesData, error: allCasesError } = await supabase
           .from("test_cases")
           .select(
@@ -347,6 +404,39 @@ export default function ClientDetailPage() {
           .order("created_at", { ascending: false });
 
         if (allCasesError) throw allCasesError;
+
+        // 각 사건의 회수 금액 데이터 가져오기 (payment 유형의 recovery_activities)
+        const recoveryPromises = allCasesData.map(async (caseItem) => {
+          const { data: recoveryData, error: recoveryError } = await supabase
+            .from("test_recovery_activities")
+            .select("amount")
+            .eq("case_id", caseItem.id)
+            .eq("activity_type", "payment")
+            .eq("status", "completed");
+
+          if (recoveryError) {
+            console.error(`사건 ${caseItem.id}의 회수 활동 조회 실패:`, recoveryError);
+            return { caseId: caseItem.id, recoveredAmount: 0 };
+          }
+
+          // 회수 금액 합계 계산
+          const recoveredAmount = recoveryData.reduce(
+            (sum, activity) => sum + (activity.amount || 0),
+            0
+          );
+          console.log(`사건 ${caseItem.id}의 회수 금액:`, recoveredAmount);
+
+          return { caseId: caseItem.id, recoveredAmount };
+        });
+
+        // 모든 회수 금액 조회 완료 대기
+        const recoveryResults = await Promise.all(recoveryPromises);
+
+        // 회수 금액 결과를 맵으로 변환
+        const recoveryMap = recoveryResults.reduce((map, item) => {
+          map[item.caseId] = item.recoveredAmount;
+          return map;
+        }, {});
 
         // 모든 사건 데이터 처리 및 당사자 정보 추가
         const allEnrichedCases = allCasesData.map((caseItem) => {
@@ -386,6 +476,8 @@ export default function ClientDetailPage() {
             // 채무자의 납부안내 정보 추가
             debtor_payment_notification_sent: debtor ? debtor.payment_notification_sent : false,
             debtor_payment_notification_date: debtor ? debtor.payment_notification_date : null,
+            // 회수 금액 추가
+            recovered_amount: recoveryMap[caseItem.id] || 0,
             status_info: {
               name: statusInfo.name,
               color: statusInfo.color,
@@ -393,62 +485,8 @@ export default function ClientDetailPage() {
           };
         });
 
-        // 상태별로 필터링된 사건 데이터
-        let filteredCasesByStatus = [...allEnrichedCases];
-
-        // 상태 필터 적용
-        if (activeTab === "active") {
-          filteredCasesByStatus = allEnrichedCases.filter(
-            (caseItem) =>
-              caseItem.status === "active" ||
-              caseItem.status === "in_progress" ||
-              caseItem.status === "pending"
-          );
-        } else if (activeTab === "completed") {
-          filteredCasesByStatus = allEnrichedCases.filter(
-            (caseItem) => caseItem.status === "completed" || caseItem.status === "closed"
-          );
-        }
-
-        // 검색어 필터링 적용
-        const filteredBySearch = searchTerm.trim()
-          ? filteredCasesByStatus.filter(
-              (caseItem) =>
-                (caseItem.creditor_name &&
-                  caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (caseItem.debtor_name &&
-                  caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()))
-            )
-          : filteredCasesByStatus;
-
-        // 총 아이템 수 설정
-        const totalItemCount = filteredBySearch.length;
-        setTotalCases(totalItemCount);
-
-        // 총 페이지 수 계산
-        const maxPages = Math.ceil(totalItemCount / casesPerPage) || 1;
-        setTotalPages(maxPages);
-
-        console.log("필터링된 사건 수:", totalItemCount, "페이지 수:", maxPages);
-
-        // 현재 페이지가 최대 페이지를 초과하는 경우 조정
-        if (currentPage > maxPages && maxPages > 0) {
-          console.log("페이지 번호 조정:", currentPage, "->", maxPages);
-          setCurrentPage(maxPages);
-          updateUrlParams(maxPages, searchTerm, activeTab);
-          return; // 페이지 번호가 변경되었으므로 useEffect에 의해 다시 호출됨
-        }
-
-        // 현재 페이지에 필요한 데이터만 추출
-        const startIdx = (currentPage - 1) * casesPerPage;
-        const endIdx = Math.min(startIdx + casesPerPage, filteredBySearch.length);
-        const paginatedCases = filteredBySearch.slice(startIdx, endIdx);
-
-        console.log("현재 페이지 데이터 수:", paginatedCases.length);
-
-        // 모든 데이터셋 설정
-        setCases(allEnrichedCases); // 전체 데이터셋 (상태별 카운트용)
-        setFilteredCases(paginatedCases); // 페이지네이션된 현재 페이지 데이터
+        // 전체 사건 데이터 저장
+        setAllCases(allEnrichedCases);
 
         // 채권 총액 계산
         const totalAmount = allEnrichedCases.reduce((sum, caseItem) => {
@@ -458,7 +496,7 @@ export default function ClientDetailPage() {
         setTotalDebt(totalAmount);
       } else {
         // 사건이 없는 경우 초기화
-        setCases([]);
+        setAllCases([]);
         setFilteredCases([]);
         setTotalDebt(0);
         setTotalCases(0);
@@ -470,15 +508,6 @@ export default function ClientDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // 클라이언트측 필터링은 더 이상 필요 없음 (서버에서 모든 필터링 처리)
-  useEffect(() => {
-    // 더 이상 필요 없음
-  }, [cases, searchTerm]);
-
-  const filterCases = () => {
-    // 더 이상 필요 없음
   };
 
   const handleSearch = (value) => {
@@ -579,7 +608,7 @@ export default function ClientDetailPage() {
                     <ClientSummary
                       clientData={clientData}
                       clientType={clientType}
-                      cases={cases}
+                      cases={filteredCases}
                       totalDebt={totalDebt}
                       loading={loading}
                     />
@@ -627,7 +656,7 @@ export default function ClientDetailPage() {
       </div>
       <StaffCasesTable
         cases={filteredCases}
-        personalCases={cases}
+        personalCases={allCases}
         organizationCases={[]}
         selectedTab="personal"
         statusFilter={activeTab}

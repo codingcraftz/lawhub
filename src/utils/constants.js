@@ -8,22 +8,12 @@ export const CASE_STATUS = {
   IN_PROGRESS: {
     id: "2",
     name: "진행중",
-    color: "#0088FF", // 파란색
-  },
-  RESOLVED: {
-    id: "3",
-    name: "해결됨",
-    color: "#00CC00", // 초록색
+    color: "#00CC00", // 파란색
   },
   CLOSED: {
-    id: "4",
+    id: "3",
     name: "종결",
-    color: "#888888", // 회색
-  },
-  REJECTED: {
-    id: "5",
-    name: "거절됨",
-    color: "#FF0000", // 빨간색
+    color: "#FF0000", // 회색
   },
 };
 
@@ -86,15 +76,7 @@ export const STATUS_TYPES = {
     name: "진행중",
     color: "#3B82F6", // 파란색
     className:
-      "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
-    icon: "Timer", // 아이콘 이름
-  },
-  active: {
-    // in_progress와 동일 (호환성)
-    name: "진행중",
-    color: "#3B82F6", // 파란색
-    className:
-      "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+      "bg-green-50 text-green-600 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
     icon: "Timer", // 아이콘 이름
   },
   completed: {

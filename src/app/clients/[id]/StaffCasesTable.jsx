@@ -45,6 +45,7 @@ import {
   FileSpreadsheet,
   ListFilter,
   Bell,
+  X,
 } from "lucide-react";
 import {
   Select,
@@ -93,6 +94,7 @@ export function StaffCasesTable({
   console.log("StaffCasesTable cases:", cases.length, "statusFilter:", statusFilter);
   const router = useRouter();
   const [filteredCases, setFilteredCases] = useState(cases);
+  const [inputSearchTerm, setInputSearchTerm] = useState(searchTerm);
 
   useEffect(() => {
     console.log("CasesTable props:", {
@@ -120,6 +122,25 @@ export function StaffCasesTable({
   useEffect(() => {
     setFilteredCases(cases);
   }, [cases]);
+
+  // searchTerm prop이 변경될 때 입력 필드 업데이트
+  useEffect(() => {
+    setInputSearchTerm(searchTerm);
+  }, [searchTerm]);
+
+  // 검색 핸들러 - 검색 버튼 클릭 또는 엔터 키 입력 시 실행
+  const handleSearch = () => {
+    if (onSearchChange) {
+      onSearchChange(inputSearchTerm);
+    }
+  };
+
+  // 엔터 키 처리
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
 
   // 상태에 따른 배지 색상
   const getCaseStatusBadge = (status) => {
@@ -202,12 +223,14 @@ export function StaffCasesTable({
 
   const handleModalClose = (refreshNeeded = false) => {
     if (refreshNeeded || modalRefreshNeeded) {
+      console.log("모달이 닫히면서 데이터 새로고침 실행");
       onRefreshData && onRefreshData();
       setModalRefreshNeeded(false);
     }
   };
 
   const handleDataChange = () => {
+    console.log("데이터 변경 감지됨");
     setModalRefreshNeeded(true);
   };
 
@@ -243,17 +266,21 @@ export function StaffCasesTable({
                   총 {totalItems}건 중 {cases.length}건 표시
                 </CardDescription>
               </div>
-              <div className="relative w-full sm:w-auto">
+              <div className="relative w-full sm:w-auto flex items-center">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={16}
                 />
                 <Input
                   placeholder="당사자 이름으로 검색"
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                  value={inputSearchTerm}
+                  onChange={(e) => setInputSearchTerm(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className="pl-9 w-full sm:w-[200px]"
                 />
+                <Button variant="default" size="sm" onClick={handleSearch} className="ml-2">
+                  검색
+                </Button>
               </div>
             </div>
 
@@ -285,6 +312,29 @@ export function StaffCasesTable({
                 <CheckCircle2 className="h-4 w-4 sm:mr-1 hidden sm:inline" />
                 완료
               </Button>
+
+              {/* 검색어 표시 및 취소 배지 추가 */}
+              {searchTerm && (
+                <div className="flex-1 sm:flex-none flex justify-end">
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto flex items-center gap-1 px-2 py-1 h-8"
+                  >
+                    <span>검색: {searchTerm}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 p-0 ml-1 hover:bg-gray-200 rounded-full"
+                      onClick={() => {
+                        setInputSearchTerm("");
+                        onSearchChange && onSearchChange("");
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -500,7 +550,7 @@ export function StaffCasesTable({
                               className="cursor-pointer"
                             >
                               <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-500" />
-                              <span>채권정보 보기</span>
+                              <span>회수현황 보기</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -598,8 +648,11 @@ export function StaffCasesTable({
       <Dialog
         open={showLawsuitModal}
         onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            console.log("소송 정보 모달 닫힘");
+            handleModalClose(true); // 항상 새로고침 실행하도록 변경
+          }
           setShowLawsuitModal(isOpen);
-          if (!isOpen) handleModalClose();
         }}
       >
         <DialogContent className="max-w-[95vw] w-[1200px] max-h-[90vh] h-[800px] p-6 overflow-hidden">
@@ -610,7 +663,9 @@ export function StaffCasesTable({
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto pr-2" style={{ maxHeight: "calc(800px - 100px)" }}>
-            {selectedCaseId && <LawsuitManager caseId={selectedCaseId} />}
+            {selectedCaseId && (
+              <LawsuitManager caseId={selectedCaseId} onDataChange={handleDataChange} />
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -619,8 +674,11 @@ export function StaffCasesTable({
       <Dialog
         open={showRecoveryModal}
         onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            console.log("채권 정보 모달 닫힘");
+            handleModalClose(true); // 항상 새로고침 실행하도록 변경
+          }
           setShowRecoveryModal(isOpen);
-          if (!isOpen) handleModalClose();
         }}
       >
         <DialogContent className="max-w-[95vw] w-[1200px] max-h-[90vh] h-[800px] p-6 overflow-hidden">
@@ -631,7 +689,9 @@ export function StaffCasesTable({
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto pr-2" style={{ maxHeight: "calc(800px - 100px)" }}>
-            {selectedCaseId && <RecoveryActivities caseId={selectedCaseId} />}
+            {selectedCaseId && (
+              <RecoveryActivities caseId={selectedCaseId} onDataChange={handleDataChange} />
+            )}
           </div>
         </DialogContent>
       </Dialog>

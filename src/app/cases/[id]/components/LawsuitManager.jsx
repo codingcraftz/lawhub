@@ -53,7 +53,7 @@ const PARTY_ORDER = {
   respondent: 6, // 피신청인
 };
 
-export default function LawsuitManager({ caseId }) {
+export default function LawsuitManager({ caseId, onDataChange }) {
   const { user } = useUser();
   const [lawsuits, setLawsuits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -236,52 +236,46 @@ export default function LawsuitManager({ caseId }) {
 
   const handleDeleteLawsuit = async (lawsuitId) => {
     try {
-      // 1. 먼저 소송에 속한 모든 제출 내역의 ID를 가져옵니다
-      const { data: submissionsData, error: submissionsError } = await supabase
+      // 1. 해당 소송에 속한 모든 제출 삭제
+      const { error: submissionsError } = await supabase
         .from("test_lawsuit_submissions")
-        .select("id")
+        .delete()
         .eq("lawsuit_id", lawsuitId);
 
-      if (submissionsError) {
-        console.error("소송 관련 제출 내역 조회 실패:", submissionsError);
-      } else if (submissionsData && submissionsData.length > 0) {
-        // 모든 제출 내역 ID 추출
-        const submissionIds = submissionsData.map((submission) => submission.id);
+      if (submissionsError) throw submissionsError;
 
-        // 2. 관련된 모든 알림 삭제
-        const { data: notificationsData, error: notificationsError } = await supabase
-          .from("test_case_notifications")
-          .delete()
-          .in("related_id", submissionIds)
-          .eq("related_entity", "submission")
-          .select("id");
+      // 2. 해당 소송에 속한 기일 정보 삭제
+      const { error: schedulesError } = await supabase
+        .from("test_lawsuit_schedules")
+        .delete()
+        .eq("lawsuit_id", lawsuitId);
 
-        if (notificationsError) {
-          console.error("관련 알림 삭제 실패:", notificationsError);
-        } else {
-          console.log(`소송 관련 ${notificationsData.length}개의 알림이 함께 삭제되었습니다.`);
-        }
-      }
+      if (schedulesError) throw schedulesError;
 
-      // 3. 소송 삭제 (관련 송달/제출 내역도 cascade로 함께 삭제됨)
+      // 3. 해당 소송에 속한 당사자 관계 삭제
+      const { error: partiesError } = await supabase
+        .from("test_lawsuit_parties")
+        .delete()
+        .eq("lawsuit_id", lawsuitId);
+
+      if (partiesError) throw partiesError;
+
+      // 4. 마지막으로 소송 자체 삭제
       const { error } = await supabase.from("test_case_lawsuits").delete().eq("id", lawsuitId);
 
       if (error) throw error;
 
-      // 목록 업데이트
-      setLawsuits(lawsuits.filter((item) => item.id !== lawsuitId));
+      toast.success("소송 정보가 삭제되었습니다");
 
-      // 삭제한 소송이 현재 선택된 소송이면, 다른 소송 선택
-      if (activeTab === lawsuitId) {
-        if (lawsuits.length > 1) {
-          const remainingLawsuits = lawsuits.filter((item) => item.id !== lawsuitId);
-          setActiveTab(remainingLawsuits[0]?.id || null);
-        } else {
-          setActiveTab(null);
-        }
-      }
+      // 소송 목록 새로고침
+      fetchLawsuits();
 
-      toast.success("소송이 삭제되었습니다");
+      // 활성 탭 초기화
+      setActiveTab(null);
+      setSubmissions([]);
+
+      // 데이터 변경 알림
+      if (onDataChange) onDataChange();
     } catch (error) {
       console.error("소송 삭제 실패:", error);
       toast.error("소송 삭제에 실패했습니다");
@@ -289,31 +283,21 @@ export default function LawsuitManager({ caseId }) {
   };
 
   const handleSubmissionSuccess = (data) => {
-    if (activeTab) {
-      // 현재 활성화된 소송의 타임라인 새로고침을 트리거
-      const lawsuit = lawsuits.find((l) => l.id === activeTab);
-      if (lawsuit) {
-        const element = document.getElementById("timeline-component");
-        if (element) {
-          const event = new CustomEvent("refresh-timeline", {
-            detail: { lawsuitId: activeTab },
-          });
-          element.dispatchEvent(event);
-        }
-      }
-
-      // 타임라인이 업데이트되었음을 알림
-      toast.success("타임라인 항목이 업데이트되었습니다");
-    }
+    setEditingSubmission(null);
+    setShowAddSubmissionModal(false);
+    toast.success("제출 정보가 저장되었습니다");
+    // 제출 정보 다시 불러오기
+    fetchSubmissions(activeTab);
+    // 데이터 변경 알림
+    if (onDataChange) onDataChange();
   };
 
   const handleLawsuitSuccess = (addedLawsuit) => {
-    fetchLawsuits(); // 소송 목록 다시 가져오기
-
-    // 수정된 소송이 현재 선택된 소송이면 당사자 목록도 새로고침
-    if (addedLawsuit && addedLawsuit.id === activeTab) {
-      fetchParties();
-    }
+    setEditingLawsuit(null);
+    setShowAddLawsuitModal(false);
+    fetchLawsuits();
+    // 데이터 변경 알림
+    if (onDataChange) onDataChange();
   };
 
   const renderLawsuitInfo = (lawsuit) => {

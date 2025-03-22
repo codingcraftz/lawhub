@@ -76,7 +76,13 @@ import Link from "next/link";
 // 통합된 모달 컴포넌트 가져오기
 import { RecoveryActivityModal } from "./modals";
 
-export default function RecoveryActivities({ caseId, limit, isDashboard = false, parties }) {
+export default function RecoveryActivities({
+  caseId,
+  limit,
+  isDashboard = false,
+  parties,
+  onDataChange,
+}) {
   const router = useRouter();
   const { user } = useUser();
   console.log("parties", parties);
@@ -160,6 +166,9 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false,
 
       // 업데이트된 목록 가져오기
       fetchActivities();
+
+      // 데이터가 변경되었음을 부모 컴포넌트에 알림
+      if (onDataChange) onDataChange();
     } catch (error) {
       console.error("회수 활동 삭제 실패:", error);
       toast.error("회수 활동 삭제 실패", {
@@ -260,23 +269,48 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false,
 
   // 활동 추가 모달 컨트롤
   const handleAddActivity = () => {
-    setIsEditing(false);
     setCurrentActivity(null);
+    setIsEditing(false);
     setShowModal(true);
   };
 
   // 활동 수정 모달 컨트롤
   const handleEditActivity = (activity) => {
-    setIsEditing(true);
     setCurrentActivity(activity);
+    setIsEditing(true);
     setShowModal(true);
   };
 
-  // 모달 닫기
-  const handleCloseModal = () => {
+  // 활동 유형이 KCB 조회나 납부안내 메시지 관련인지 확인하는 함수
+  const isKcbOrMessageActivity = (activity) => {
+    if (!activity) return false;
+
+    return (
+      activity.activity_type === "letter" ||
+      (activity.description &&
+        (activity.description.includes("KCB") ||
+          activity.description.includes("납부안내") ||
+          activity.description.includes("메시지")))
+    );
+  };
+
+  // 모달 닫기 함수 수정
+  const handleCloseModal = (activitySaved = false, savedActivity = null) => {
     setShowModal(false);
-    setIsEditing(false);
-    setCurrentActivity(null);
+
+    if (activitySaved) {
+      fetchActivities();
+
+      // KCB 조회나 납부안내 메시지 발송 관련 활동인 경우에만 부모 컴포넌트에 알림
+      const activityToCheck = savedActivity || currentActivity;
+
+      if (onDataChange && isKcbOrMessageActivity(activityToCheck)) {
+        console.log(
+          "KCB 조회나 납부안내 메시지 발송 관련 활동 감지, 부모 컴포넌트에 데이터 변경 알림"
+        );
+        onDataChange();
+      }
+    }
   };
 
   // 날짜 그룹으로 활동 항목 정렬
@@ -494,7 +528,15 @@ export default function RecoveryActivities({ caseId, limit, isDashboard = false,
                 <RecoveryActivityModal
                   open={showModal}
                   onOpenChange={handleCloseModal}
-                  onSuccess={fetchActivities}
+                  onSuccess={(savedActivity) => {
+                    fetchActivities();
+
+                    // 저장된 활동이 KCB나 메시지 관련인 경우 부모에게 알림
+                    if (onDataChange && isKcbOrMessageActivity(savedActivity)) {
+                      console.log("새로운 KCB/메시지 활동 감지, 부모 컴포넌트에 데이터 변경 알림");
+                      onDataChange();
+                    }
+                  }}
                   caseId={caseId}
                   user={user}
                   parties={parties}
