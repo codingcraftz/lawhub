@@ -5,8 +5,8 @@
 | 컬럼명           | 데이터 타입              | 설명             |
 | ---------------- | ------------------------ | ---------------- |
 | id               | uuid                     | 사건 고유 식별자 |
-| case_type        | character varying(50)    | 사건 유형        |
-| status           | character varying(50)    | 사건 상태        |
+| case_type        | character varying        | 사건 유형        |
+| status           | character varying        | 사건 상태        |
 | filing_date      | date                     | 접수일           |
 | principal_amount | numeric                  | 원금             |
 | status_id        | uuid                     | 상태 ID          |
@@ -31,10 +31,10 @@
 | --------------- | ------------------------ | ----------- |
 | id              | uuid                     | 고유 식별자 |
 | case_id         | uuid                     | 사건 ID     |
-| client_type     | character varying(20)    | 의뢰인 유형 |
+| client_type     | character varying        | 의뢰인 유형 |
 | individual_id   | uuid                     | 개인 ID     |
 | organization_id | uuid                     | 조직 ID     |
-| position        | character varying(100)   | 직위        |
+| position        | character varying        | 직위        |
 | created_at      | timestamp with time zone | 생성 시간   |
 | updated_at      | timestamp with time zone | 수정 시간   |
 
@@ -44,7 +44,7 @@
 | ------------ | ------------------------ | ----------- |
 | id           | uuid                     | 고유 식별자 |
 | case_id      | uuid                     | 사건 ID     |
-| expense_type | character varying(50)    | 비용 유형   |
+| expense_type | character varying        | 비용 유형   |
 | amount       | numeric                  | 금액        |
 | created_at   | timestamp with time zone | 생성 시간   |
 | updated_at   | timestamp with time zone | 수정 시간   |
@@ -83,9 +83,9 @@
 | ----------------- | ------------------------ | ----------- |
 | id                | uuid                     | 고유 식별자 |
 | case_id           | uuid                     | 사건 ID     |
-| title             | character varying(255)   | 제목        |
+| title             | character varying        | 제목        |
 | message           | text                     | 메시지      |
-| notification_type | character varying(50)    | 알림 유형   |
+| notification_type | character varying        | 알림 유형   |
 | is_read           | boolean                  | 읽음 여부   |
 | user_id           | uuid                     | 사용자 ID   |
 | created_at        | timestamp with time zone | 생성 시간   |
@@ -98,16 +98,16 @@
 | case_id                       | uuid                     | 사건 ID        |
 | party_type                    | text                     | 당사자 유형    |
 | entity_type                   | text                     | 법인 유형      |
-| name                          | character varying(255)   | 이름           |
-| company_name                  | character varying(255)   | 회사명         |
-| corporate_registration_number | character varying(20)    | 사업자등록번호 |
-| position                      | character varying(100)   | 직위           |
-| phone                         | character varying(20)    | 전화번호       |
+| name                          | character varying        | 이름           |
+| company_name                  | character varying        | 회사명         |
+| corporate_registration_number | character varying        | 사업자등록번호 |
+| position                      | character varying        | 직위           |
+| phone                         | character varying        | 전화번호       |
 | address                       | text                     | 주소           |
 | address_detail                | text                     | 상세주소       |
-| email                         | character varying(255)   | 이메일         |
-| resident_number               | character varying(20)    | 주민등록번호   |
-| corporate_number              | character varying(20)    | 법인번호       |
+| email                         | character varying        | 이메일         |
+| resident_number               | character varying        | 주민등록번호   |
+| corporate_number              | character varying        | 법인번호       |
 | representative_name           | text                     | 대표자명       |
 | representative_position       | text                     | 대표자 직위    |
 | created_at                    | timestamp with time zone | 생성 시간      |
@@ -121,13 +121,13 @@
 | case_id           | uuid                     | 사건 ID     |
 | creditor_party_id | uuid                     | 채권자 ID   |
 | debtor_party_id   | uuid                     | 채무자 ID   |
-| claim_basis       | character varying(255)   | 청구 근거   |
+| claim_basis       | character varying        | 청구 근거   |
 | principal_amount  | numeric                  | 원금        |
 | interest_rate     | numeric                  | 이자율      |
 | interest_amount   | numeric                  | 이자 금액   |
 | total_amount      | numeric                  | 총액        |
 | due_date          | date                     | 만기일      |
-| status            | character varying(50)    | 상태        |
+| status            | character varying        | 상태        |
 | description       | text                     | 설명        |
 | created_at        | timestamp with time zone | 생성 시간   |
 | updated_at        | timestamp with time zone | 수정 시간   |
@@ -137,9 +137,9 @@
 | 컬럼명      | 데이터 타입              | 설명        |
 | ----------- | ------------------------ | ----------- |
 | id          | uuid                     | 고유 식별자 |
-| name        | character varying(100)   | 문서 유형명 |
+| name        | character varying        | 문서 유형명 |
 | description | text                     | 설명        |
-| category    | character varying(50)    | 분류        |
+| category    | character varying        | 분류        |
 | created_at  | timestamp with time zone | 생성 시간   |
 
 ## 소송 당사자 테이블 (test_lawsuit_parties)
@@ -159,8 +159,8 @@
 | --------------- | ------------------------ | ----------- |
 | id              | uuid                     | 고유 식별자 |
 | lawsuit_id      | uuid                     | 소송 ID     |
-| submission_type | character varying(50)    | 제출 유형   |
-| document_type   | character varying(100)   | 문서 유형   |
+| submission_type | character varying        | 제출 유형   |
+| document_type   | character varying        | 문서 유형   |
 | submission_date | date                     | 제출일      |
 | description     | text                     | 설명        |
 | file_url        | text                     | 파일 URL    |
@@ -176,8 +176,8 @@
 | id              | uuid                     | 고유 식별자  |
 | organization_id | uuid                     | 조직 ID      |
 | user_id         | uuid                     | 사용자 ID    |
-| position        | character varying(100)   | 직위         |
-| role            | character varying(50)    | 역할         |
+| position        | character varying        | 직위         |
+| role            | character varying        | 역할         |
 | is_primary      | boolean                  | 주 소속 여부 |
 | created_at      | timestamp with time zone | 생성 시간    |
 | updated_at      | timestamp with time zone | 수정 시간    |
@@ -187,13 +187,13 @@
 | 컬럼명                  | 데이터 타입              | 설명        |
 | ----------------------- | ------------------------ | ----------- |
 | id                      | uuid                     | 고유 식별자 |
-| name                    | character varying(255)   | 조직명      |
-| business_number         | character varying(20)    | 사업자번호  |
+| name                    | character varying        | 조직명      |
+| business_number         | character varying        | 사업자번호  |
 | address                 | text                     | 주소        |
-| phone                   | character varying(20)    | 전화번호    |
-| email                   | character varying(255)   | 이메일      |
-| representative_name     | character varying(100)   | 대표자명    |
-| representative_position | character varying(100)   | 대표자 직위 |
+| phone                   | character varying        | 전화번호    |
+| email                   | character varying        | 이메일      |
+| representative_name     | character varying        | 대표자명    |
+| representative_position | character varying        | 대표자 직위 |
 | created_at              | timestamp with time zone | 생성 시간   |
 | updated_at              | timestamp with time zone | 수정 시간   |
 
@@ -225,7 +225,7 @@
 | ------------- | ------------------------ | ----------- |
 | id            | uuid                     | 고유 식별자 |
 | case_id       | uuid                     | 사건 ID     |
-| activity_type | character varying(100)   | 활동 유형   |
+| activity_type | character varying        | 활동 유형   |
 | date          | date                     | 활동일      |
 | description   | text                     | 설명        |
 | notes         | text                     | 비고        |
@@ -276,3 +276,8 @@
 | position      | text                     | 직위          |
 | employee_type | text                     | 직원 유형     |
 | created_at    | timestamp with time zone | 생성 시간     |
+
+### 주요 수정사항 (2024-08-13)
+
+1. `test_cases` 테이블에는 `case_number` 필드가 없음. 사건번호(`case_number`)는 `test_case_lawsuits` 테이블에 있음
+2. 기존 코드에서 `test_cases.case_number` 필드를 참조하던 부분을 `test_case_lawsuits.case_number`로 수정

@@ -30,7 +30,9 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 const activityTypes = [
-  { value: "call", label: "전화 연락" },
+  { value: "kcb", label: "KCB조회" },
+  { value: "message", label: "메세지" },
+  { value: "call", label: "전화" },
   { value: "visit", label: "방문" },
   { value: "payment", label: "납부" },
   { value: "letter", label: "통지서 발송" },
@@ -78,7 +80,7 @@ export default function RecoveryActivityModal({
           description: activity.description,
           amount: activity.amount ? activity.amount.toString() : "",
           notes: activity.notes || "",
-          status: activity.status || "completed",
+          status: activity.status || "predicted",
         });
       } else {
         // 추가 모드: 기본값으로 초기화
@@ -88,7 +90,7 @@ export default function RecoveryActivityModal({
           description: "",
           amount: "",
           notes: "",
-          status: "completed",
+          status: "predicted",
         });
       }
       setFileToUpload(null);
@@ -237,11 +239,14 @@ export default function RecoveryActivityModal({
     }
   };
 
-  // 회수 활동 유형별 알림 메시지 생성
   const getActivityMessage = (activityType, amount, status) => {
     const statusText = status === "predicted" ? "예정되어 있습니다" : "진행되었습니다";
 
     switch (activityType) {
+      case "kcb":
+        return `kcb 조회가 ${statusText}.`;
+      case "message":
+        return `메세지가 ${statusText}.`;
       case "call":
         return `전화 연락이 ${statusText}.`;
       case "visit":
