@@ -1,24 +1,12 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { supabaseAdmin } from "@/utils/supabaseAdmin";
-
-// authOptions 가져오기
-const getAuthOptions = () => {
-  return {
-    providers: [
-      {
-        id: "kakao",
-        name: "Kakao",
-      },
-    ],
-    secret: process.env.NEXTAUTH_SECRET || "lawhubnextauthsecret",
-  };
-};
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 export async function PUT(request) {
   try {
-    // 세션 확인 (authOptions 포함)
-    const session = await getServerSession(getAuthOptions());
+    // 세션 확인
+    const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ error: "인증되지 않은 요청입니다." }, { status: 401 });
     }
@@ -27,18 +15,10 @@ export async function PUT(request) {
     const data = await request.json();
 
     // 사용자 ID 가져오기
-    const userEmail = session.user.email;
+    const userId = session.user.id;
 
-    // 먼저 사용자 조회
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from("users")
-      .select("id")
-      .eq("email", userEmail)
-      .single();
-
-    if (userError) {
-      console.error("사용자 조회 오류:", userError);
-      return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
+    if (!userId) {
+      return NextResponse.json({ error: "유효하지 않은 사용자 ID입니다." }, { status: 400 });
     }
 
     // 업데이트할 데이터 필터링 (허용된 필드만)
@@ -63,7 +43,7 @@ export async function PUT(request) {
     const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from("users")
       .update(filteredData)
-      .eq("id", userData.id)
+      .eq("id", userId)
       .select()
       .single();
 

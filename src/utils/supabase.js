@@ -17,18 +17,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true, // URL에서 세션 감지 활성화
-    storageKey: "supabase-auth", // 로컬 스토리지 키 이름 명시
-  },
-  global: {
-    // RLS 정책을 우회하기 위한 헤더 추가 (개발용으로만 사용)
-    headers: {
-      "x-client-info": "lawhub-client",
-    },
   },
   db: {
     schema: "public",
   },
 });
-
-// Supabase 클라이언트 초기화 알림
-console.log("✅ Supabase 클라이언트 초기화 완료");

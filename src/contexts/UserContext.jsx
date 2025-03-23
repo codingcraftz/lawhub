@@ -2,11 +2,18 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+// Supabase 클라이언트 생성
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 // 사용자 컨텍스트 생성
-const UserContext = createContext();
+const UserContext = createContext(null);
 
 // Kakao 프로필 가져오기 함수
 async function fetchKakaoProfile(accessToken) {
@@ -32,273 +39,132 @@ async function fetchKakaoProfile(accessToken) {
 
 // 사용자 컨텍스트 제공자 컴포넌트
 export function UserProvider({ children }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const router = useRouter();
 
-  // 초기 로드 및 인증 상태 감지
   useEffect(() => {
-    console.log("🔄 UserProvider useEffect 실행");
+    console.log("🔄 UserContext - Session 상태 변경:", status);
+    console.log("🔄 UserContext - Session 데이터:", session);
 
-    // Supabase에서 세션 가져오기
-    const fetchSession = async () => {
+    const fetchUserFromSupabase = async (email) => {
       try {
-        console.log("🔍 Supabase 세션 확인 중...");
-        const { data, error } = await supabase.auth.getSession();
+        console.log("🔍 Supabase에서 사용자 정보 조회 시작:", email);
 
-        if (error) {
-          console.error("🔴 세션 가져오기 오류:", error);
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-
-        console.log("🔑 세션 데이터:", data);
-
-        if (data.session?.user) {
-          console.log("✅ 로그인된 사용자 발견:", data.session.user);
-          await fetchUserFromDatabase(data.session.user);
-        } else {
-          console.log("❌ 로그인된 사용자 없음");
-          setUser(null);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("🔴 세션 확인 중 오류:", err);
-        setUser(null);
-        setLoading(false);
-      }
-    };
-
-    // users 테이블에서 사용자 정보 가져오기
-    const fetchUserFromDatabase = async (authUser) => {
-      try {
-        console.log("🔍 users 테이블에서 사용자 조회 중:", authUser.id);
         const { data, error } = await supabase
           .from("users")
           .select("*")
-          .eq("id", authUser.id)
+          .eq("email", email)
           .single();
 
         if (error) {
-          console.error("🔴 사용자 조회 오류:", error);
+          console.error("🔴 Supabase 사용자 조회 오류:", error);
+          throw error;
+        }
 
-          // 사용자가 없으면 생성 시도
-          if (error.code === "PGRST116") {
-            console.log("⚠️ 사용자가 users 테이블에 없음. 새로 생성 시도...");
-            await createNewUser(authUser);
-          } else {
-            // 기본 사용자 정보 설정
-            setUser({
-              ...authUser,
-              role: "client",
-            });
-            setLoading(false);
-          }
-        } else if (data) {
-          console.log("✅ 사용자 정보 찾음:", data);
-          setUser({
-            ...authUser,
-            ...data,
-          });
-          setLoading(false);
+        if (data) {
+          console.log("✅ Supabase에서 사용자 정보 조회 성공:", data);
+          return data;
         } else {
-          console.log("⚠️ 사용자 정보 없음, 새로 생성 시도...");
-          await createNewUser(authUser);
+          console.error("🔴 해당 이메일의 사용자가 없습니다:", email);
+          return null;
         }
       } catch (err) {
-        console.error("🔴 사용자 조회 중 오류:", err);
-        setUser({
-          ...authUser,
-          role: "client",
-        });
-        setLoading(false);
+        console.error("🔴 Supabase 사용자 조회 중 예외 발생:", err);
+        setError(err);
+        return null;
       }
     };
 
-    // 새 사용자 생성
-    const createNewUser = async (authUser) => {
+    const handleSession = async () => {
       try {
-        console.log("🔄 새 사용자 생성 시도...");
+        if (status === "loading") {
+          console.log("⏳ UserContext - 세션 로딩 중...");
+          return;
+        }
 
-        // 카카오 프로필 가져오기 시도
-        let kakaoProfile = null;
-        const session = await supabase.auth.getSession();
-        const kakaoAccessToken = session.data.session?.provider_token;
+        if (status === "authenticated" && session?.user) {
+          console.log("✅ UserContext - 인증된 세션 발견:", session.user);
 
-        if (kakaoAccessToken) {
-          try {
-            console.log("🔍 카카오 프로필 가져오기 시도...");
-            kakaoProfile = await fetchKakaoProfile(kakaoAccessToken);
-            console.log("✅ 카카오 프로필:", kakaoProfile);
-          } catch (err) {
-            console.error("🔴 카카오 프로필 가져오기 실패:", err);
+          // NextAuth 세션에서 이메일을 가져와 Supabase에서 전체 사용자 정보 조회
+          const email = session.user.email;
+          if (email) {
+            const userData = await fetchUserFromSupabase(email);
+            if (userData) {
+              setUser(userData);
+            } else {
+              // Supabase에서 사용자를 찾지 못한 경우 NextAuth 세션 정보 사용
+              console.warn("⚠️ Supabase에서 사용자를 찾지 못해 NextAuth 세션 정보 사용");
+              setUser(session.user);
+            }
+          } else {
+            console.error("🔴 세션에 이메일 정보가 없습니다");
+            setUser(null);
           }
-        } else {
-          console.log("⚠️ 카카오 액세스 토큰 없음");
+        } else if (status === "unauthenticated") {
+          console.log("🚫 UserContext - 인증되지 않은 상태");
+          setUser(null);
         }
-
-        // 사용자 정보 구성
-        const email = kakaoProfile?.kakao_account?.email || authUser.email || null;
-        const nickname = kakaoProfile?.kakao_account?.profile?.nickname || null;
-        const profileImage = kakaoProfile?.kakao_account?.profile?.profile_image_url || null;
-        const gender = kakaoProfile?.kakao_account?.gender || null;
-        const birthyear = kakaoProfile?.kakao_account?.birthyear || null;
-        const birthday = kakaoProfile?.kakao_account?.birthday || null;
-        const kakao_id = kakaoProfile?.id || null;
-        const phone_number = kakaoProfile?.kakao_account?.phone_number || null;
-        const name = kakaoProfile?.kakao_account?.name || null;
-
-        // 새 사용자 데이터
-        const newUser = {
-          id: authUser.id,
-          kakao_id,
-          phone_number,
-          name,
-          email,
-          nickname,
-          profile_image: profileImage,
-          gender,
-          birth_date: birthday
-            ? `${birthyear || ""}-${birthday?.slice(0, 2) || ""}-${birthday?.slice(2, 4) || ""}`
-            : null,
-          is_kakao_user: true,
-          role: "client",
-          created_at: new Date().toISOString(),
-        };
-
-        console.log("📝 추가할 사용자 데이터:", newUser);
-
-        // users 테이블에 추가
-        const { data: insertedUser, error } = await supabase
-          .from("users")
-          .insert(newUser)
-          .select()
-          .single();
-
-        if (error) {
-          console.error("🔴 사용자 추가 오류:", error);
-          toast.error("사용자 정보 저장에 실패했습니다");
-
-          // 기본 사용자 정보 설정
-          setUser({
-            ...authUser,
-            role: "client",
-          });
-        } else {
-          console.log("✅ 사용자 추가 성공:", insertedUser);
-          toast.success("회원가입이 완료되었습니다");
-          setUser({
-            ...authUser,
-            ...insertedUser,
-          });
-        }
-
-        setLoading(false);
       } catch (err) {
-        console.error("🔴 사용자 생성 중 오류:", err);
-        setUser({
-          ...authUser,
-          role: "client",
-        });
+        console.error("🔴 UserContext - 세션 처리 중 오류 발생:", err);
+        setError(err);
+      } finally {
         setLoading(false);
       }
     };
 
-    // 초기 세션 확인
-    fetchSession();
-
-    // 인증 상태 변경 리스너
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔄 인증 상태 변경:", event);
-
-      if (event === "SIGNED_IN" && session?.user) {
-        console.log("✅ 로그인됨:", session.user);
-        await fetchUserFromDatabase(session.user);
-      } else if (event === "SIGNED_OUT") {
-        console.log("❌ 로그아웃됨");
-        setUser(null);
-        setLoading(false);
-      } else if (event === "TOKEN_REFRESHED") {
-        console.log("🔄 토큰 갱신됨");
-      }
-    });
-
-    // 정리 함수
-    return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, [router]);
-
-  // 역할 확인 함수
-  const isAdmin = () => {
-    return user?.role === "admin";
-  };
-
-  const isStaff = () => {
-    return user?.role === "staff";
-  };
-
-  const isClient = () => {
-    return user?.role === "client";
-  };
-
-  // 로그아웃 함수
-  const signOut = async () => {
-    try {
-      console.log("🔄 로그아웃 시도...");
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        console.error("🔴 로그아웃 오류:", error);
-        toast.error("로그아웃 중 오류가 발생했습니다");
-        return;
-      }
-
-      console.log("✅ 로그아웃 성공");
-      setUser(null);
-      toast.success("로그아웃되었습니다");
-      router.push("/");
-    } catch (error) {
-      console.error("🔴 로그아웃 중 예외 발생:", error);
-      toast.error("로그아웃 중 오류가 발생했습니다");
-    }
-  };
+    handleSession();
+  }, [session, status, router]);
 
   // 사용자 정보 업데이트 함수
-  const updateUserProfile = async (updatedData) => {
-    if (!user) {
-      toast.error("로그인이 필요합니다");
-      throw new Error("로그인이 필요합니다");
-    }
-
+  const updateUserProfile = async (userData) => {
     try {
-      console.log("🔄 프로필 업데이트 시도:", updatedData);
+      console.log("🔄 UserContext - 사용자 프로필 업데이트 시도:", userData);
+
+      // Supabase에 직접 업데이트
       const { data, error } = await supabase
         .from("users")
-        .update(updatedData)
+        .update(userData)
         .eq("id", user.id)
         .select()
         .single();
 
       if (error) {
-        console.error("🔴 프로필 업데이트 오류:", error);
-        toast.error("프로필 업데이트에 실패했습니다");
-        throw error;
+        console.error("🔴 Supabase 사용자 업데이트 오류:", error);
+        throw new Error("프로필 업데이트에 실패했습니다");
       }
 
-      console.log("✅ 프로필 업데이트 성공:", data);
-      // 프로필 업데이트 성공 시 사용자 상태 업데이트
-      setUser((prev) => ({ ...prev, ...data }));
+      console.log("✅ UserContext - 프로필 업데이트 성공:", data);
 
+      // 로컬 상태 업데이트
+      setUser((prev) => ({ ...prev, ...userData }));
       toast.success("프로필이 업데이트되었습니다");
+
       return data;
-    } catch (error) {
-      console.error("🔴 프로필 업데이트 중 예외 발생:", error);
-      toast.error(error.message || "프로필 업데이트에 실패했습니다");
-      throw error;
+    } catch (err) {
+      console.error("🔴 UserContext - 프로필 업데이트 중 오류:", err);
+      setError(err);
+      toast.error(err.message || "프로필 업데이트에 실패했습니다");
+      throw err;
+    }
+  };
+
+  // 역할 확인 함수
+  const isAdmin = () => user?.role === "admin";
+  const isStaff = () => user?.role === "staff";
+  const isClient = () => user?.role === "client";
+
+  // 로그아웃 함수
+  const signOut = async () => {
+    try {
+      console.log("🔄 UserContext - 로그아웃 시도");
+      await nextAuthSignOut({ callbackUrl: "/login" });
+      console.log("✅ UserContext - 로그아웃 성공");
+    } catch (err) {
+      console.error("🔴 UserContext - 로그아웃 중 오류:", err);
+      setError(err);
     }
   };
 
@@ -306,30 +172,31 @@ export function UserProvider({ children }) {
   useEffect(() => {
     console.log("👤 현재 사용자 상태:", user ? "로그인됨" : "로그인되지 않음");
     console.log("⏳ 로딩 상태:", loading ? "로딩 중" : "로딩 완료");
+    if (user) {
+      console.log("👤 사용자 정보:", user);
+    }
   }, [user, loading]);
 
-  return (
-    <UserContext.Provider
-      value={{
-        user,
-        loading,
-        signOut,
-        isAdmin,
-        isStaff,
-        isClient,
-        updateUserProfile,
-      }}
-    >
-      {children}
-    </UserContext.Provider>
-  );
+  // Context에 노출할 값
+  const value = {
+    user,
+    loading,
+    error,
+    signOut,
+    isAdmin,
+    isStaff,
+    isClient,
+    updateUserProfile,
+  };
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
 
 // 사용자 컨텍스트 사용 훅
 export function useUser() {
   const context = useContext(UserContext);
-  if (context === undefined) {
-    throw new Error("useUser는 UserProvider 내부에서만 사용할 수 있습니다");
+  if (context === null) {
+    throw new Error("useUser must be used within a UserProvider");
   }
   return context;
 }
