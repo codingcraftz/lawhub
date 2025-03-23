@@ -6,6 +6,7 @@ import { ko } from "date-fns/locale";
 import { supabase } from "@/utils/supabase";
 import { toast } from "sonner";
 import { useUser } from "@/contexts/UserContext";
+import { v4 as uuidv4 } from "uuid";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,23 @@ export default function ScheduleFormModal({
               // 당사자 정보 가져오기
               const { creditor, debtor } = await getLawsuitParties(lawsuit.id);
 
+              // 채권자와 채무자 찾기
+              let creditorName = "미지정";
+              let debtorName = "미지정";
+
+              if (creditor) {
+                creditorName =
+                  creditor.entity_type === "individual"
+                    ? creditor.name
+                    : creditor.company_name || "미지정";
+              }
+              if (debtor) {
+                debtorName =
+                  debtor.entity_type === "individual"
+                    ? debtor.name
+                    : debtor.company_name || "미지정";
+              }
+
               // 당사자 정보 문자열 생성
               let partyInfoText = "";
               if (creditor || debtor) {
@@ -90,19 +108,11 @@ export default function ScheduleFormModal({
 
                 if (creditor) {
                   const creditorLabel = getPartyTypeLabel(creditor.party_type);
-                  const creditorName =
-                    creditor.entity_type === "individual"
-                      ? creditor.name
-                      : creditor.company_name || "이름 정보 없음";
                   parts.push(`${creditorLabel}: ${creditorName}`);
                 }
 
                 if (debtor) {
                   const debtorLabel = getPartyTypeLabel(debtor.party_type);
-                  const debtorName =
-                    debtor.entity_type === "individual"
-                      ? debtor.name
-                      : debtor.company_name || "이름 정보 없음";
                   parts.push(`${debtorLabel}: ${debtorName}`);
                 }
 
@@ -208,170 +218,324 @@ export default function ScheduleFormModal({
       // 모든 의뢰인과 담당자의 ID를 수집하기 위한 Set
       const userIds = new Set();
 
+      console.log("알림 생성 시작 - 사건 ID:", lawsuit.id);
+      console.log("소송 정보:", JSON.stringify(lawsuit, null, 2));
+
       // 사건 담당자 조회 - 전달받은 caseDetails를 사용하거나, 없으면 직접 조회
       if (caseDetails && caseDetails.handlers) {
         // props로 전달된 handlers 배열 사용
+        console.log("props로 전달된 담당자 정보 사용:", caseDetails.handlers);
         caseDetails.handlers.forEach((handler) => {
           if (handler.user_id) {
             userIds.add(handler.user_id);
+            console.log("담당자 ID 추가:", handler.user_id);
           }
         });
       } else {
         // 직접 API로 조회
+        console.log("API로 담당자 정보 조회 시작 - case_id:", lawsuit.id);
         const { data: handlersData, error: handlersError } = await supabase
           .from("test_case_handlers")
-          .select("user_id")
+          .select("*")
           .eq("case_id", lawsuit.id);
 
         if (handlersError) {
           console.error("사건 담당자 조회 실패:", handlersError);
         } else if (handlersData) {
+          console.log("조회된 담당자 수:", handlersData.length);
+          console.log("담당자 데이터:", JSON.stringify(handlersData, null, 2));
           handlersData.forEach((handler) => {
             if (handler.user_id) {
               userIds.add(handler.user_id);
+              console.log("담당자 ID 추가:", handler.user_id);
             }
           });
         }
       }
 
-      // 개인 및 법인 의뢰인 처리 - 전달받은 clients를 사용하거나, 없으면 직접 조회
-      if (clients && clients.length > 0) {
-        // props로 전달된 clients 배열 사용
-        clients.forEach((client) => {
-          if (client.client_type === "individual" && client.individual_id) {
-            userIds.add(client.individual_id);
+      // 개인 및 법인 의뢰인 처리 (AddLawsuitModal.jsx 참고)
+      console.log("알림 생성: 의뢰인 정보 조회 시작");
+      const { data: clientsData, error: clientsError } = await supabase
+        .from("test_case_clients")
+        .select(
+          `
+          id,
+          client_type,
+          individual_id,
+          organization_id
+        `
+        )
+        .eq("case_id", lawsuit.case_id || lawsuit.id);
+
+      if (clientsError) {
+        console.error("의뢰인 조회 실패:", clientsError);
+      } else if (clientsData && clientsData.length > 0) {
+        console.log(`의뢰인 ${clientsData.length}명 발견, 원본 데이터:`, clientsData);
+
+        // 개인 의뢰인 처리
+        clientsData.forEach((client) => {
+          if (client.client_type === "individual") {
+            // individual_id가 객체인 경우 (id 필드 추출)
+            if (
+              client.individual_id &&
+              typeof client.individual_id === "object" &&
+              client.individual_id.id
+            ) {
+              console.log("객체 형태의 individual_id 발견:", client.individual_id);
+              userIds.add(client.individual_id.id);
+              console.log("개인 의뢰인 ID 추가 (객체에서):", client.individual_id.id);
+            }
+            // individual_id가 문자열(UUID)인 경우
+            else if (client.individual_id && typeof client.individual_id === "string") {
+              userIds.add(client.individual_id);
+              console.log("개인 의뢰인 ID 추가 (문자열):", client.individual_id);
+            }
           }
         });
 
-        // 법인 의뢰인의 경우 멤버 정보도 필요하므로 조직 ID 수집
-        const orgIds = clients
-          .filter((client) => client.client_type === "organization" && client.organization_id)
-          .map((client) => client.organization_id);
+        // 법인 의뢰인 처리
+        const organizationIds = clientsData
+          .filter((c) => c.client_type === "organization")
+          .map((c) => {
+            // organization_id가 객체인 경우
+            if (
+              c.organization_id &&
+              typeof c.organization_id === "object" &&
+              c.organization_id.id
+            ) {
+              return c.organization_id.id;
+            }
+            // organization_id가 문자열(UUID)인 경우
+            else if (c.organization_id && typeof c.organization_id === "string") {
+              return c.organization_id;
+            }
+            return null;
+          })
+          .filter(Boolean); // null 값 제거
 
-        if (orgIds.length > 0) {
-          // 법인 멤버 조회
-          const { data: orgMembers, error: orgMembersError } = await supabase
+        if (organizationIds.length > 0) {
+          console.log("법인 의뢰인 ID:", organizationIds);
+
+          // 법인 구성원 조회
+          const { data: membersData, error: membersError } = await supabase
             .from("test_organization_members")
             .select("user_id")
-            .in("organization_id", orgIds);
+            .in("organization_id", organizationIds);
 
-          if (orgMembersError) {
-            console.error("조직 멤버 조회 실패:", orgMembersError);
-          } else if (orgMembers) {
-            orgMembers.forEach((member) => {
+          if (membersError) {
+            console.error("법인 구성원 조회 실패:", membersError);
+          } else if (membersData && membersData.length > 0) {
+            console.log(`법인 구성원 ${membersData.length}명 발견:`, membersData);
+            membersData.forEach((member) => {
               if (member.user_id) {
                 userIds.add(member.user_id);
+                console.log("법인 구성원 ID 추가:", member.user_id);
               }
             });
+          } else {
+            console.log("법인 구성원 없음");
           }
         }
       } else {
-        // 직접 API로 조회
-        const { data: clientsData, error: clientsError } = await supabase
-          .from("test_case_clients")
-          .select(
-            `
-            client_type,
-            individual_id, 
-            organization_id
-          `
-          )
-          .eq("case_id", lawsuit.id);
+        console.log("의뢰인 없음");
+      }
 
-        if (clientsError) {
-          console.error("의뢰인 조회 실패:", clientsError);
-        } else if (clientsData) {
-          // 개인 의뢰인 ID 추가
-          clientsData.forEach((client) => {
-            if (client.client_type === "individual" && client.individual_id) {
-              userIds.add(client.individual_id);
-            }
-          });
+      // 수집된 사용자 ID 확인
+      const uniqueUserIds = Array.from(userIds);
+      console.log(`수집된 사용자 ID ${uniqueUserIds.length}개:`, uniqueUserIds);
 
-          // 법인 의뢰인의 멤버 조회 및 추가
-          const orgIds = clientsData
-            .filter((client) => client.client_type === "organization" && client.organization_id)
-            .map((client) => client.organization_id);
+      // 3. 사용자 ID 검증 (해당 ID의 사용자가 실제로 존재하는지 확인)
+      let finalUserIds = [];
+      if (uniqueUserIds.length > 0) {
+        console.log("알림 생성: 사용자 ID 검증 시작");
+        const { data: validUsers, error: usersError } = await supabase
+          .from("users")
+          .select("id")
+          .in("id", uniqueUserIds);
 
-          if (orgIds.length > 0) {
-            const { data: orgMembers, error: orgMembersError } = await supabase
-              .from("test_organization_members")
-              .select("user_id")
-              .in("organization_id", orgIds);
-
-            if (orgMembersError) {
-              console.error("조직 멤버 조회 실패:", orgMembersError);
-            } else if (orgMembers) {
-              orgMembers.forEach((member) => {
-                if (member.user_id) {
-                  userIds.add(member.user_id);
-                }
-              });
-            }
-          }
+        if (usersError) {
+          console.error("사용자 검증 실패:", usersError);
+          // 오류가 있더라도 계속 진행
+          finalUserIds = uniqueUserIds;
+        } else if (validUsers && validUsers.length > 0) {
+          // 유효한 사용자 ID만 필터링
+          finalUserIds = validUsers.map((user) => user.id);
+          console.log(`검증된 사용자 ${finalUserIds.length}명:`, finalUserIds);
+        } else {
+          console.log("유효한 사용자 없음");
+          // 유효한 사용자가 없는 경우 원래 ID 목록 사용
+          finalUserIds = uniqueUserIds;
         }
       }
 
-      // 사건 제목 또는 기본값 설정
-      const caseTitle = lawsuit.case_number ? `${lawsuit.case_number} ` : "사건 일정";
+      // 채권자와 채무자 찾기
+      let creditorName = "미지정";
+      let debtorName = "미지정";
 
-      // 알림 메시지 생성
-      const formattedDate = format(new Date(scheduleData.event_date), "yyyy년 MM월 dd일 HH:mm", {
-        locale: ko,
-      });
+      try {
+        // 소송 당사자 정보 가져오기
+        const { creditor, debtor } = await getLawsuitParties(lawsuit.id);
+        if (creditor) {
+          creditorName =
+            creditor.entity_type === "individual"
+              ? creditor.name
+              : creditor.company_name || "미지정";
+        }
+        if (debtor) {
+          debtorName =
+            debtor.entity_type === "individual" ? debtor.name : debtor.company_name || "미지정";
+        }
+      } catch (err) {
+        console.error("당사자 정보 조회 실패:", err);
+      }
 
-      const title = `${caseTitle} - 일정`;
-      const message = `${formattedDate}에 ${scheduleData.title} 일정이 ${
-        isEditMode ? "수정" : "추가"
-      }되었습니다.`;
+      // 알림 제목과 내용 설정
+      const title = `${scheduleData.event_type}기일이 등록되었습니다.`;
+      const message = `${lawsuit.case_number}_${creditorName}(${debtorName})`;
+
+      // 사건 ID 확인 (case_id가 없는 경우 직접 test_cases에서 조회)
+      let validCaseId;
+      if (lawsuit.case_id) {
+        validCaseId = lawsuit.case_id;
+      } else {
+        // lawsuit.id를 사용하여 test_cases 테이블에서 해당 소송 레코드 조회
+        console.log("소송에 case_id가 없어 test_cases 테이블에서 조회합니다:", lawsuit.id);
+        const { data: caseData, error: caseError } = await supabase
+          .from("test_cases")
+          .select("id")
+          .eq("id", lawsuit.id)
+          .single();
+
+        if (caseError) {
+          console.error("사건 조회 실패:", caseError);
+          return;
+        }
+        validCaseId = caseData.id;
+      }
+
+      if (!validCaseId) {
+        console.error("유효한 사건 ID를 찾을 수 없습니다. lawsuit:", lawsuit);
+        return;
+      }
+
+      console.log("알림 생성에 사용할 유효한 case_id:", validCaseId);
 
       // 1. 사건 알림 생성 (test_case_notifications 테이블)
       const caseNotification = {
-        case_id: lawsuit.id,
+        case_id: validCaseId,
         title: title,
         message: message,
         notification_type: "schedule",
         created_at: new Date().toISOString(),
       };
 
-      const { error: caseNotificationError } = await supabase
-        .from("test_case_notifications")
-        .insert(caseNotification);
+      console.log("알림 생성: 사건 알림 생성 시작", caseNotification);
+      try {
+        const { data: caseNotificationData, error: caseNotificationError } = await supabase
+          .from("test_case_notifications")
+          .insert(caseNotification)
+          .select();
 
-      if (caseNotificationError) {
-        console.error("사건 알림 생성 실패:", caseNotificationError);
-      } else {
-        console.log("사건 알림이 생성되었습니다");
+        if (caseNotificationError) {
+          console.error(
+            "사건 알림 생성 실패:",
+            caseNotificationError,
+            "\ncase_id:",
+            validCaseId,
+            "\nlawsuit_id:",
+            lawsuit.id
+          );
+        } else {
+          console.log("사건 알림이 생성되었습니다", caseNotificationData);
+        }
+      } catch (notificationError) {
+        console.error("사건 알림 생성 중 예외 발생:", notificationError);
       }
 
       // 2. 개인 알림 생성 (test_individual_notifications 테이블)
-      const uniqueUserIds = Array.from(userIds);
-
-      if (uniqueUserIds.length === 0) {
+      if (finalUserIds.length === 0) {
         console.log("알림을 받을 사용자가 없습니다");
         return;
       }
 
-      console.log(`${uniqueUserIds.length}명의 사용자에게 개인 알림을 생성합니다`);
+      console.log(`${finalUserIds.length}명의 사용자에게 개인 알림을 생성합니다:`, finalUserIds);
 
-      // 각 사용자에 대한 알림 생성
-      const individualNotifications = uniqueUserIds.map((userId) => ({
+      // 각 사용자에 대한 알림 생성 (AddLawsuitModal.jsx 참고)
+      const individualNotifications = finalUserIds.map((userId) => ({
+        id: uuidv4(),
         user_id: userId,
-        case_id: lawsuit.id,
+        case_id: validCaseId,
         title: title,
         message: message,
         notification_type: "schedule",
+        is_read: false,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }));
 
-      const { error: individualNotificationError } = await supabase
-        .from("test_individual_notifications")
-        .insert(individualNotifications);
+      console.log(
+        "알림 생성: 개인 알림 생성 시작",
+        JSON.stringify(individualNotifications, null, 2)
+      );
+      try {
+        const { data: notificationsData, error: individualNotificationError } = await supabase
+          .from("test_individual_notifications")
+          .insert(individualNotifications)
+          .select();
 
-      if (individualNotificationError) {
-        console.error("개인 알림 생성 실패:", individualNotificationError);
-      } else {
-        console.log(`${uniqueUserIds.length}개의 개인 알림이 생성되었습니다`);
+        if (individualNotificationError) {
+          console.error(
+            "개인 알림 생성 실패:",
+            individualNotificationError,
+            "\n상세 오류:",
+            individualNotificationError.details,
+            "\n오류 코드:",
+            individualNotificationError.code,
+            "\n오류 메시지:",
+            individualNotificationError.message
+          );
+
+          // 각 알림을 개별적으로 삽입 시도 (일괄 삽입에 실패한 경우)
+          console.log("개별적으로 알림 삽입 시도...");
+          for (const notification of individualNotifications) {
+            console.log("개별 알림 삽입 시도:", notification);
+            try {
+              const { data, error } = await supabase
+                .from("test_individual_notifications")
+                .insert(notification)
+                .select();
+
+              if (error) {
+                console.error(
+                  `사용자 ID ${notification.user_id}에 대한 알림 생성 실패:`,
+                  error,
+                  "\n상세 오류:",
+                  error.details,
+                  "\n오류 코드:",
+                  error.code,
+                  "\n오류 메시지:",
+                  error.message
+                );
+              } else {
+                console.log(`사용자 ID ${notification.user_id}에 대한 알림 생성 성공:`, data);
+              }
+            } catch (individualError) {
+              console.error(
+                `사용자 ID ${notification.user_id}에 대한 알림 생성 중 예외 발생:`,
+                individualError
+              );
+            }
+          }
+        } else {
+          console.log(`${finalUserIds.length}개의 개인 알림이 생성되었습니다`, notificationsData);
+        }
+      } catch (notificationError) {
+        console.error(
+          "개인 알림 생성 중 예외 발생:",
+          notificationError,
+          "\n스택 트레이스:",
+          notificationError.stack
+        );
       }
     } catch (error) {
       console.error("알림 생성 중 오류 발생:", error);
@@ -547,6 +711,9 @@ export default function ScheduleFormModal({
         if (onSuccess) {
           onSuccess(data);
         }
+
+        // 모달 닫기
+        onOpenChange(false);
       } else {
         // 추가 모드
         const newSchedule = {
@@ -565,6 +732,8 @@ export default function ScheduleFormModal({
           created_by: user.id,
         };
 
+        console.log("새 기일 추가:", newSchedule);
+
         const { data, error } = await supabase
           .from("test_schedules")
           .insert(newSchedule)
@@ -576,25 +745,33 @@ export default function ScheduleFormModal({
           throw error;
         }
 
+        console.log("기일 추가 성공:", data);
+
         // 알림 생성
-        await createNotificationsForSchedule(data);
+        try {
+          console.log("알림 생성 시작...");
+          await createNotificationsForSchedule(data);
+          console.log("알림 생성 완료");
+        } catch (notificationError) {
+          console.error("알림 생성 중 오류 발생:", notificationError);
+          // 알림 생성 실패해도 기일 추가는 성공으로 처리
+        }
 
         toast.success("기일이 추가되었습니다", {
-          description: "기일이 성공적으로 등록되었습니다.",
+          description: "기일이 성공적으로 추가되었습니다.",
         });
 
         // 추가된 데이터로 성공 콜백 호출
         if (onSuccess) {
           onSuccess(data);
         }
-      }
 
-      // 폼 초기화 및 다이얼로그 닫기
-      resetScheduleForm();
-      onOpenChange(false);
+        // 모달 닫기
+        onOpenChange(false);
+      }
     } catch (error) {
-      console.error("기일 처리 실패:", error);
-      toast.error("기일 처리 실패", {
+      console.error("기일 추가 중 오류 발생:", error);
+      toast.error("기일 추가 중 오류가 발생했습니다.", {
         description: error.message,
       });
     } finally {
@@ -604,219 +781,189 @@ export default function ScheduleFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md mx-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle className="text-center text-xl">
-            {isEditMode ? "기일 수정" : "기일 추가"}
-          </DialogTitle>
-          <DialogDescription className="text-center">
-            {isEditMode ? "기일 정보를 수정해주세요" : "새로운 기일 정보를 입력해주세요"}
-          </DialogDescription>
+          <DialogTitle>{isEditMode ? "기일 수정" : "기일 추가"}</DialogTitle>
+          <DialogDescription>기일 정보를 입력하고 저장 버튼을 클릭하세요.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmitSchedule} className="space-y-4 py-2">
-          <div className="space-y-2">
+
+        <form onSubmit={handleSubmitSchedule} className="space-y-4">
+          <div className="space-y-1">
             <Label htmlFor="title">제목</Label>
             <Input
               id="title"
+              placeholder="예: 감정기일"
               value={scheduleFormData.title}
               onChange={(e) => handleScheduleInputChange("title", e.target.value)}
-              placeholder="예: 2023가단12345 변론기일"
+              required
             />
-            <p className="text-xs text-muted-foreground">
-              사건번호가 자동으로 포함됩니다. 뒤에 기일 유형을 추가해주세요.
-            </p>
             {formErrors.title && <p className="text-sm text-red-500">{formErrors.title}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="event_type">기일 유형</Label>
-            <Input
-              id="event_type"
-              value={scheduleFormData.event_type}
-              onChange={(e) => handleScheduleInputChange("event_type", e.target.value)}
-              placeholder="기일 유형을 입력하세요"
-            />
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => handleScheduleInputChange("event_type", "변론기일")}
-              >
-                변론기일
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => handleScheduleInputChange("event_type", "선고기일")}
-              >
-                선고기일
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => handleScheduleInputChange("event_type", "준비기일")}
-              >
-                준비기일
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => handleScheduleInputChange("event_type", "조정기일")}
-              >
-                조정기일
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => handleScheduleInputChange("event_type", "심문기일")}
-              >
-                심문기일
-              </Button>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="event_type">기일 유형</Label>
+              <Input
+                id="event_type"
+                placeholder="예: 변론, 선고, 감정"
+                value={scheduleFormData.event_type}
+                onChange={(e) => handleScheduleInputChange("event_type", e.target.value)}
+                required
+              />
+              <div className="flex flex-wrap gap-1 mt-2">
+                {["변론", "선고", "감정", "변론준비", "화해", "조정", "심문", "경매", "기타"].map(
+                  (type) => (
+                    <Button
+                      key={type}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs py-1 h-auto"
+                      onClick={() => handleScheduleInputChange("event_type", type)}
+                    >
+                      {type}
+                    </Button>
+                  )
+                )}
+              </div>
+              {formErrors.event_type && (
+                <p className="text-sm text-red-500">{formErrors.event_type}</p>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              자주 사용하는 유형을 버튼으로 선택하거나 직접 입력하세요.
-            </p>
-            {formErrors.event_type && (
-              <p className="text-sm text-red-500">{formErrors.event_type}</p>
-            )}
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="event_date">날짜</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {scheduleFormData.event_date ? (
-                      format(scheduleFormData.event_date, "yyyy-MM-dd")
-                    ) : (
-                      <span>날짜 선택</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={scheduleFormData.event_date}
-                    onSelect={(date) => handleScheduleInputChange("event_date", date)}
-                    initialFocus
+            <div className="space-y-1">
+              <Label htmlFor="event_date">기일 날짜 및 시간</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                        id="event_date"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {scheduleFormData.event_date
+                          ? format(new Date(scheduleFormData.event_date), "PPP", { locale: ko })
+                          : "날짜 선택"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={scheduleFormData.event_date}
+                        onSelect={(date) => {
+                          // 현재 시간 정보를 유지하면서 날짜만 변경
+                          const currentDate = scheduleFormData.event_date || new Date();
+                          const newDate = new Date(date);
+                          newDate.setHours(currentDate.getHours(), currentDate.getMinutes());
+                          handleScheduleInputChange("event_date", newDate);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex gap-1">
+                  <Input
+                    type="time"
+                    value={
+                      scheduleFormData.event_date
+                        ? `${String(scheduleFormData.event_date.getHours()).padStart(
+                            2,
+                            "0"
+                          )}:${String(scheduleFormData.event_date.getMinutes()).padStart(2, "0")}`
+                        : "09:00"
+                    }
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(":").map(Number);
+                      const newDate = new Date(scheduleFormData.event_date || new Date());
+                      newDate.setHours(hours, minutes);
+                      handleScheduleInputChange("event_date", newDate);
+                    }}
                   />
-                </PopoverContent>
-              </Popover>
+                </div>
+              </div>
               {formErrors.event_date && (
                 <p className="text-sm text-red-500">{formErrors.event_date}</p>
               )}
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="time">시간</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="hours"
-                  type="number"
-                  min="0"
-                  max="23"
-                  placeholder="시"
-                  value={
-                    scheduleFormData.event_date
-                      ? String(scheduleFormData.event_date.getHours()).padStart(2, "0")
-                      : "09"
-                  }
-                  onChange={(e) => {
-                    const newDate = new Date(scheduleFormData.event_date);
-                    newDate.setHours(parseInt(e.target.value) || 0);
-                    handleScheduleInputChange("event_date", newDate);
-                  }}
-                  className="w-1/2"
-                />
-                <Input
-                  id="minutes"
-                  type="number"
-                  min="0"
-                  max="59"
-                  placeholder="분"
-                  value={
-                    scheduleFormData.event_date
-                      ? String(scheduleFormData.event_date.getMinutes()).padStart(2, "0")
-                      : "00"
-                  }
-                  onChange={(e) => {
-                    const newDate = new Date(scheduleFormData.event_date);
-                    newDate.setMinutes(parseInt(e.target.value) || 0);
-                    handleScheduleInputChange("event_date", newDate);
-                  }}
-                  className="w-1/2"
-                />
-              </div>
-            </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label htmlFor="location">장소</Label>
             <Input
               id="location"
+              placeholder="예: 서울중앙지방법원 507호 법정"
               value={scheduleFormData.location}
               onChange={(e) => handleScheduleInputChange("location", e.target.value)}
-              placeholder="예: 서울중앙지방법원 제303호 법정"
+              required
             />
             {formErrors.location && <p className="text-sm text-red-500">{formErrors.location}</p>}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <Label htmlFor="description">설명</Label>
             <Textarea
               id="description"
+              placeholder="기일에 대한 추가 정보를 입력하세요"
               value={scheduleFormData.description}
               onChange={(e) => handleScheduleInputChange("description", e.target.value)}
-              placeholder="기일에 대한 추가 설명을 입력해주세요"
-              className="min-h-[100px]"
+              rows={3}
             />
-            <p className="text-xs text-muted-foreground">
-              당사자 정보는 자동으로 불러와져 있으며, 필요 시 수정할 수 있습니다.
-            </p>
           </div>
 
-          {/* 파일 업로드 영역 추가 */}
-          <div className="space-y-2">
-            <Label htmlFor="file">첨부파일</Label>
-            <FileUploadDropzone
-              onFileSelect={handleFileChange}
-              onFileRemove={resetFileUpload}
-              selectedFile={fileToUpload}
-              existingFileUrl={editingSchedule?.file_url || null}
-              fileUrlLabel="기존 파일이 있습니다"
-              uploadLabel="파일을 이곳에 끌어서 놓거나 클릭하여 업로드"
-              replaceLabel="파일을 이곳에 끌어서 놓거나 클릭하여 교체"
-              id="schedule-file"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-              maxSizeMB={10}
-            />
-            <p className="text-xs text-muted-foreground">
-              기일 관련 문서를 첨부할 수 있습니다. (최대 10MB)
-            </p>
+          <div className="space-y-1">
+            <Label>첨부 파일</Label>
+            {fileToUpload ? (
+              <div className="flex items-center justify-between border rounded-md p-2">
+                <div className="flex items-center">
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  <span className="text-sm truncate max-w-[200px]">{fileToUpload.name}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFileUpload}
+                  className="h-8 w-8 p-0"
+                >
+                  <span className="sr-only">파일 삭제</span>
+                  <CalendarIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <FileUploadDropzone
+                onFileChange={handleFileChange}
+                accept={{
+                  "application/pdf": [".pdf"],
+                  "application/msword": [".doc"],
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+                    ".docx",
+                  ],
+                  "application/vnd.ms-excel": [".xls"],
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+                  "image/jpeg": [".jpg", ".jpeg"],
+                  "image/png": [".png"],
+                }}
+                maxFiles={1}
+                maxSize={10 * 1024 * 1024} // 10MB
+              />
+            )}
           </div>
 
-          <DialogFooter className="mt-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               취소
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  저장 중...
-                </>
-              ) : isEditMode ? (
-                "수정"
-              ) : (
-                "저장"
-              )}
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditMode ? "수정하기" : "저장하기"}
             </Button>
           </DialogFooter>
         </form>

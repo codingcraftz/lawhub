@@ -53,14 +53,14 @@ const PARTY_ORDER = {
   respondent: 6, // 피신청인
 };
 
-export default function LawsuitManager({ caseId, onDataChange }) {
+export default function LawsuitManager({ caseId, onDataChange, caseData, parties, clients }) {
   const { user } = useUser();
   const [lawsuits, setLawsuits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [activeTab, setActiveTab] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [parties, setParties] = useState([]);
+  const [localParties, setLocalParties] = useState(parties || []);
 
   // 모달 상태
   const [showAddSubmissionModal, setShowAddSubmissionModal] = useState(false);
@@ -77,9 +77,21 @@ export default function LawsuitManager({ caseId, onDataChange }) {
   useEffect(() => {
     if (caseId) {
       fetchLawsuits();
-      fetchParties();
+      // parties props가 전달되지 않은 경우에만 fetchParties 호출
+      if (!parties) {
+        fetchParties();
+      } else {
+        setLocalParties(parties);
+      }
     }
-  }, [caseId]);
+  }, [caseId, parties]);
+
+  // parties props가 업데이트되면 localParties 업데이트
+  useEffect(() => {
+    if (parties) {
+      setLocalParties(parties);
+    }
+  }, [parties]);
 
   useEffect(() => {
     if (activeTab) {
@@ -135,7 +147,7 @@ export default function LawsuitManager({ caseId, onDataChange }) {
         .eq("case_id", caseId);
 
       if (error) throw error;
-      setParties(data || []);
+      setLocalParties(data || []);
     } catch (error) {
       console.error("당사자 조회 실패:", error);
       toast.error("당사자 목록을 불러오는데 실패했습니다");
@@ -195,6 +207,21 @@ export default function LawsuitManager({ caseId, onDataChange }) {
 
   // 기일 추가 핸들러
   const handleAddSchedule = () => {
+    if (!activeTab) {
+      toast.error("기일 추가 실패", {
+        description: "소송이 선택되지 않았습니다. 먼저 소송을 선택해주세요.",
+      });
+      return;
+    }
+
+    const selectedLawsuit = lawsuits.find((l) => l.id === activeTab);
+    if (!selectedLawsuit) {
+      toast.error("기일 추가 실패", {
+        description: "선택된 소송 정보를 찾을 수 없습니다.",
+      });
+      return;
+    }
+
     setEditingSchedule(null);
     setShowAddScheduleModal(true);
   };
@@ -429,7 +456,8 @@ export default function LawsuitManager({ caseId, onDataChange }) {
                 // lawsuit 내부에서 실시간으로 데이터 그룹화
                 const groupedParties = lawsuit.test_lawsuit_parties.reduce((acc, partyRel) => {
                   // party 정보가 partyRel.party에 있는 경우 (조인된 경우)
-                  const party = partyRel.party || parties.find((p) => p.id === partyRel.party_id);
+                  const party =
+                    partyRel.party || localParties.find((p) => p.id === partyRel.party_id);
                   if (!party) return acc;
 
                   const label = getPartyTypeLabel(partyRel.party_type);
@@ -508,11 +536,11 @@ export default function LawsuitManager({ caseId, onDataChange }) {
             <h3 className="font-medium text-lg ">소송 진행 타임라인</h3>
             {user && (user.role === "admin" || user.role === "staff") && (
               <div className="flex space-x-2">
-                <Button size="sm" onClick={handleAddSchedule}>
+                <Button size="sm" onClick={handleAddSchedule} disabled={!activeTab}>
                   <Calendar className="h-4 w-4 mr-1" />
                   기일 추가
                 </Button>
-                <Button size="sm" onClick={handleAddSubmission}>
+                <Button size="sm" onClick={handleAddSubmission} disabled={!activeTab}>
                   문서 추가
                 </Button>
               </div>
@@ -569,8 +597,10 @@ export default function LawsuitManager({ caseId, onDataChange }) {
             onOpenChange={setShowAddLawsuitModal}
             onSuccess={handleLawsuitSuccess}
             caseId={caseId}
-            parties={parties}
+            parties={localParties}
             editingLawsuit={editingLawsuit}
+            caseDetails={caseData}
+            clients={clients}
           />
         )}
       </div>
@@ -687,11 +717,13 @@ export default function LawsuitManager({ caseId, onDataChange }) {
           open={showAddSubmissionModal}
           onOpenChange={setShowAddSubmissionModal}
           onSuccess={handleSubmissionSuccess}
-          parties={parties}
           caseId={caseId}
           lawsuitId={activeTab}
-          editingSubmission={editingSubmission}
           lawsuitType={lawsuits.find((l) => l.id === activeTab)?.lawsuit_type}
+          parties={localParties}
+          editingSubmission={editingSubmission}
+          caseDetails={caseData}
+          clients={clients}
         />
       )}
 
@@ -702,19 +734,23 @@ export default function LawsuitManager({ caseId, onDataChange }) {
           onOpenChange={setShowAddLawsuitModal}
           onSuccess={handleLawsuitSuccess}
           caseId={caseId}
-          parties={parties}
+          parties={localParties}
           editingLawsuit={editingLawsuit}
+          caseDetails={caseData}
+          clients={clients}
         />
       )}
 
       {/* 기일 추가/수정 모달 */}
-      {showAddScheduleModal && (
+      {showAddScheduleModal && activeTab && (
         <ScheduleFormModal
           open={showAddScheduleModal}
           onOpenChange={setShowAddScheduleModal}
           onSuccess={handleSubmissionSuccess}
           lawsuit={lawsuits.find((l) => l.id === activeTab)}
           editingSchedule={editingSchedule}
+          caseDetails={caseData}
+          clients={clients}
         />
       )}
     </Card>

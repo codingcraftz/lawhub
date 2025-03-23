@@ -153,6 +153,79 @@ export default function RecoveryActivities({
     }
 
     try {
+      // 1. 먼저 관련된 알림 삭제
+      console.log("회수 활동 관련 알림 삭제 시작:", activityId);
+
+      // 사건 알림 삭제 (test_case_notifications 테이블)
+      const { data: caseNotificationsData, error: caseNotificationsError } = await supabase
+        .from("test_case_notifications")
+        .delete()
+        .match({
+          notification_type: "recovery_activity",
+          related_id: activityId,
+        })
+        .select("id");
+
+      if (caseNotificationsError) {
+        console.error("사건 알림 삭제 실패:", caseNotificationsError);
+        // 알림 삭제 실패 시에도 활동 삭제는 진행
+      } else {
+        console.log(`${caseNotificationsData?.length || 0}개의 사건 알림이 삭제되었습니다.`);
+      }
+
+      // 개인 알림 삭제 (test_individual_notifications 테이블)
+      const { data: individualNotificationsData, error: individualNotificationsError } =
+        await supabase
+          .from("test_individual_notifications")
+          .delete()
+          .match({
+            notification_type: "recovery_activity",
+            related_id: activityId,
+          })
+          .select("id");
+
+      if (individualNotificationsError) {
+        console.error("개인 알림 삭제 실패:", individualNotificationsError);
+        // 알림 삭제 실패 시에도 활동 삭제는 진행
+      } else {
+        console.log(`${individualNotificationsData?.length || 0}개의 개인 알림이 삭제되었습니다.`);
+      }
+
+      // 해당 활동이 첨부파일을 가지고 있는지 확인
+      const { data: activityData, error: activityError } = await supabase
+        .from("test_recovery_activities")
+        .select("file_url")
+        .eq("id", activityId)
+        .single();
+
+      if (!activityError && activityData && activityData.file_url) {
+        // 첨부파일 경로 추출
+        try {
+          const fileUrl = activityData.file_url;
+          // URL에서 파일 경로 추출
+          const filePathMatch = fileUrl.match(/case-files\/(.+)/);
+
+          if (filePathMatch && filePathMatch[1]) {
+            const filePath = filePathMatch[1];
+            console.log("첨부파일 삭제 시도:", filePath);
+
+            // 스토리지에서 파일 삭제
+            const { error: deleteFileError } = await supabase.storage
+              .from("case-files")
+              .remove([filePath]);
+
+            if (deleteFileError) {
+              console.error("첨부파일 삭제 실패:", deleteFileError);
+            } else {
+              console.log("첨부파일이 성공적으로 삭제되었습니다.");
+            }
+          }
+        } catch (fileError) {
+          console.error("첨부파일 삭제 중 오류 발생:", fileError);
+        }
+      }
+
+      // 2. 회수 활동 삭제
       const { error } = await supabase
         .from("test_recovery_activities")
         .delete()
@@ -161,7 +234,7 @@ export default function RecoveryActivities({
       if (error) throw error;
 
       toast.success("회수 활동이 삭제되었습니다", {
-        description: "회수 활동이 성공적으로 삭제되었습니다.",
+        description: "회수 활동과 관련된 알림이 모두 삭제되었습니다.",
       });
 
       // 업데이트된 목록 가져오기
