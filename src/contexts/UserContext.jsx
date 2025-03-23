@@ -5,6 +5,31 @@ import { useRouter } from "next/navigation";
 import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
 import { toast } from "sonner";
 import { supabase } from "@/utils/supabase";
+import { v4 as uuidv4 } from "uuid";
+
+// 카카오 API로 사용자 정보 가져오기
+const fetchKakaoProfile = async (accessToken) => {
+  try {
+    console.log("🚀 카카오 API로 추가 정보 요청 중...");
+    const res = await fetch("https://kapi.kakao.com/v2/user/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`카카오 API 요청 실패: ${res.status}`);
+    }
+
+    const data = await res.json();
+    console.log("✅ 카카오 API 응답:", data);
+    return data;
+  } catch (error) {
+    console.error("❌ 카카오 프로필 조회 오류:", error);
+    throw error;
+  }
+};
 
 // 사용자 컨텍스트 생성
 const UserContext = createContext();
@@ -40,20 +65,54 @@ export function UserProvider({ children }) {
 
           if (error) {
             console.error("UserContext: 사용자 조회 오류:", error);
+
             // 처음 로그인시 사용자가 없을 수 있으므로, 여기서 생성 시도
             if (error.code === "PGRST116") {
               console.log("UserContext: 사용자를 찾을 수 없음, 새로 생성 시도");
 
-              // 새 사용자 생성
+              // 카카오 API에서 추가 정보 가져오기
+              let kakaoProfile;
+              try {
+                if (session.accessToken) {
+                  kakaoProfile = await fetchKakaoProfile(session.accessToken);
+                }
+              } catch (err) {
+                console.error("UserContext: 카카오 추가 정보 조회 실패:", err);
+              }
+
+              // 카카오 계정에서 추가 정보 추출
+              const kakaoAccount = kakaoProfile?.kakao_account || {};
+              const gender = kakaoAccount.gender || null;
+              const phone_number = kakaoAccount.phone_number || null;
+
+              // 생년월일 정보 처리
+              let birth_date = null;
+              if (kakaoAccount.birthyear && kakaoAccount.birthday) {
+                try {
+                  birth_date = `${kakaoAccount.birthyear}-${kakaoAccount.birthday.slice(
+                    0,
+                    2
+                  )}-${kakaoAccount.birthday.slice(2, 4)}`;
+                } catch (e) {
+                  console.error("UserContext: 생년월일 처리 오류", e);
+                }
+              }
+
+              // 새 사용자 생성 (users 테이블 구조에 맞게)
               const newUser = {
+                id: uuidv4(), // uuid 라이브러리로 UUID 생성
                 email: session.user.email,
                 name: session.user.name || "",
                 nickname: session.user.name || "",
                 profile_image: session.user.image || "",
-                is_kakao_user: true,
+                phone_number,
+                gender,
+                birth_date,
                 role: "client",
                 created_at: new Date().toISOString(),
               };
+
+              console.log("UserContext: 생성할 사용자 데이터:", newUser);
 
               const { data: insertedUser, error: insertError } = await supabase
                 .from("users")

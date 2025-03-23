@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import KakaoProvider from "next-auth/providers/kakao";
 import { supabaseAdmin } from "@/utils/supabaseAdmin";
+import { v4 as uuidv4 } from "uuid";
 
 // 사용자 정보 조회 및 저장 함수
 async function getOrCreateUser(profile, account) {
@@ -26,11 +27,10 @@ async function getOrCreateUser(profile, account) {
     if (error && error.code === "PGRST116") {
       console.log("🆕 NextAuth: 신규 사용자 등록 시작");
 
-      // 프로필 정보에서 필요한 데이터 추출
+      // 테이블 구조에 맞게 프로필 정보 추출
       const name = profile.name || null;
       const nickname = profile.name || null;
       const profileImage = profile.image || null;
-      const kakao_id = profile.id || null;
 
       // 카카오 계정에서 추가 정보 가져오기
       const kakaoAccount = profile._json?.kakao_account || {};
@@ -50,17 +50,16 @@ async function getOrCreateUser(profile, account) {
         }
       }
 
-      // 새 사용자 데이터 생성
+      // 테이블 구조에 맞는 새 사용자 데이터 생성
       const newUser = {
+        id: uuidv4(), // UUID 생성
         email: profile.email,
-        kakao_id,
         name,
         nickname,
         profile_image: profileImage,
         phone_number,
         gender,
         birth_date,
-        is_kakao_user: true,
         role: "client",
         created_at: new Date().toISOString(),
       };
@@ -100,22 +99,11 @@ export const authOptions = {
     KakaoProvider({
       clientId: process.env.KAKAO_CLIENT_ID || process.env.KAKAO_API_KEY,
       clientSecret: process.env.KAKAO_CLIENT_SECRET || process.env.REST_API_KEY || "none",
-      profile(profile) {
-        console.log("📝 KakaoProvider: 프로필 정보 받음", profile.id);
-        console.log("📝 KakaoProvider: 원본 프로필 데이터", JSON.stringify(profile, null, 2));
-
-        if (!profile.kakao_account?.email) {
-          console.error("🔴 KakaoProvider: 이메일 정보 없음!");
-        }
-
-        // 카카오 프로필 데이터를 가공하여 반환
-        return {
-          id: profile.id,
-          name: profile.kakao_account?.profile.nickname,
-          email: profile.kakao_account?.email,
-          image: profile.kakao_account?.profile.profile_image_url,
-          _json: profile, // 원본 프로필 정보도 함께 저장
-        };
+      // 추가 정보 요청을 위한 scope 설정
+      authorization: {
+        params: {
+          scope: "account_email profile_nickname profile_image",
+        },
       },
     }),
   ],
@@ -132,24 +120,7 @@ export const authOptions = {
         return false;
       }
 
-      try {
-        // 사용자 정보 조회 또는 생성 - 이 단계에서 DB에 사용자가 저장됨
-        const userData = await getOrCreateUser(
-          {
-            id: profile.id,
-            name: profile.kakao_account?.profile.nickname,
-            email: profile.kakao_account?.email,
-            image: profile.kakao_account?.profile.profile_image_url,
-          },
-          account
-        );
-
-        return true; // 로그인 허용
-      } catch (error) {
-        console.error("🔴 NextAuth: 사용자 생성/조회 중 오류:", error);
-        // 에러가 발생해도 로그인은 허용 (디버깅 목적)
-        return true;
-      }
+      return true; // 로그인 허용 - 나머지는 UserContext에서 처리
     },
     async jwt({ token, account, profile, user }) {
       console.log("🔄 NextAuth: JWT 콜백", {
@@ -162,13 +133,17 @@ export const authOptions = {
       // 최초 로그인 시에만 profile이 있음
       if (account && profile) {
         console.log("🔄 NextAuth: JWT 콜백 - 최초 로그인");
-        console.log("📝 NextAuth: 프로필 정보", JSON.stringify(profile, null, 2));
 
-        // 토큰에 이메일만 저장 (나머지는 UserContext에서 처리)
+        // 토큰에 필요한 정보만 저장
         token.email = profile.kakao_account?.email;
-        token.sub = profile.id; // 카카오 ID를 sub에 저장
-        token.provider = "kakao";
-        token.kakao_id = profile.id;
+        token.name = profile.kakao_account?.profile?.nickname || "";
+        token.image = profile.kakao_account?.profile?.profile_image_url || "";
+        token.id = profile.id; // 카카오 ID
+
+        // 액세스 토큰 저장 - 나중에 추가 정보 조회에 사용
+        if (account?.access_token) {
+          token.accessToken = account.access_token;
+        }
 
         console.log("✅ NextAuth: JWT 토큰 생성됨:", JSON.stringify(token, null, 2));
       }
@@ -176,12 +151,14 @@ export const authOptions = {
       return token;
     },
     async session({ session, token }) {
-      // 세션에 이메일과 카카오 ID 전달
-      if (token.email) {
+      // JWT 토큰에서 세션으로 정보 복사
+      if (token) {
         session.user = session.user || {};
         session.user.email = token.email;
-        session.user.provider = "kakao";
-        session.user.id = token.kakao_id || token.sub;
+        session.user.name = token.name;
+        session.user.image = token.image;
+        session.user.id = token.id;
+        session.accessToken = token.accessToken; // 카카오 액세스 토큰
       }
 
       console.log("🔄 NextAuth: 세션 콜백 완료. 세션:", JSON.stringify(session, null, 2));
