@@ -172,131 +172,65 @@ function ClientSummary({ clientData, clientType, cases, totalDebt, loading }) {
 
 export default function ClientDetailPage() {
   const router = useRouter();
+  const { user } = useUser();
   const params = useParams();
   const searchParams = useSearchParams();
-  const { user } = useUser();
 
-  // URL에서 client_type 파라미터 가져오기
-  const clientTypeFromUrl = searchParams.get("client_type") || null;
+  // URL 파라미터 읽기
+  const initialPage = Number(searchParams.get("page")) || 1;
+  const initialSearchTerm = searchParams.get("search") || "";
+  const initialTab = searchParams.get("status") || "all";
+  const initialKcbFilter = searchParams.get("kcb") || "all";
+  const initialNotification = searchParams.get("notification") || "all";
+  const queryClientType = searchParams.get("type");
 
-  // URL에서 현재 페이지, 검색어, 상태 필터 가져오기
-  const pageFromUrl = Number(searchParams.get("page")) || 1;
-  const searchTermFromUrl = searchParams.get("search") || "";
-  const statusFilterFromUrl = searchParams.get("status") || "all";
-  const kcbFilterFromUrl = searchParams.get("kcb") || "all"; // KCB 필터 추가
-  const notificationFilterFromUrl = searchParams.get("notification") || "all"; // 납부안내 필터 추가
-
+  // 상태 변수
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
-  const [clientType, setClientType] = useState(clientTypeFromUrl); // URL에서 가져온 타입으로 초기화
+  const [clientType, setClientType] = useState(queryClientType || "individual");
   const [allCases, setAllCases] = useState([]);
   const [filteredCases, setFilteredCases] = useState([]);
-  const [searchTerm, setSearchTerm] = useState(searchTermFromUrl);
-  const [activeTab, setActiveTab] = useState(statusFilterFromUrl);
-  const [currentPage, setCurrentPage] = useState(pageFromUrl);
-  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [casesPerPage, setCasesPerPage] = useState(10);
-  const [totalDebt, setTotalDebt] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [totalCases, setTotalCases] = useState(0);
-  const [refetchTrigger, setRefetchTrigger] = useState(0); // 데이터 리프래시를 위한 트리거
-  const [tabValue, setTabValue] = useState("cases"); // 상단 탭 상태 추가
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const [totalDebt, setTotalDebt] = useState(0);
+  const [kcbFilter, setKcbFilter] = useState(initialKcbFilter);
+  const [notificationFilter, setNotificationFilter] = useState(initialNotification);
 
-  // KCB 조회와 납부안내 발송 필터 상태 추가
-  const [kcbFilter, setKcbFilter] = useState(kcbFilterFromUrl);
-  const [notificationFilter, setNotificationFilter] = useState(notificationFilterFromUrl);
-
-  // UUID 유효성 검사 함수
+  // 유효한 UUID 체크 함수
   const isValidUUID = (uuid) => {
-    const uuidRegex =
-      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    return uuid && uuidRegex.test(uuid);
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
   };
 
-  // URL 파라미터 업데이트
-  const updateUrlParams = (params) => {
-    const { page, search, status, kcb, notification } = params;
-
-    // id 파라미터가 undefined인 경우 현재 경로에서 id 추출
-    const clientId = params.id || params.get("id");
-
-    if (!clientId) {
-      console.error("updateUrlParams: 의뢰인 ID를 찾을 수 없습니다");
-      // 경로에서 id 추출 시도
-      const pathMatch = window.location.pathname.match(/\/clients\/([^/]+)/);
-      if (pathMatch && pathMatch[1]) {
-        console.log("경로에서 의뢰인 ID 추출:", pathMatch[1]);
-        const id = pathMatch[1];
-        updateUrlWithId(id, page, search, status, kcb, notification);
-        return;
-      }
-
-      // 그래도 ID가 없으면 클라이언트 목록 페이지로 리디렉션
-      console.error("의뢰인 ID를 결정할 수 없어 목록 페이지로 이동합니다");
-      router.push("/clients");
-      return;
-    }
-
-    updateUrlWithId(clientId, page, search, status, kcb, notification);
-  };
-
-  // ID를 사용하여 URL 업데이트하는 헬퍼 함수
-  const updateUrlWithId = (id, page, search, status, kcb, notification) => {
-    // 기존 client_type 파라미터 유지
-    const clientTypeParam = clientType ? `&client_type=${clientType}` : "";
-    const kcbParam = kcb !== undefined ? `&kcb=${kcb}` : `&kcb=${kcbFilter}`;
-    const notificationParam =
-      notification !== undefined
-        ? `&notification=${notification}`
-        : `&notification=${notificationFilter}`;
-
-    // URL 생성
-    const url = `/clients/${id}?page=${page}${search ? `&search=${search}` : ""}${
-      status ? `&status=${status}` : ""
-    }${clientTypeParam}${kcbParam}${notificationParam}`;
-
-    // 현재 페이지를 바로 변경하여 다중 리렌더링 방지
-    if (page !== currentPage) setCurrentPage(page);
-
-    // URL 변경 - 의뢰인 ID가 유효한 경우에만 실행
-    console.log("URL 업데이트:", url);
-    router.push(url, { scroll: false });
-  };
-
-  // URL이 변경될 때 상태 업데이트 (페이지 변경은 제외)
-  useEffect(() => {
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all";
-    const kcb = searchParams.get("kcb") || "all";
-    const notification = searchParams.get("notification") || "all";
-
-    if (search !== searchTerm) setSearchTerm(search);
-    if (status !== activeTab) setActiveTab(status);
-    if (kcb !== kcbFilter) setKcbFilter(kcb);
-    if (notification !== notificationFilter) setNotificationFilter(notification);
-  }, [searchParams]);
-
-  // 의뢰인 데이터 로드 - URL의 page 파라미터는 제외하여 페이지 변경 시 의뢰인 정보 재조회 방지
-  useEffect(() => {
-    // params 객체가 제대로 로드되었는지 확인
+  // URL 파라미터 업데이트 함수 (의뢰인 데이터 재조회 없이)
+  const updateUrlParams = ({ page, search, status, kcb, notification }) => {
     if (!params || !params.id) {
-      console.error("의뢰인 ID가 제공되지 않았습니다");
-      toast.error("의뢰인 정보를 불러올 수 없습니다", {
-        description: "의뢰인 ID가 제공되지 않았습니다. 의뢰인 목록으로 이동합니다.",
-      });
-      router.push("/clients");
+      console.error("updateUrlParams: 의뢰인 ID가 없습니다");
       return;
     }
 
-    // UUID가 유효하지 않으면 의뢰인 목록 페이지로 리다이렉트
-    if (!isValidUUID(params.id)) {
-      console.error("유효하지 않은 의뢰인 ID:", params.id);
-      toast.error("유효하지 않은 의뢰인 ID입니다", {
-        description: "올바른 의뢰인을 선택하거나 의뢰인 목록 페이지로 이동합니다.",
-      });
-      router.push("/clients");
-      return;
-    }
+    const newParams = new URLSearchParams();
+    if (page) newParams.set("page", page);
+    if (search) newParams.set("search", search);
+    if (status) newParams.set("status", status);
+    if (kcb) newParams.set("kcb", kcb);
+    if (notification) newParams.set("notification", notification);
+    if (clientType) newParams.set("type", clientType);
 
+    // URL 업데이트 (의뢰인 ID가 포함된 경로)
+    const newUrl = `/clients/${params.id}${newParams.toString() ? `?${newParams.toString()}` : ""}`;
+
+    // 히스토리만 업데이트
+    window.history.pushState({}, "", newUrl);
+  };
+
+  // 데이터 조회 및 필터링
+  useEffect(() => {
     if (user) {
       fetchClientData();
     }
@@ -309,7 +243,7 @@ export default function ClientDetailPage() {
     }
   }, [allCases, currentPage, searchTerm, activeTab, casesPerPage, kcbFilter, notificationFilter]);
 
-  // 클라이언트 측에서 데이터 필터링 및 페이지네이션 처리 수정
+  // 클라이언트 측에서 데이터 필터링 및 페이지네이션 처리
   const filterAndPaginateData = () => {
     console.log(
       "클라이언트 측 필터링 - 페이지:",
@@ -366,7 +300,9 @@ export default function ClientDetailPage() {
             (caseItem.creditor_name &&
               caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (caseItem.debtor_name &&
-              caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()))
+              caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (caseItem.title && caseItem.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (caseItem.number && caseItem.number.toLowerCase().includes(searchTerm.toLowerCase()))
         )
       : filteredByNotification;
 
@@ -384,7 +320,13 @@ export default function ClientDetailPage() {
     if (currentPage > maxPages && maxPages > 0) {
       console.log("페이지 번호 조정:", currentPage, "->", maxPages);
       setCurrentPage(maxPages);
-      updateUrlParams({ page: maxPages, search: searchTerm, status: activeTab });
+      updateUrlParams({
+        page: maxPages,
+        search: searchTerm,
+        status: activeTab,
+        kcb: kcbFilter,
+        notification: notificationFilter,
+      });
       return; // 페이지 번호가 변경되었으므로 useEffect에 의해 다시 호출됨
     }
 
@@ -498,201 +440,230 @@ export default function ClientDetailPage() {
         setClientData({
           ...individualData,
           phone: individualData.phone_number, // users 테이블은 phone_number 필드 사용
+          type: "individual",
         });
         setClientType("individual");
       } else if (organizationData) {
-        setClientData(organizationData);
+        setClientData({
+          ...organizationData,
+          type: "organization",
+        });
         setClientType("organization");
       } else {
-        console.error("의뢰인 정보를 찾을 수 없음 (ID: " + clientId + ")");
-        toast.error("유효하지 않은 의뢰인입니다", {
-          description: "의뢰인 정보를 찾을 수 없습니다.",
+        console.error("의뢰인 정보를 찾을 수 없음");
+        toast.error("의뢰인 정보를 찾을 수 없습니다", {
+          description: "유효하지 않은 의뢰인 ID입니다.",
         });
         router.push("/clients");
         return;
       }
 
-      // 해당 의뢰인의 모든 사건 정보 가져오기
-      const { data: casesData, error: casesError } = await supabase
-        .from("test_case_clients")
-        .select(
+      // 의뢰인의 사건 조회
+      let cases = [];
+      let totalDebtAmount = 0;
+
+      if (individualData) {
+        // 개인 의뢰인의 사건 조회
+        const { data: casesData, error: casesError } = await supabase
+          .from("test_case_clients")
+          .select(
+            `
+            case_id,
+            test_cases (
+              id, 
+              case_type,
+              status, 
+              created_at,
+              filing_date,
+              debt_category,
+              principal_amount
+            )
           `
-          case_id,
-          case:test_cases(
-            id,
-            status,
-            case_type,
-            filing_date,
-            principal_amount,
-            created_at
           )
-        `
-        )
-        .eq(clientType === "individual" ? "individual_id" : "organization_id", clientId)
-        .not("case", "is", null);
+          .eq("individual_id", clientId);
 
-      if (casesError) {
-        console.error("사건 정보 가져오기 실패:", casesError);
-        toast.error("사건 정보를 가져오는데 실패했습니다");
-        setAllCases([]);
-        return;
+        if (casesError) {
+          console.error("개인 의뢰인 사건 조회 실패:", casesError);
+        } else if (casesData && casesData.length > 0) {
+          console.log(`개인 의뢰인 사건 ${casesData.length}개 조회 성공`);
+
+          // 유효한 사건 데이터만 필터링
+          const validCases = casesData
+            .filter((c) => c.test_cases)
+            .map((c) => ({
+              id: c.test_cases.id,
+              case_type: c.test_cases.case_type,
+              status: c.test_cases.status,
+              created_at: c.test_cases.created_at,
+              filing_date: c.test_cases.filing_date,
+              debt_category: c.test_cases.debt_category,
+              principal_amount: c.test_cases.principal_amount,
+            }));
+
+          // 사건 배열에 추가
+          cases = [...cases, ...validCases];
+
+          // 총 채권액 계산
+          totalDebtAmount = validCases.reduce(
+            (sum, c) => sum + (parseFloat(c.principal_amount) || 0),
+            0
+          );
+        }
+      } else if (organizationData) {
+        // 조직 의뢰인의 사건 조회
+        const { data: casesData, error: casesError } = await supabase
+          .from("test_case_clients")
+          .select(
+            `
+            case_id,
+            test_cases (
+              id, 
+              case_type,
+              status, 
+              created_at,
+              filing_date,
+              debt_category,
+              principal_amount
+            )
+          `
+          )
+          .eq("organization_id", clientId);
+
+        if (casesError) {
+          console.error("조직 의뢰인 사건 조회 실패:", casesError);
+        } else if (casesData && casesData.length > 0) {
+          console.log(`조직 의뢰인 사건 ${casesData.length}개 조회 성공`);
+
+          // 유효한 사건 데이터만 필터링
+          const validCases = casesData
+            .filter((c) => c.test_cases)
+            .map((c) => ({
+              id: c.test_cases.id,
+              case_type: c.test_cases.case_type,
+              status: c.test_cases.status,
+              created_at: c.test_cases.created_at,
+              filing_date: c.test_cases.filing_date,
+              debt_category: c.test_cases.debt_category,
+              principal_amount: c.test_cases.principal_amount,
+            }));
+
+          // 사건 배열에 추가
+          cases = [...cases, ...validCases];
+
+          // 총 채권액 계산
+          totalDebtAmount = validCases.reduce(
+            (sum, c) => sum + (parseFloat(c.principal_amount) || 0),
+            0
+          );
+        }
       }
 
-      if (!casesData || casesData.length === 0) {
-        console.log("사건이 없습니다");
-        setAllCases([]);
-        return;
-      }
+      // 조회된 사건이 있으면 각 사건의 당사자 정보 추가
+      if (cases.length > 0) {
+        console.log(`${cases.length}개 사건에 대한 당사자 정보 조회 시작`);
+        const caseIds = cases.map((c) => c.id);
 
-      // 사건 ID 목록
-      const caseIds = casesData.map((item) => item.case_id);
-      console.log("조회할 사건 ID:", caseIds);
+        // 당사자 정보 조회
+        const { data: partiesData, error: partiesError } = await supabase
+          .from("test_case_parties")
+          .select("*")
+          .in("case_id", caseIds);
 
-      // 당사자 정보 가져오기
-      const { data: partiesData, error: partiesError } = await supabase
-        .from("test_case_parties")
-        .select("*")
-        .in("case_id", caseIds);
+        if (partiesError) {
+          console.error("당사자 정보 조회 실패:", partiesError);
+        } else if (partiesData) {
+          console.log(`${partiesData.length}개의 당사자 정보 조회 성공`);
 
-      if (partiesError) {
-        console.error("당사자 정보 가져오기 실패:", partiesError);
-        toast.error("당사자 정보를 가져오는데 실패했습니다");
-      }
+          // 각 사건의 당사자 정보 추가
+          const casesWithParties = cases.map((caseItem) => {
+            const caseParties = partiesData.filter((p) => p.case_id === caseItem.id);
+            const creditor = caseParties.find((p) =>
+              ["creditor", "plaintiff", "applicant"].includes(p.party_type)
+            );
+            const debtor = caseParties.find((p) =>
+              ["debtor", "defendant", "respondent"].includes(p.party_type)
+            );
 
-      // 채권자와 채무자 정보 매핑
-      const partiesMap = {};
-      if (partiesData) {
-        partiesData.forEach((party) => {
-          if (!partiesMap[party.case_id]) {
-            partiesMap[party.case_id] = [];
-          }
-          partiesMap[party.case_id].push(party);
-        });
-      }
+            // 당사자 이름 설정
+            let creditorName = "미지정";
+            let debtorName = "미지정";
 
-      // 채권자와 채무자 이름 추출을 위한 함수
-      const extractPartyNames = (caseId) => {
-        const parties = partiesMap[caseId] || [];
-        let creditorName = null;
-        let debtorName = null;
-        let debtorPhone = null;
+            if (creditor) {
+              creditorName =
+                creditor.entity_type === "individual" ? creditor.name : creditor.company_name;
+            }
 
-        parties.forEach((party) => {
-          const name = party.entity_type === "individual" ? party.name : party.company_name;
+            if (debtor) {
+              debtorName = debtor.entity_type === "individual" ? debtor.name : debtor.company_name;
+            }
 
-          if (["creditor", "plaintiff", "applicant"].includes(party.party_type)) {
-            creditorName = name;
-          } else if (["debtor", "defendant", "respondent"].includes(party.party_type)) {
-            debtorName = name;
-            debtorPhone = party.phone;
-          }
-        });
-
-        return { creditorName, debtorName, debtorPhone };
-      };
-
-      // KCB와 납부안내 정보 가져오기
-      const { data: activitiesData, error: activitiesError } = await supabase
-        .from("test_recovery_activities")
-        .select("*")
-        .in("case_id", caseIds)
-        .in("activity_type", ["kcb", "letter"])
-        .eq("status", "completed");
-
-      if (activitiesError) {
-        console.error("회수 활동 정보 가져오기 실패:", activitiesError);
-        toast.error("회수 활동 정보를 가져오는데 실패했습니다");
-      }
-
-      // 활동 정보로 KCB와 납부안내 상태 매핑
-      const activitiesMap = {};
-      if (activitiesData) {
-        activitiesData.forEach((activity) => {
-          if (!activitiesMap[activity.case_id]) {
-            activitiesMap[activity.case_id] = {
-              kcbChecked: false,
-              paymentNotificationSent: false,
+            return {
+              ...caseItem,
+              creditor,
+              debtor,
+              creditor_name: creditorName,
+              debtor_name: debtorName,
+              // KCB 및 납부안내 정보 추가
+              debtor_kcb_checked: debtor ? debtor.kcb_checked : false,
+              debtor_payment_notification_sent: debtor ? debtor.payment_notification_sent : false,
             };
-          }
+          });
 
-          if (activity.activity_type === "kcb") {
-            activitiesMap[activity.case_id].kcbChecked = true;
-          } else if (
-            activity.activity_type === "letter" &&
-            activity.description &&
-            activity.description.includes("납부안내")
-          ) {
-            activitiesMap[activity.case_id].paymentNotificationSent = true;
-          }
-        });
+          // 강화된 사건 데이터 설정
+          console.log("사건 데이터 설정 완료", casesWithParties.length, "개");
+          setAllCases(casesWithParties);
+          setTotalDebt(totalDebtAmount);
+        }
+      } else {
+        // 사건이 없는 경우
+        console.log("조회된 사건이 없음");
+        setAllCases([]);
+        setTotalDebt(0);
       }
 
-      // 처리된 사건 데이터 생성
-      const processedCases = casesData
-        .map((item) => {
-          const caseItem = item.case;
-          if (!caseItem) return null;
-
-          const { creditorName, debtorName, debtorPhone } = extractPartyNames(caseItem.id);
-          const activities = activitiesMap[caseItem.id] || {
-            kcbChecked: false,
-            paymentNotificationSent: false,
-          };
-
-          return {
-            id: caseItem.id,
-            case_number: caseItem.id.substring(0, 8), // id의 앞 8자리를 case_number로 사용
-            status: caseItem.status,
-            case_type: caseItem.case_type,
-            filing_date: caseItem.filing_date,
-            principal_amount: caseItem.principal_amount,
-            created_at: caseItem.created_at,
-            creditor_name: creditorName,
-            debtor_name: debtorName,
-            debtor_phone: debtorPhone,
-            debtor_kcb_checked: activities.kcbChecked,
-            debtor_payment_notification_sent: activities.paymentNotificationSent,
-          };
-        })
-        .filter(Boolean);
-
-      // 채권 총액 계산
-      const debtTotal = processedCases.reduce((total, caseItem) => {
-        return total + (caseItem.principal_amount || 0);
-      }, 0);
-
-      setAllCases(processedCases);
-      setTotalDebt(debtTotal);
-      console.log("사건 데이터 로드 완료:", processedCases.length);
+      // 초기 필터링 수행
+      // filterAndPaginateData();
     } catch (error) {
-      console.error("클라이언트 데이터 로드 중 오류:", error);
-      toast.error("데이터를 불러오는 중 오류가 발생했습니다");
+      console.error("의뢰인 데이터 조회 실패:", error);
+      toast.error("데이터 로드 실패", {
+        description: "의뢰인 정보를 불러오는 중 오류가 발생했습니다.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearch = (value) => {
-    // 검색어가 UUID 형식이 아닌 경우에도 정상 검색 처리
     setSearchTerm(value);
-    setCurrentPage(1);
-    updateUrlParams({ id: params.id, page: 1, search: value, status: activeTab });
+    setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    updateUrlParams({
+      page: 1,
+      search: value,
+      status: activeTab,
+      kcb: kcbFilter,
+      notification: notificationFilter,
+    });
   };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1); // 탭 변경 시 첫 페이지로 이동
-    updateUrlParams({ page: 1, search: searchTerm, status: tab });
+    updateUrlParams({
+      page: 1,
+      search: searchTerm,
+      status: tab,
+      kcb: kcbFilter,
+      notification: notificationFilter,
+    });
   };
 
   const handlePageChange = (page) => {
     console.log("페이지 변경:", page, "현재 페이지:", currentPage);
 
-    // 페이지가 다르면 URL 파라미터 업데이트 (의뢰인 데이터 재조회 없이)
     if (page !== currentPage) {
-      // 반드시 의뢰인 ID를 함께 전달
+      setCurrentPage(page);
+      // URL 파라미터 업데이트 (의뢰인 데이터 재조회 없이)
       updateUrlParams({
-        id: params.id,
         page,
         search: searchTerm,
         status: activeTab,
@@ -706,7 +677,13 @@ export default function ClientDetailPage() {
   const handlePageSizeChange = (size) => {
     setCasesPerPage(Number(size));
     setCurrentPage(1);
-    updateUrlParams({ page: 1, search: searchTerm, status: activeTab });
+    updateUrlParams({
+      page: 1,
+      search: searchTerm,
+      status: activeTab,
+      kcb: kcbFilter,
+      notification: notificationFilter,
+    });
   };
 
   // 데이터 새로고침 핸들러 (모달에서 사용)
@@ -728,7 +705,13 @@ export default function ClientDetailPage() {
   const handleKcbFilterChange = (value) => {
     setKcbFilter(value);
     setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
-    updateUrlParams({ page: 1, search: searchTerm, status: activeTab, kcb: value });
+    updateUrlParams({
+      page: 1,
+      search: searchTerm,
+      status: activeTab,
+      kcb: value,
+      notification: notificationFilter,
+    });
   };
 
   // 납부안내 필터 변경 핸들러 추가

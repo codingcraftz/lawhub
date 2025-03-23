@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/utils/supabase";
 import { getStatusByValue, getCaseTypeByValue, getDebtCategoryByValue } from "@/utils/constants";
 import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -231,7 +232,7 @@ export function StaffCasesTable({
   ).length;
 
   const handleModalClose = (refreshNeeded = false) => {
-    if (refreshNeeded || modalRefreshNeeded) {
+    if (refreshNeeded && modalRefreshNeeded) {
       console.log("모달이 닫히면서 데이터 새로고침 실행");
       onRefreshData && onRefreshData();
       setModalRefreshNeeded(false);
@@ -281,6 +282,7 @@ export function StaffCasesTable({
     // 페이지 변경 핸들러
     const handlePageClick = (page, e) => {
       e.preventDefault();
+      e.stopPropagation(); // 이벤트 버블링 방지
 
       // 현재 페이지와 같은 페이지를 클릭한 경우 아무것도 하지 않음
       if (page === currentPage) {
@@ -311,7 +313,10 @@ export function StaffCasesTable({
     };
 
     return (
-      <div className="flex items-center justify-center mt-4 gap-1">
+      <div
+        className="flex items-center justify-center mt-4 gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 처음 페이지로 버튼 */}
         <button
           onClick={(e) => handlePageClick(1, e)}
@@ -425,6 +430,133 @@ export function StaffCasesTable({
       </div>
     );
   }
+
+  // 사건 목록을 렌더링하는 함수
+  const renderCasesList = () => {
+    if (filteredCases.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5} className="h-24 text-center">
+            조회된 사건이 없습니다.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return filteredCases.map((caseItem, index) => (
+      <TableRow
+        key={caseItem.id || index}
+        className="cursor-pointer hover:bg-muted/50"
+        onClick={() => router.push(`/cases/${caseItem.id}`)}
+      >
+        <TableCell className="font-medium">
+          <div className="flex flex-col gap-1">
+            <div>{getCaseStatusBadge(caseItem.status)}</div>
+            <div className="flex items-center"></div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-col gap-1 min-w-44">
+            <div className="flex items-center">
+              <CircleDollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+              <span className="font-medium">{caseItem.creditor_name || "미지정"}</span>
+            </div>
+            <div className="text-xs text-muted-foreground ml-6">
+              {format(new Date(caseItem.created_at), "yyyy년 MM월 dd일", { locale: ko })}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-col gap-1 min-w-44">
+            <div className="flex items-center">
+              <Scale className="w-4 h-4 mr-2 text-muted-foreground" />
+              <span className="font-medium">{caseItem.debtor_name || "미지정"}</span>
+            </div>
+            <div className="text-xs text-muted-foreground ml-6">
+              채무자 ·{" "}
+              {caseItem.debtor_kcb_checked ? (
+                <>
+                  <span className="text-green-600 font-medium">KCB조회</span>
+                  {caseItem.debtor?.kcb_checked_date && (
+                    <span className="text-xs ml-1">
+                      ({format(new Date(caseItem.debtor.kcb_checked_date), "yy.MM.dd")})
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-yellow-600">KCB미조회</span>
+                </>
+              )}{" "}
+              ·{" "}
+              {caseItem.debtor_payment_notification_sent ? (
+                <>
+                  <span className="text-blue-600 font-medium">변제통보</span>
+                  {caseItem.debtor?.payment_notification_date && (
+                    <span className="text-xs ml-1">
+                      ({format(new Date(caseItem.debtor.payment_notification_date), "yy.MM.dd")})
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-gray-500">변제통보 미발송</span>
+                </>
+              )}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center">
+              <GanttChartSquare className="w-4 h-4 mr-2 text-muted-foreground" />
+              <span>{formatCurrency(caseItem.principal_amount)}</span>
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMenuAction("lawsuit", caseItem, e);
+              }}
+            >
+              <FileText className="h-3.5 w-3.5 mr-1" />
+              소송관리
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMenuAction("recovery", caseItem, e);
+              }}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />
+              회수관리
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMenuAction("detail", caseItem, e);
+              }}
+            >
+              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+              상세이동
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    ));
+  };
 
   return (
     <>
@@ -630,221 +762,13 @@ export function StaffCasesTable({
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
                   <TableHead className="pl-4">상태</TableHead>
-                  <TableHead>당사자</TableHead>
-                  <TableHead>원리금</TableHead>
-                  <TableHead>회수금</TableHead>
-                  <TableHead className="hidden sm:table-cell text-center">회수율</TableHead>
-                  <TableHead className="text-center">KCB조회</TableHead>
-                  <TableHead className="text-center">납부안내</TableHead>
-                  <TableHead className="text-center">관리</TableHead>
+                  <TableHead>채권자</TableHead>
+                  <TableHead>채무자</TableHead>
+                  <TableHead>원금</TableHead>
+                  <TableHead className="text-right">관리</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {filteredCases.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      {searchTerm ? (
-                        <div className="flex flex-col items-center">
-                          <Search className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                          <p>검색 결과가 없습니다.</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Briefcase className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                          <p>등록된 사건이 없습니다.</p>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredCases.map((caseItem) => (
-                    <TableRow
-                      key={caseItem.id}
-                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/cases/${caseItem.id}`)}
-                    >
-                      <TableCell className="py-3 pl-4">
-                        {getCaseStatusBadge(caseItem.status)}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <div className="flex gap-2 justify-start">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 text-blue-600 border-blue-200 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
-                              >
-                                채권자
-                              </Badge>
-                              <span className="text-sm truncate max-w-[190px]">
-                                {caseItem.creditor_name || "-"}
-                              </span>
-                            </div>
-                            <div className="items-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-destructive/10 text-destructive border-destructive/20 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0"
-                              >
-                                채무자
-                              </Badge>
-                              <span className="text-sm truncate max-w-[190px]">
-                                {caseItem.debtor_name || "-"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm md:text-base">
-                          {formatCurrency(caseItem.principal_amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <span className="font-medium text-gray-700 dark:text-gray-300 text-sm md:text-base">
-                          {formatCurrency(caseItem.recovered_amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell py-3 ">
-                        {(() => {
-                          const recoveryRate =
-                            caseItem.principal_amount && caseItem.recovered_amount
-                              ? Math.round(
-                                  (caseItem.recovered_amount / caseItem.principal_amount) * 100
-                                )
-                              : 0;
-
-                          // 회수율에 따른 배지 색상 결정
-                          let badgeClassName =
-                            "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
-                          let progressColor = "bg-gray-200 dark:bg-gray-700";
-
-                          if (recoveryRate > 0) {
-                            badgeClassName =
-                              "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
-                            progressColor = "bg-blue-500 dark:bg-blue-600";
-                          }
-                          if (recoveryRate >= 50) {
-                            badgeClassName =
-                              "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
-                            progressColor = "bg-amber-500 dark:bg-amber-600";
-                          }
-                          if (recoveryRate >= 80) {
-                            badgeClassName =
-                              "bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
-                            progressColor = "bg-green-500 dark:bg-green-600";
-                          }
-
-                          return (
-                            <div className="flex flex-col items-center">
-                              <Badge
-                                className={`${badgeClassName} text-xs min-w-[55px] flex justify-center mx-auto py-1 mb-1`}
-                              >
-                                {recoveryRate}%
-                              </Badge>
-                              <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5">
-                                <div
-                                  className={`h-1.5 rounded-full ${progressColor}`}
-                                  style={{ width: `${recoveryRate}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-center py-3">
-                        {caseItem.debtor_kcb_checked ? (
-                          <div className="flex flex-col items-center">
-                            <Badge
-                              variant="outline"
-                              className="bg-green-50 text-green-600 border-green-200 text-xs"
-                            >
-                              Y
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground mt-1">
-                              {caseItem.debtor_kcb_checked_date
-                                ? format(new Date(caseItem.debtor_kcb_checked_date), "yy.MM.dd")
-                                : ""}
-                            </span>
-                          </div>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-50 text-gray-500 border-gray-200 text-xs"
-                          >
-                            N
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center py-3">
-                        {caseItem.debtor_payment_notification_sent ? (
-                          <div className="flex flex-col items-center">
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 text-blue-600 border-blue-200 text-xs"
-                            >
-                              Y
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground mt-1">
-                              {caseItem.debtor_payment_notification_date
-                                ? format(
-                                    new Date(caseItem.debtor_payment_notification_date),
-                                    "yy.MM.dd"
-                                  )
-                                : ""}
-                            </span>
-                          </div>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-50 text-gray-500 border-gray-200 text-xs"
-                          >
-                            N
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center py-3 pr-4">
-                        {/* 기존 메뉴 버튼 */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => e.stopPropagation()}
-                              className="h-7 w-7 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                              title="더 보기"
-                            >
-                              <MoreHorizontal className="h-4 w-4 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                              onClick={(e) => handleMenuAction("detail", caseItem, e)}
-                              className="cursor-pointer"
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2 text-blue-500" />
-                              <span>상세페이지 이동</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => handleMenuAction("lawsuit", caseItem, e)}
-                              className="cursor-pointer"
-                            >
-                              <Scale className="h-4 w-4 mr-2 text-indigo-500" />
-                              <span>소송정보 보기</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => handleMenuAction("recovery", caseItem, e)}
-                              className="cursor-pointer"
-                            >
-                              <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-500" />
-                              <span>회수현황 보기</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
+              <TableBody>{renderCasesList()}</TableBody>
             </Table>
           </div>
           {/* 페이지네이션 영역 수정 */}
@@ -877,7 +801,7 @@ export function StaffCasesTable({
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             console.log("소송 정보 모달 닫힘");
-            handleModalClose(true); // 항상 새로고침 실행하도록 변경
+            handleModalClose(modalRefreshNeeded);
           }
           setShowLawsuitModal(isOpen);
         }}
@@ -903,7 +827,7 @@ export function StaffCasesTable({
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             console.log("채권 정보 모달 닫힘");
-            handleModalClose(true); // 항상 새로고침 실행하도록 변경
+            handleModalClose(modalRefreshNeeded);
           }
           setShowRecoveryModal(isOpen);
         }}
