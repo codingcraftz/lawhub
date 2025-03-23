@@ -243,6 +243,7 @@ export default function CasePage() {
 
   // 알림 정보 가져오기
   const fetchNotifications = async () => {
+    console.log(caseId);
     setLoadingNotifications(true);
     try {
       const { data, error } = await supabase
@@ -267,8 +268,7 @@ export default function CasePage() {
       const { count, error } = await supabase
         .from("test_case_notifications")
         .select("*", { count: "exact", head: true })
-        .eq("case_id", caseId)
-        .eq("is_read", false);
+        .eq("case_id", caseId);
 
       if (error) throw error;
 
@@ -1017,11 +1017,7 @@ export default function CasePage() {
                         {notifications.map((notification) => (
                           <div
                             key={notification.id}
-                            className={`p-2 rounded-md ${
-                              notification.is_read
-                                ? "bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700"
-                                : "bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30"
-                            }`}
+                            className={`p-2 rounded-md ${"bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30"}`}
                           >
                             <div className="flex items-start">
                               <div className="rounded-full bg-white dark:bg-slate-700 p-1.5 mr-2 flex-shrink-0">

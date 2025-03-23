@@ -375,7 +375,7 @@ export default function OrganizationsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="조직명, 사업자번호, 대표자명으로 검색"
+              placeholder="조직명, 법인 번호, 대표자명으로 검색"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
@@ -412,7 +412,7 @@ export default function OrganizationsPage() {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="business_number" className="text-right">
-                      사업자번호
+                      법인번호
                     </Label>
                     <Input
                       id="business_number"
@@ -536,7 +536,7 @@ export default function OrganizationsPage() {
                     <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
                       <TableHead>조직명</TableHead>
                       <TableHead>대표자</TableHead>
-                      <TableHead>사업자번호</TableHead>
+                      <TableHead>법인번호</TableHead>
                       <TableHead>연락처</TableHead>
                       <TableHead>구성원</TableHead>
                       <TableHead>생성일</TableHead>
@@ -654,7 +654,7 @@ export default function OrganizationsPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-business_number" className="text-right">
-                  사업자번호
+                  법인번호
                 </Label>
                 <Input
                   id="edit-business_number"

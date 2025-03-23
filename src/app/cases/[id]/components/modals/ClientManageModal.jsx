@@ -148,7 +148,7 @@ export default function ClientManageModal({
                             <p className="font-medium">{org.name}</p>
                             {org.business_number && (
                               <p className="text-sm text-muted-foreground">
-                                사업자번호: {org.business_number}
+                                법인 번호: {org.business_number}
                               </p>
                             )}
                           </div>

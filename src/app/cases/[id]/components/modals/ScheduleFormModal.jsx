@@ -29,6 +29,10 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Loader2 } from "lucide-react";
+import FileUploadDropzone from "@/components/ui/file-upload-dropzone";
+
+// 스토리지 버킷 이름 정의
+const BUCKET_NAME = "case-files";
 
 export default function ScheduleFormModal({
   open,
@@ -47,6 +51,7 @@ export default function ScheduleFormModal({
     location: "",
     description: "",
   });
+  const [fileToUpload, setFileToUpload] = useState(null);
 
   const isEditMode = !!editingSchedule;
 
@@ -64,6 +69,7 @@ export default function ScheduleFormModal({
           location: editingSchedule.location || "",
           description: editingSchedule.description || "",
         });
+        setFileToUpload(null);
       } else {
         // 추가 모드일 경우 기본값으로 폼 초기화
         resetScheduleForm();
@@ -129,6 +135,7 @@ export default function ScheduleFormModal({
       description: "",
     });
 
+    setFileToUpload(null);
     setFormErrors({});
   };
 
@@ -188,68 +195,128 @@ export default function ScheduleFormModal({
     return labels[type] || type;
   };
 
-  // 알림 생성
-  const createNotificationsForSchedule = async (schedule) => {
+  // 일정에 대한 알림 생성 함수
+  const createNotificationsForSchedule = async (scheduleData) => {
+    if (!lawsuit || !lawsuit.id) {
+      console.error("알림 생성: 사건 ID가 없습니다");
+      return;
+    }
+
     try {
-      // 알림을 받을 사용자 목록 조회 (사건 담당자들)
-      const { data: handlers, error: handlersError } = await supabase
+      // 모든 의뢰인과 담당자의 ID를 수집하기 위한 Set
+      const userIds = new Set();
+
+      // 1. 사건 담당자 조회
+      const { data: handlersData, error: handlersError } = await supabase
         .from("test_case_handlers")
         .select("user_id")
-        .eq("case_id", schedule.case_id);
+        .eq("case_id", lawsuit.id);
 
-      if (handlersError) throw handlersError;
+      if (handlersError) {
+        console.error("사건 담당자 조회 실패:", handlersError);
+      } else if (handlersData) {
+        handlersData.forEach((handler) => {
+          if (handler.user_id) {
+            userIds.add(handler.user_id);
+          }
+        });
+      }
 
-      // 사건의 클라이언트 목록 조회
-      const { data: clients, error: clientsError } = await supabase
+      // 2. 개인 및 법인 의뢰인 조회
+      const { data: clientsData, error: clientsError } = await supabase
         .from("test_case_clients")
         .select(
           `
-          individual_id,
-          organization_id
+          individual_client_id, 
+          organization_client_id
         `
         )
-        .eq("case_id", schedule.case_id);
+        .eq("case_id", lawsuit.id);
 
-      if (clientsError) throw clientsError;
+      if (clientsError) {
+        console.error("의뢰인 조회 실패:", clientsError);
+      } else if (clientsData) {
+        // 개인 의뢰인 ID 추가
+        clientsData.forEach((client) => {
+          if (client.individual_client_id) {
+            userIds.add(client.individual_client_id);
+          }
+        });
 
-      // 알림 대상 사용자 ID 목록 생성
-      const userIds = new Set();
+        // 법인 의뢰인의 멤버 조회 및 추가
+        const orgPromises = clientsData
+          .filter((client) => client.organization_client_id)
+          .map((client) => {
+            return supabase
+              .from("test_organization_members")
+              .select("user_id")
+              .eq("organization_id", client.organization_client_id)
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error("조직 멤버 조회 실패:", error);
+                  return [];
+                }
+                return data || [];
+              });
+          });
 
-      // 담당자 추가
-      if (handlers && handlers.length > 0) {
-        handlers.forEach((handler) => {
-          if (handler.user_id) userIds.add(handler.user_id);
+        const orgResults = await Promise.all(orgPromises);
+        orgResults.forEach((members) => {
+          members.forEach((member) => {
+            if (member.user_id) {
+              userIds.add(member.user_id);
+            }
+          });
         });
       }
 
-      // 개인 클라이언트 추가
-      if (clients && clients.length > 0) {
-        clients.forEach((client) => {
-          if (client.individual_id) userIds.add(client.individual_id);
-        });
-      }
+      // 사건 제목 또는 기본값 설정
+      const caseTitle = lawsuit.case_number ? `${lawsuit.case_number} ` : "사건 일정";
 
       // 알림 메시지 생성
-      const title = `${schedule.case_number} 기일`;
-      const message = `${schedule.event_type} 기일이 등록되었습니다. (${format(
-        new Date(schedule.event_date),
-        "yyyy년 MM월 dd일",
-        { locale: ko }
-      )})`;
+      const formattedDate = format(new Date(scheduleData.event_date), "yyyy년 MM월 dd일 HH:mm", {
+        locale: ko,
+      });
 
-      // Set을 배열로 변환
+      const title = `${caseTitle} - 일정`;
+      const message = `${formattedDate}에 ${scheduleData.title} 일정이 ${
+        isEditMode ? "수정" : "추가"
+      }되었습니다.`;
+
+      // 1. 사건 알림 생성 (test_case_notifications 테이블)
+      const caseNotification = {
+        case_id: lawsuit.id,
+        title: title,
+        message: message,
+        notification_type: "schedule",
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: caseNotificationError } = await supabase
+        .from("test_case_notifications")
+        .insert(caseNotification);
+
+      if (caseNotificationError) {
+        console.error("사건 알림 생성 실패:", caseNotificationError);
+      } else {
+        console.log("사건 알림이 생성되었습니다");
+      }
+
+      // 2. 개인 알림 생성 (test_individual_notifications 테이블)
       const uniqueUserIds = Array.from(userIds);
 
-      // 사용자 ID가 비어있는지 확인
       if (uniqueUserIds.length === 0) {
-        console.error("알림 생성 실패: 알림 수신자가 없습니다.");
+        console.log("알림을 받을 사용자가 없습니다");
         return;
       }
 
-      // 각 사용자에 대한 알림 데이터 생성
-      const notifications = uniqueUserIds.map((userId) => ({
+      console.log(`${uniqueUserIds.length}명의 사용자에게 개인 알림을 생성합니다`);
+
+      // 각 사용자에 대한 알림 생성
+      const individualNotifications = uniqueUserIds.map((userId) => ({
         user_id: userId,
-        case_id: schedule.case_id,
+        case_id: lawsuit.id,
         title: title,
         message: message,
         notification_type: "schedule",
@@ -257,18 +324,17 @@ export default function ScheduleFormModal({
         created_at: new Date().toISOString(),
       }));
 
-      // 알림 저장
-      const { error: notifyError } = await supabase
-        .from("test_case_notifications")
-        .insert(notifications);
+      const { error: individualNotificationError } = await supabase
+        .from("test_individual_notifications")
+        .insert(individualNotifications);
 
-      if (notifyError) {
-        console.error("알림 저장 실패:", notifyError);
-        throw notifyError;
+      if (individualNotificationError) {
+        console.error("개인 알림 생성 실패:", individualNotificationError);
+      } else {
+        console.log(`${uniqueUserIds.length}개의 개인 알림이 생성되었습니다`);
       }
     } catch (error) {
-      console.error("알림 생성 실패:", error);
-      // 알림 실패는 기일 추가 자체를 중단시키지 않음
+      console.error("알림 생성 중 오류 발생:", error);
     }
   };
 
@@ -338,6 +404,26 @@ export default function ScheduleFormModal({
     }
   };
 
+  // 파일 선택 핸들러
+  const handleFileChange = (file) => {
+    if (!file) return;
+
+    // 파일 사이즈 제한 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("파일 크기 초과", {
+        description: "10MB 이하의 파일만 업로드할 수 있습니다.",
+      });
+      return;
+    }
+
+    setFileToUpload(file);
+  };
+
+  // 파일 삭제 핸들러
+  const resetFileUpload = () => {
+    setFileToUpload(null);
+  };
+
   // 기일 추가 제출 처리
   const handleSubmitSchedule = async (e) => {
     e.preventDefault();
@@ -358,6 +444,31 @@ export default function ScheduleFormModal({
         throw new Error("유효한 소송 정보가 없습니다.");
       }
 
+      // 파일 업로드 처리
+      let fileUrl = isEditMode ? editingSchedule?.file_url || null : null;
+
+      if (fileToUpload) {
+        // 파일 이름에 타임스탬프 추가하여 중복 방지
+        const fileExt = fileToUpload.name.split(".").pop();
+        const fileName = `${lawsuit.case_id}/${lawsuit.id}/${Math.random()
+          .toString(36)
+          .substring(2)}.${fileExt}`;
+        const filePath = `schedule-files/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .upload(filePath, fileToUpload);
+
+        if (uploadError) {
+          console.error("파일 업로드 오류:", uploadError);
+          throw uploadError;
+        }
+
+        // 파일 URL 생성
+        const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+        fileUrl = urlData.publicUrl;
+      }
+
       if (isEditMode && editingSchedule && editingSchedule.id) {
         // 수정 모드
         const updatedSchedule = {
@@ -367,8 +478,14 @@ export default function ScheduleFormModal({
           end_date: scheduleFormData.event_date.toISOString(), // 기본적으로 같은 날짜로 설정
           location: scheduleFormData.location,
           description: scheduleFormData.description.trim() || null,
+          file_url: fileUrl,
           updated_at: new Date().toISOString(),
         };
+
+        // 파일 URL이 변경되지 않았다면 업데이트 데이터에서 제외
+        if (fileUrl === editingSchedule.file_url) {
+          delete updatedSchedule.file_url;
+        }
 
         const { data, error } = await supabase
           .from("test_schedules")
@@ -404,6 +521,7 @@ export default function ScheduleFormModal({
           is_important: true, // 소송 기일은 중요하게 표시
           court_name: lawsuit.court_name,
           case_number: lawsuit.case_number,
+          file_url: fileUrl,
           created_by: user.id,
         };
 
@@ -472,29 +590,57 @@ export default function ScheduleFormModal({
 
           <div className="space-y-2">
             <Label htmlFor="event_type">기일 유형</Label>
-            <Select
+            <Input
+              id="event_type"
               value={scheduleFormData.event_type}
-              onValueChange={(value) => handleScheduleInputChange("event_type", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="기일 유형 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="변론기일">변론기일</SelectItem>
-                <SelectItem value="선고기일">선고기일</SelectItem>
-                <SelectItem value="준비기일">준비기일</SelectItem>
-                <SelectItem value="조정기일">조정기일</SelectItem>
-                <SelectItem value="심문기일">심문기일</SelectItem>
-                <SelectItem value="기타">기타</SelectItem>
-              </SelectContent>
-            </Select>
-            {scheduleFormData.event_type === "기타" && (
-              <Input
-                className="mt-2"
-                placeholder="직접 입력"
-                onChange={(e) => handleScheduleInputChange("event_type", e.target.value)}
-              />
-            )}
+              onChange={(e) => handleScheduleInputChange("event_type", e.target.value)}
+              placeholder="기일 유형을 입력하세요"
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleScheduleInputChange("event_type", "변론기일")}
+              >
+                변론기일
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleScheduleInputChange("event_type", "선고기일")}
+              >
+                선고기일
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleScheduleInputChange("event_type", "준비기일")}
+              >
+                준비기일
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleScheduleInputChange("event_type", "조정기일")}
+              >
+                조정기일
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleScheduleInputChange("event_type", "심문기일")}
+              >
+                심문기일
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              자주 사용하는 유형을 버튼으로 선택하거나 직접 입력하세요.
+            </p>
             {formErrors.event_type && (
               <p className="text-sm text-red-500">{formErrors.event_type}</p>
             )}
@@ -593,6 +739,26 @@ export default function ScheduleFormModal({
             />
             <p className="text-xs text-muted-foreground">
               당사자 정보는 자동으로 불러와져 있으며, 필요 시 수정할 수 있습니다.
+            </p>
+          </div>
+
+          {/* 파일 업로드 영역 추가 */}
+          <div className="space-y-2">
+            <Label htmlFor="file">첨부파일</Label>
+            <FileUploadDropzone
+              onFileSelect={handleFileChange}
+              onFileRemove={resetFileUpload}
+              selectedFile={fileToUpload}
+              existingFileUrl={editingSchedule?.file_url || null}
+              fileUrlLabel="기존 파일이 있습니다"
+              uploadLabel="파일을 이곳에 끌어서 놓거나 클릭하여 업로드"
+              replaceLabel="파일을 이곳에 끌어서 놓거나 클릭하여 교체"
+              id="schedule-file"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+              maxSizeMB={10}
+            />
+            <p className="text-xs text-muted-foreground">
+              기일 관련 문서를 첨부할 수 있습니다. (최대 10MB)
             </p>
           </div>
 

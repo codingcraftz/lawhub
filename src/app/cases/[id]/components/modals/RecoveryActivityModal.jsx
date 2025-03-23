@@ -433,6 +433,32 @@ export default function RecoveryActivityModal({
       );
 
       // =======================================================================
+      // 1. 사건 알림 테이블(test_case_notifications)에 한 개의 알림 생성
+      // =======================================================================
+
+      // 사건 전체에 대한 하나의 알림 생성
+      const caseNotification = {
+        case_id: caseId,
+        title: title,
+        message: message,
+        notification_type: "recovery_activity",
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: caseNotificationError } = await supabase
+        .from("test_case_notifications")
+        .insert(caseNotification);
+
+      if (caseNotificationError) {
+        console.error("사건 알림 생성 실패:", caseNotificationError);
+      } else {
+        console.log("사건 알림이 생성되었습니다:", caseNotification);
+      }
+
+      // =======================================================================
+      // 2. 개인 알림 테이블(test_individual_notifications)에 각 사용자별 알림 생성
+      // =======================================================================
+
       // 알림 대상자(의뢰인 + 담당자) 수집
       // =======================================================================
 
@@ -496,87 +522,36 @@ export default function RecoveryActivityModal({
       // Set을 배열로 변환
       const uniqueUserIds = Array.from(userIds);
 
-      if (uniqueUserIds.length === 0) return;
+      if (uniqueUserIds.length === 0) {
+        console.log("알림을 받을 사용자가 없습니다");
+        return;
+      }
+
+      console.log(`${uniqueUserIds.length}명의 사용자에게 개인 알림을 생성합니다`);
 
       // 각 사용자에 대한 알림 생성
-      const notificationPromises = uniqueUserIds.map(async (userId) => {
-        const notification = {
-          user_id: userId,
-          case_id: caseId,
-          title: title,
-          message: message,
-          notification_type: "recovery_activity",
-          is_read: false,
-        };
+      const individualNotifications = uniqueUserIds.map((userId) => ({
+        user_id: userId,
+        case_id: caseId,
+        title: title,
+        message: message,
+        notification_type: "recovery_activity",
+        is_read: false,
+        created_at: new Date().toISOString(),
+      }));
 
-        try {
-          const { error } = await supabase.from("test_case_notifications").insert(notification);
+      const { data: insertedNotifications, error: individualNotificationError } = await supabase
+        .from("test_individual_notifications")
+        .insert(individualNotifications)
+        .select();
 
-          if (error) {
-            console.error(`사용자 ${userId}에 대한 알림 생성 실패:`, error);
-            return { success: false, userId, error };
-          } else {
-            return { success: true, userId };
-          }
-        } catch (err) {
-          console.error(`사용자 ${userId}에 대한 알림 생성 중 예외 발생:`, err);
-          return { success: false, userId, error: err };
-        }
-      });
-
-      await Promise.all(notificationPromises);
-      console.log("회수 활동 알림이 생성되었습니다");
+      if (individualNotificationError) {
+        console.error("개인 알림 생성 실패:", individualNotificationError);
+      } else {
+        console.log(`${insertedNotifications.length}개의 개인 알림이 생성되었습니다`);
+      }
     } catch (error) {
       console.error("알림 생성 실패:", error);
-    }
-  };
-
-  // 알림 생성 함수 (기존 test_case_notifications 테이블용 - 호환성 유지)
-  const createNotificationForClients = async (caseId, activity) => {
-    try {
-      // 해당 사건의 의뢰인 목록 조회
-      const { data: clientsData, error: clientsError } = await supabase
-        .from("test_case_clients")
-        .select("*")
-        .eq("case_id", caseId);
-
-      if (clientsError) throw clientsError;
-      if (!clientsData || clientsData.length === 0) return;
-
-      // 활동 유형에 따른 알림 제목 설정
-      const activityTypeText = getActivityTypeText(activity.activity_type);
-      const statusText = activity.status === "predicted" ? "예정" : "완료";
-      const title = `${activityTypeText} 활동이 ${statusText}되었습니다`;
-
-      // 활동 내용 설정
-      let message = activity.description;
-
-      // 납부 금액이 있는 경우 메시지에 추가
-      if (activity.amount) {
-        message += `\n금액: ${formatCurrency(activity.amount)}`;
-      }
-
-      // 각 의뢰인에 대해 알림 생성
-      for (const client of clientsData) {
-        const notification = {
-          case_id: caseId,
-          title: title,
-          message: message,
-          notification_type: "general",
-          is_read: false,
-          user_id: client.user_id, // 의뢰인의 사용자 ID
-        };
-
-        const { error: notificationError } = await supabase
-          .from("test_case_notifications")
-          .insert(notification);
-
-        if (notificationError) {
-          console.error("알림 생성 실패:", notificationError);
-        }
-      }
-    } catch (error) {
-      console.error("의뢰인 알림 생성 실패:", error);
     }
   };
 

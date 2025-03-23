@@ -152,7 +152,7 @@ function ClientSummary({ clientData, clientType, cases, totalDebt, loading }) {
           {!isIndividual && clientData.business_number && (
             <div className="flex items-center mb-2">
               <Briefcase className="h-4 w-4 mr-2 text-gray-500" />
-              <span>사업자번호: {clientData.business_number}</span>
+              <span>법인 번호: {clientData.business_number}</span>
             </div>
           )}
           {clientData.created_at && (
@@ -214,37 +214,85 @@ export default function ClientDetailPage() {
 
   // URL 파라미터 업데이트
   const updateUrlParams = (params) => {
-    const { page, search, status } = params;
+    const { page, search, status, kcb, notification } = params;
 
+    // id 파라미터가 undefined인 경우 현재 경로에서 id 추출
+    const clientId = params.id || params.get("id");
+
+    if (!clientId) {
+      console.error("updateUrlParams: 의뢰인 ID를 찾을 수 없습니다");
+      // 경로에서 id 추출 시도
+      const pathMatch = window.location.pathname.match(/\/clients\/([^/]+)/);
+      if (pathMatch && pathMatch[1]) {
+        console.log("경로에서 의뢰인 ID 추출:", pathMatch[1]);
+        const id = pathMatch[1];
+        updateUrlWithId(id, page, search, status, kcb, notification);
+        return;
+      }
+
+      // 그래도 ID가 없으면 클라이언트 목록 페이지로 리디렉션
+      console.error("의뢰인 ID를 결정할 수 없어 목록 페이지로 이동합니다");
+      router.push("/clients");
+      return;
+    }
+
+    updateUrlWithId(clientId, page, search, status, kcb, notification);
+  };
+
+  // ID를 사용하여 URL 업데이트하는 헬퍼 함수
+  const updateUrlWithId = (id, page, search, status, kcb, notification) => {
     // 기존 client_type 파라미터 유지
     const clientTypeParam = clientType ? `&client_type=${clientType}` : "";
+    const kcbParam = kcb !== undefined ? `&kcb=${kcb}` : `&kcb=${kcbFilter}`;
+    const notificationParam =
+      notification !== undefined
+        ? `&notification=${notification}`
+        : `&notification=${notificationFilter}`;
 
-    const url = `/clients/${params.id}?page=${page}${search ? `&search=${search}` : ""}${
+    // URL 생성
+    const url = `/clients/${id}?page=${page}${search ? `&search=${search}` : ""}${
       status ? `&status=${status}` : ""
-    }${clientTypeParam}`;
+    }${clientTypeParam}${kcbParam}${notificationParam}`;
+
+    // 현재 페이지를 바로 변경하여 다중 리렌더링 방지
+    if (page !== currentPage) setCurrentPage(page);
+
+    // URL 변경 - 의뢰인 ID가 유효한 경우에만 실행
+    console.log("URL 업데이트:", url);
     router.push(url, { scroll: false });
   };
 
-  // URL이 변경될 때 상태 업데이트
+  // URL이 변경될 때 상태 업데이트 (페이지 변경은 제외)
   useEffect(() => {
-    const page = Number(searchParams.get("page")) || 1;
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
     const kcb = searchParams.get("kcb") || "all";
     const notification = searchParams.get("notification") || "all";
 
-    if (page !== currentPage) setCurrentPage(page);
     if (search !== searchTerm) setSearchTerm(search);
     if (status !== activeTab) setActiveTab(status);
     if (kcb !== kcbFilter) setKcbFilter(kcb);
     if (notification !== notificationFilter) setNotificationFilter(notification);
   }, [searchParams]);
 
+  // 의뢰인 데이터 로드 - URL의 page 파라미터는 제외하여 페이지 변경 시 의뢰인 정보 재조회 방지
   useEffect(() => {
+    // params 객체가 제대로 로드되었는지 확인
+    if (!params || !params.id) {
+      console.error("의뢰인 ID가 제공되지 않았습니다");
+      toast.error("의뢰인 정보를 불러올 수 없습니다", {
+        description: "의뢰인 ID가 제공되지 않았습니다. 의뢰인 목록으로 이동합니다.",
+      });
+      router.push("/clients");
+      return;
+    }
+
     // UUID가 유효하지 않으면 의뢰인 목록 페이지로 리다이렉트
     if (!isValidUUID(params.id)) {
       console.error("유효하지 않은 의뢰인 ID:", params.id);
-      toast.error("유효하지 않은 의뢰인 ID입니다");
+      toast.error("유효하지 않은 의뢰인 ID입니다", {
+        description: "올바른 의뢰인을 선택하거나 의뢰인 목록 페이지로 이동합니다.",
+      });
       router.push("/clients");
       return;
     }
@@ -252,7 +300,7 @@ export default function ClientDetailPage() {
     if (user) {
       fetchClientData();
     }
-  }, [user, params.id, refetchTrigger]);
+  }, [user, params, refetchTrigger]);
 
   // 검색어나 필터, 페이지가 변경될 때 클라이언트 측에서 데이터 필터링
   useEffect(() => {
@@ -358,54 +406,91 @@ export default function ClientDetailPage() {
 
       // 의뢰인 ID 가져오기
       const clientId = params.id;
+      console.log("의뢰인 조회 시작:", clientId, "타입:", clientType);
 
       // URL에서 가져온 의뢰인 타입 활용
       // 개인 의뢰인 / 조직 의뢰인을 미리 알고 있다면 해당 테이블만 조회하여 효율성 향상
       let individualData = null;
       let organizationData = null;
-      let individualError = null;
-      let organizationError = null;
 
       // URL에서 타입 정보가 있으면 해당 타입만 조회
       if (clientType === "individual") {
         // 개인 의뢰인 정보만 조회
-        const result = await supabase.from("users").select("*").eq("id", clientId).single();
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", clientId)
+          .single();
 
-        individualData = result.data;
-        individualError = result.error;
+        if (error) {
+          console.error("개인 의뢰인 조회 실패:", error);
 
-        console.log("개인 의뢰인 조회 결과:", { individualData, individualError });
+          if (error.code === "PGRST116") {
+            toast.error("유효하지 않은 의뢰인입니다", {
+              description: "개인 의뢰인 정보를 찾을 수 없습니다.",
+            });
+            router.push("/clients");
+            return;
+          }
+        } else {
+          console.log("개인 의뢰인 조회 성공:", data?.id);
+          individualData = data;
+        }
       } else if (clientType === "organization") {
         // 조직 의뢰인 정보만 조회
-        const result = await supabase
+        const { data, error } = await supabase
           .from("test_organizations")
           .select("*")
           .eq("id", clientId)
           .single();
 
-        organizationData = result.data;
-        organizationError = result.error;
+        if (error) {
+          console.error("조직 의뢰인 조회 실패:", error);
 
-        console.log("조직 의뢰인 조회 결과:", { organizationData, organizationError });
+          if (error.code === "PGRST116") {
+            toast.error("유효하지 않은 의뢰인입니다", {
+              description: "조직 의뢰인 정보를 찾을 수 없습니다.",
+            });
+            router.push("/clients");
+            return;
+          }
+        } else {
+          console.log("조직 의뢰인 조회 성공:", data?.id);
+          organizationData = data;
+        }
       } else {
         // 타입 정보가 없으면 둘 다 조회
-        const indResult = await supabase.from("users").select("*").eq("id", clientId).single();
+        const { data: indData, error: indError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", clientId)
+          .single();
 
-        individualData = indResult.data;
-        individualError = indResult.error;
+        if (indError) {
+          console.log("개인 의뢰인 조회 실패:", indError.code);
+          if (indError.code !== "PGRST116") {
+            console.error("개인 의뢰인 조회 중 예상치 못한 오류:", indError);
+          }
+        } else {
+          console.log("개인 의뢰인 조회 성공:", indData?.id);
+          individualData = indData;
+        }
 
-        console.log("개인 의뢰인 조회 결과:", { individualData, individualError });
-
-        const orgResult = await supabase
+        const { data: orgData, error: orgError } = await supabase
           .from("test_organizations")
           .select("*")
           .eq("id", clientId)
           .single();
 
-        organizationData = orgResult.data;
-        organizationError = orgResult.error;
-
-        console.log("조직 의뢰인 조회 결과:", { organizationData, organizationError });
+        if (orgError) {
+          console.log("조직 의뢰인 조회 실패:", orgError.code);
+          if (orgError.code !== "PGRST116") {
+            console.error("조직 의뢰인 조회 중 예상치 못한 오류:", orgError);
+          }
+        } else {
+          console.log("조직 의뢰인 조회 성공:", orgData?.id);
+          organizationData = orgData;
+        }
       }
 
       // 개인 또는 조직 데이터 설정
@@ -419,8 +504,10 @@ export default function ClientDetailPage() {
         setClientData(organizationData);
         setClientType("organization");
       } else {
-        console.error("의뢰인 정보를 찾을 수 없음:", individualError, organizationError);
-        toast.error("의뢰인 정보를 찾을 수 없습니다");
+        console.error("의뢰인 정보를 찾을 수 없음 (ID: " + clientId + ")");
+        toast.error("유효하지 않은 의뢰인입니다", {
+          description: "의뢰인 정보를 찾을 수 없습니다.",
+        });
         router.push("/clients");
         return;
       }
@@ -586,9 +673,10 @@ export default function ClientDetailPage() {
   };
 
   const handleSearch = (value) => {
+    // 검색어가 UUID 형식이 아닌 경우에도 정상 검색 처리
     setSearchTerm(value);
-    setCurrentPage(1); // 검색 시 첫 페이지로 이동
-    updateUrlParams({ page: 1, search: value, status: activeTab });
+    setCurrentPage(1);
+    updateUrlParams({ id: params.id, page: 1, search: value, status: activeTab });
   };
 
   const handleTabChange = (tab) => {
@@ -598,9 +686,20 @@ export default function ClientDetailPage() {
   };
 
   const handlePageChange = (page) => {
-    console.log("페이지 변경:", page);
-    setCurrentPage(page);
-    updateUrlParams({ page: page, search: searchTerm, status: activeTab });
+    console.log("페이지 변경:", page, "현재 페이지:", currentPage);
+
+    // 페이지가 다르면 URL 파라미터 업데이트 (의뢰인 데이터 재조회 없이)
+    if (page !== currentPage) {
+      // 반드시 의뢰인 ID를 함께 전달
+      updateUrlParams({
+        id: params.id,
+        page,
+        search: searchTerm,
+        status: activeTab,
+        kcb: kcbFilter,
+        notification: notificationFilter,
+      });
+    }
   };
 
   // 페이지 크기 변경 핸들러 추가

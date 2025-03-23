@@ -734,7 +734,7 @@ export default function MyCasesContent() {
     setNotificationsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });

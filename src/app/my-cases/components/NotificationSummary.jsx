@@ -101,7 +101,7 @@ export default function NotificationSummary({ notifications, loading }) {
   const updateNotificationReadStatus = async (notificationId) => {
     try {
       await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .update({ is_read: true })
         .eq("id", notificationId);
     } catch (error) {
@@ -113,7 +113,7 @@ export default function NotificationSummary({ notifications, loading }) {
     e.stopPropagation();
     try {
       await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .update({ is_read: true })
         .eq("id", notificationId);
 
@@ -138,7 +138,10 @@ export default function NotificationSummary({ notifications, loading }) {
       }
 
       const unreadIds = unreadNotifications.map((n) => n.id);
-      await supabase.from("test_case_notifications").update({ is_read: true }).in("id", unreadIds);
+      await supabase
+        .from("test_individual_notifications")
+        .update({ is_read: true })
+        .in("id", unreadIds);
 
       // 로컬 상태 업데이트
       const updatedNotifications = allNotifications.map((n) => ({ ...n, is_read: true }));

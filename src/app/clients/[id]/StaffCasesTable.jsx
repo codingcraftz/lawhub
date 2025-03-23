@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/utils/supabase";
 import { getStatusByValue, getCaseTypeByValue, getDebtCategoryByValue } from "@/utils/constants";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -259,6 +260,171 @@ export function StaffCasesTable({
   };
 
   const casesCount = calculateCasesCount();
+
+  // 페이지네이션 컴포넌트
+  function Pagination({ currentPage, totalPages, onPageChange }) {
+    // 시작 페이지와 끝 페이지 계산
+    const maxPages = 5; // 페이지네이터에 표시할 최대 페이지 수
+    let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
+    let endPage = Math.min(totalPages, startPage + maxPages - 1);
+
+    // 최소 maxPages 페이지를 표시하도록 조정
+    if (endPage - startPage + 1 < maxPages) {
+      startPage = Math.max(1, endPage - maxPages + 1);
+    }
+
+    // 페이지 배열 생성
+    const pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+
+    console.log("Pagination - current:", currentPage, "total:", totalPages, "pages:", pages);
+
+    // 페이지 변경 핸들러
+    const handlePageClick = (page, e) => {
+      e.preventDefault();
+
+      // 현재 페이지와 같은 페이지를 클릭한 경우 아무것도 하지 않음
+      if (page === currentPage) {
+        console.log("이미 현재 페이지입니다:", page);
+        return;
+      }
+
+      // 페이지 범위 체크
+      if (page < 1 || page > totalPages) {
+        console.error("유효하지 않은 페이지 번호:", page);
+        return;
+      }
+
+      // onPageChange가 존재하면 호출
+      if (typeof onPageChange === "function") {
+        console.log("페이지 클릭:", page);
+        try {
+          onPageChange(page);
+        } catch (error) {
+          console.error("페이지 변경 중 오류 발생:", error);
+          toast.error("페이지 변경 중 오류가 발생했습니다", {
+            description: "잠시 후 다시 시도해주세요.",
+          });
+        }
+      } else {
+        console.warn("페이지 변경 핸들러가 없습니다");
+      }
+    };
+
+    return (
+      <div className="flex items-center justify-center mt-4 gap-1">
+        {/* 처음 페이지로 버튼 */}
+        <button
+          onClick={(e) => handlePageClick(1, e)}
+          disabled={currentPage === 1}
+          className={`w-8 h-8 flex items-center justify-center rounded ${
+            currentPage === 1
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L6.414 9H17a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414z"
+              clipRule="evenodd"
+            ></path>
+          </svg>
+        </button>
+
+        {/* 이전 페이지 버튼 */}
+        <button
+          onClick={(e) => handlePageClick(currentPage - 1, e)}
+          disabled={currentPage === 1}
+          className={`w-8 h-8 flex items-center justify-center rounded ${
+            currentPage === 1
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            ></path>
+          </svg>
+        </button>
+
+        {/* 페이지 숫자 버튼 */}
+        {pages.map((page) => (
+          <button
+            key={page}
+            onClick={(e) => handlePageClick(page, e)}
+            className={`w-8 h-8 flex items-center justify-center rounded ${
+              currentPage === page
+                ? "bg-blue-500 text-white"
+                : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+
+        {/* 다음 페이지 버튼 */}
+        <button
+          onClick={(e) => handlePageClick(currentPage + 1, e)}
+          disabled={currentPage === totalPages}
+          className={`w-8 h-8 flex items-center justify-center rounded ${
+            currentPage === totalPages
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+              clipRule="evenodd"
+            ></path>
+          </svg>
+        </button>
+
+        {/* 마지막 페이지로 버튼 */}
+        <button
+          onClick={(e) => handlePageClick(totalPages, e)}
+          disabled={currentPage === totalPages}
+          className={`w-8 h-8 flex items-center justify-center rounded ${
+            currentPage === totalPages
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L13.586 11H3a1 1 0 010-2h10.586l-3.293-3.293a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            ></path>
+          </svg>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -693,70 +859,11 @@ export function StaffCasesTable({
 
               <div className="flex items-center gap-4 w-full sm:w-auto">
                 <div className="flex justify-center flex-1 sm:flex-none">
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === 1}
-                      onClick={() => {
-                        const newPage = currentPage - 1;
-                        console.log("이전 페이지로 이동:", newPage);
-                        if (onPageChange) {
-                          onPageChange(newPage);
-                        }
-                      }}
-                    >
-                      이전
-                    </Button>
-
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum = 0;
-                      if (totalPages <= 5) {
-                        // 총 페이지가 5 이하면 그대로 표시
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        // 현재 페이지가 앞쪽에 있을 때
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        // 현재 페이지가 뒤쪽에 있을 때
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        // 현재 페이지가 중간에 있을 때
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            console.log("페이지 변경:", pageNum);
-                            if (onPageChange) {
-                              onPageChange(pageNum);
-                            }
-                          }}
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === totalPages || totalPages === 0}
-                      onClick={() => {
-                        const newPage = currentPage + 1;
-                        console.log("다음 페이지로 이동:", newPage);
-                        if (onPageChange) {
-                          onPageChange(newPage);
-                        }
-                      }}
-                    >
-                      다음
-                    </Button>
-                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={onPageChange}
+                  />
                 </div>
               </div>
             </div>

@@ -21,6 +21,7 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null); // 수정 중인 의뢰인 인덱스
+  const [clientTypeChanged, setClientTypeChanged] = useState(false); // 클라이언트 유형 변경 감지용
 
   const addClient = () => {
     setFormData((prev) => ({
@@ -74,9 +75,8 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
           updatedClients[index].individual_id = "";
         }
         updatedClients[index].position = "";
-        // 검색 결과 초기화
-        setSearchResults([]);
-        setSearchTerm("");
+        // 렌더링 중 setState 호출 대신 플래그 설정
+        setClientTypeChanged(true);
       }
 
       return {
@@ -85,6 +85,15 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
       };
     });
   };
+
+  // 클라이언트 유형 변경 감지 및 처리
+  useEffect(() => {
+    if (clientTypeChanged) {
+      setSearchResults([]);
+      setSearchTerm("");
+      setClientTypeChanged(false);
+    }
+  }, [clientTypeChanged]);
 
   // 실시간 검색 처리
   useEffect(() => {
@@ -316,7 +325,7 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
                       </Select>
                     </div>
 
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="md:col-span-2 space-y-2 relative">
                       <Label className="text-sm font-medium">
                         {client.client_type === "individual" ? "이름/이메일 검색" : "회사명 검색"}
                       </Label>
@@ -336,11 +345,11 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
 
                       {/* 검색 결과 표시 - 스타일 개선 */}
                       {searchResults.length > 0 && (
-                        <div className="absolute z-10 mt-1 w-full max-w-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg bg-white dark:bg-gray-800 overflow-hidden">
+                        <div className="absolute z-50 mt-1 w-full max-w-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg bg-white dark:bg-gray-800 overflow-hidden">
                           <div className="p-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                             {searchResults.length}개의 검색 결과
                           </div>
-                          <ScrollArea className="max-h-64">
+                          <ScrollArea className="max-h-[200px]">
                             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                               {searchResults.map((result) => (
                                 <li
@@ -382,7 +391,7 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
                                         </div>
                                         {result.business_number && (
                                           <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                            사업자번호: {result.business_number}
+                                            법인 번호: {result.business_number}
                                           </div>
                                         )}
                                       </div>
@@ -472,7 +481,7 @@ export default function ClientInfoSection({ formData, setFormData, users, organi
                         ?.business_number && (
                         <div className="flex items-start gap-2">
                           <span className="text-gray-500 dark:text-gray-400 min-w-[80px]">
-                            사업자번호:
+                            법인번호:
                           </span>
                           <span className="font-medium text-gray-700 dark:text-gray-300">
                             {

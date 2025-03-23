@@ -79,16 +79,29 @@
 
 ## 사건 알림 테이블 (test_case_notifications)
 
-| 컬럼명            | 데이터 타입              | 설명        |
-| ----------------- | ------------------------ | ----------- |
-| id                | uuid                     | 고유 식별자 |
-| case_id           | uuid                     | 사건 ID     |
-| title             | character varying        | 제목        |
-| message           | text                     | 메시지      |
-| notification_type | character varying        | 알림 유형   |
-| is_read           | boolean                  | 읽음 여부   |
-| user_id           | uuid                     | 사용자 ID   |
-| created_at        | timestamp with time zone | 생성 시간   |
+| 컬럼명            | 데이터 타입              | 설명                              |
+| ----------------- | ------------------------ | --------------------------------- |
+| id                | uuid                     | 고유 식별자                       |
+| case_id           | uuid                     | 사건 ID                           |
+| title             | character varying        | 제목                              |
+| message           | text                     | 메시지                            |
+| notification_type | character varying        | 알림 유형                         |
+| is_read           | boolean                  | 읽음 여부 (더 이상 사용되지 않음) |
+| created_at        | timestamp with time zone | 생성 시간                         |
+
+## 개인 알림 테이블 (test_individual_notifications)
+
+| 컬럼명            | 데이터 타입              | 설명                                      |
+| ----------------- | ------------------------ | ----------------------------------------- |
+| id                | uuid                     | 고유 식별자                               |
+| user_id           | uuid                     | 알림을 받는 사용자 ID                     |
+| case_id           | uuid                     | 관련 사건 ID                              |
+| title             | text                     | 알림 제목                                 |
+| message           | text                     | 알림 메시지                               |
+| notification_type | text                     | 알림 유형(lawsuit, schedule, document 등) |
+| is_read           | boolean                  | 읽음 여부                                 |
+| created_at        | timestamp with time zone | 생성 시간                                 |
+| updated_at        | timestamp with time zone | 수정 시간                                 |
 
 ## 사건 당사자 테이블 (test_case_parties)
 

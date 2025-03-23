@@ -286,7 +286,7 @@ export function CasesTable({
     try {
       // 알림 읽음 상태 업데이트
       const { error } = await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .update({ is_read: true })
         .eq("id", notificationId);
 
@@ -318,7 +318,7 @@ export function CasesTable({
 
       // 모든 알림 읽음 상태 업데이트
       const { error } = await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .update({ is_read: true })
         .in("id", notificationIds);
 

@@ -506,7 +506,7 @@ export default function OrganizationDetailPage() {
             </h1>
             {organization.business_number && (
               <Badge variant="secondary" className="ml-2 bg-gray-100 dark:bg-gray-800">
-                사업자번호: {organization.business_number}
+                법인번호: {organization.business_number}
               </Badge>
             )}
           </div>
@@ -566,7 +566,7 @@ export default function OrganizationDetailPage() {
                   <div className="flex items-center">
                     <ClipboardList className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">사업자번호</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">법인번호</p>
                       <p className="font-medium">{organization.business_number}</p>
                     </div>
                   </div>
@@ -978,7 +978,7 @@ export default function OrganizationDetailPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="org-business_number" className="text-right">
-                  사업자번호
+                  법인번호
                 </Label>
                 <Input
                   id="org-business_number"

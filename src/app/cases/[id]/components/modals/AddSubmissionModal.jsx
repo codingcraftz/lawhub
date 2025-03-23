@@ -203,44 +203,133 @@ export default function AddSubmissionModal({
   };
 
   // 알림 생성 함수
-  const createNotification = async (action, submission) => {
+  const createNotification = async (submissionData) => {
+    if (!caseId) return;
+
     try {
-      // 소송에 관련된 당사자 정보 가져오기
-      const { data: lawsuitData, error: lawsuitError } = await supabase
-        .from("test_lawsuits")
-        .select("case_number, creditor_id, debtor_id")
-        .eq("id", lawsuitId)
-        .single();
+      // 모든 의뢰인과 담당자의 ID를 수집하기 위한 Set
+      const userIds = new Set();
 
-      if (lawsuitError) throw lawsuitError;
+      // 사건 담당자 조회
+      const { data: handlersData, error: handlersError } = await supabase
+        .from("test_case_handlers")
+        .select("user_id")
+        .eq("case_id", caseId);
 
-      // 알림을 받을 사용자 ID 목록 (양 당사자 + 관리자)
-      const userIds = [lawsuitData.creditor_id, lawsuitData.debtor_id];
+      if (handlersError) {
+        console.error("사건 담당자 조회 실패:", handlersError);
+      } else if (handlersData) {
+        handlersData.forEach((handler) => {
+          if (handler.user_id) {
+            userIds.add(handler.user_id);
+          }
+        });
+      }
 
-      // 중복 제거 및 현재 사용자 제외
-      const uniqueUserIds = [...new Set(userIds)].filter((id) => id !== user?.id);
+      // 개인 및 법인 의뢰인 조회
+      const { data: clientsData, error: clientsError } = await supabase
+        .from("test_case_clients")
+        .select(
+          `
+          individual_client_id, 
+          organization_client_id
+        `
+        )
+        .eq("case_id", caseId);
 
-      if (uniqueUserIds.length === 0) return;
+      if (clientsError) {
+        console.error("의뢰인 조회 실패:", clientsError);
+      } else if (clientsData) {
+        // 개인 의뢰인 ID 추가
+        clientsData.forEach((client) => {
+          if (client.individual_client_id) {
+            userIds.add(client.individual_client_id);
+          }
+        });
 
-      // 알림 내용 설정
-      const actionVerb = action === "create" ? "추가" : "업데이트";
-      const notificationData = uniqueUserIds.map((userId) => ({
+        // 법인 의뢰인의 멤버 조회 및 추가
+        const orgPromises = clientsData
+          .filter((client) => client.organization_client_id)
+          .map((client) => {
+            return supabase
+              .from("test_organization_members")
+              .select("user_id")
+              .eq("organization_id", client.organization_client_id)
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error("조직 멤버 조회 실패:", error);
+                  return [];
+                }
+                return data || [];
+              });
+          });
+
+        const orgResults = await Promise.all(orgPromises);
+        orgResults.forEach((members) => {
+          members.forEach((member) => {
+            if (member.user_id) {
+              userIds.add(member.user_id);
+            }
+          });
+        });
+      }
+
+      // 알림 제목과 내용 설정
+      const title = caseDetails?.title || "사건 정보 없음";
+      const message = `새로운 서류 ${submissionData.title || ""}가 제출되었습니다.`;
+
+      // 1. 사건 알림 생성 (test_case_notifications 테이블)
+      const caseNotification = {
+        case_id: caseId,
+        title: title,
+        message: message,
+        notification_type: "submission",
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: caseNotificationError } = await supabase
+        .from("test_case_notifications")
+        .insert(caseNotification);
+
+      if (caseNotificationError) {
+        console.error("사건 알림 생성 실패:", caseNotificationError);
+      } else {
+        console.log("사건 알림이 생성되었습니다");
+      }
+
+      // 2. 개인 알림 생성 (test_individual_notifications 테이블)
+      const uniqueUserIds = Array.from(userIds);
+
+      if (uniqueUserIds.length === 0) {
+        console.log("알림을 받을 사용자가 없습니다");
+        return;
+      }
+
+      console.log(`${uniqueUserIds.length}명의 사용자에게 개인 알림을 생성합니다`);
+
+      // 각 사용자에 대한 알림 생성
+      const individualNotifications = uniqueUserIds.map((userId) => ({
         user_id: userId,
-        title: `문서 ${actionVerb}`,
-        content: `사건 ${lawsuitData.case_number}에 ${submission.document_type} 문서가 ${actionVerb}되었습니다.`,
-        link: `/cases/${caseId}/lawsuit/${lawsuitId}`,
-        read: false,
+        case_id: caseId,
+        title: title,
+        message: message,
+        notification_type: "submission",
+        is_read: false,
         created_at: new Date().toISOString(),
       }));
 
-      // 알림 데이터 저장
-      const { error: notificationError } = await supabase
-        .from("test_notifications")
-        .insert(notificationData);
+      const { error: individualNotificationError } = await supabase
+        .from("test_individual_notifications")
+        .insert(individualNotifications);
 
-      if (notificationError) throw notificationError;
+      if (individualNotificationError) {
+        console.error("개인 알림 생성 실패:", individualNotificationError);
+      } else {
+        console.log(`${uniqueUserIds.length}개의 개인 알림이 생성되었습니다`);
+      }
     } catch (error) {
-      console.error("알림 생성 실패:", error);
+      console.error("알림 생성 중 오류 발생:", error);
     }
   };
 
@@ -317,7 +406,7 @@ export default function AddSubmissionModal({
 
         // 문서 유형이 변경된 경우에만 알림 생성
         if (typeChanged) {
-          await createNotification("update", updatedSubmission);
+          await createNotification(submissionData);
         }
 
         toast.success("문서가 수정되었습니다");
@@ -340,7 +429,7 @@ export default function AddSubmissionModal({
         }
 
         // 새 문서에 대한 알림 생성
-        await createNotification("create", newSubmission);
+        await createNotification(submissionData);
 
         toast.success("문서가 추가되었습니다");
 

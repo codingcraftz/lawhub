@@ -43,7 +43,7 @@ export default function NotificationCenter() {
     try {
       // 최신 알림 30개 가져오기
       const { data, error } = await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
@@ -66,7 +66,7 @@ export default function NotificationCenter() {
   const markAsRead = async (notificationId) => {
     try {
       const { error } = await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .update({ is_read: true })
         .eq("id", notificationId);
 
@@ -87,7 +87,7 @@ export default function NotificationCenter() {
   const markAllAsRead = async () => {
     try {
       const { error } = await supabase
-        .from("test_case_notifications")
+        .from("test_individual_notifications")
         .update({ is_read: true })
         .eq("user_id", user.id)
         .eq("is_read", false);

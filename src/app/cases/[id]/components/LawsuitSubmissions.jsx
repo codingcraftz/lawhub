@@ -355,7 +355,8 @@ export default function CaseTimeline({
               <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.description}</p>
             )}
 
-            {!isSchedule && item.file_url && (
+            {/* 첨부파일이 있는 경우 버튼 표시 - 기일과 문서 모두 적용 */}
+            {item.file_url && (
               <div className="flex gap-1 mt-2">
                 <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
                   <a href={item.file_url} target="_blank" rel="noopener noreferrer">
@@ -591,7 +592,45 @@ export default function CaseTimeline({
     }
 
     try {
-      // 기일 항목 삭제
+      // 1. 먼저 관련된 알림 삭제 - 메시지에 기일 ID가 포함된 알림 찾기
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from("test_case_notifications")
+        .delete()
+        .like("message", `%기일 ID: ${scheduleId}%`)
+        .select("id");
+
+      if (notificationsError) {
+        console.error("알림 삭제 실패:", notificationsError);
+        // 알림 삭제 실패 시에도 기일 항목은 삭제 진행
+      } else {
+        console.log(`${notificationsData?.length || 0}개의 관련 알림이 함께 삭제되었습니다.`);
+      }
+
+      // 2. 또는 더 정확한 알림 삭제를 위해 해당 기일 정보로 검색
+      const { data: scheduleData, error: scheduleError } = await supabase
+        .from("test_schedules")
+        .select("event_type, case_id")
+        .eq("id", scheduleId)
+        .single();
+
+      if (!scheduleError && scheduleData) {
+        // 기일 정보를 이용해 관련 알림 추가 검색 및 삭제
+        const { data: moreNotifications, error: moreNotificationsError } = await supabase
+          .from("test_case_notifications")
+          .delete()
+          .match({
+            case_id: scheduleData.case_id,
+            notification_type: "schedule",
+          })
+          .like("message", `%${scheduleData.event_type}%`)
+          .select("id");
+
+        if (!moreNotificationsError && moreNotifications) {
+          console.log(`${moreNotifications.length}개의 기일 관련 알림이 추가로 삭제되었습니다.`);
+        }
+      }
+
+      // 3. 기일 항목 삭제
       const { error } = await supabase.from("test_schedules").delete().eq("id", scheduleId);
 
       if (error) throw error;
