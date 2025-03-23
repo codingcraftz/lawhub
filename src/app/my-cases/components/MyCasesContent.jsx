@@ -119,6 +119,9 @@ export default function MyCasesContent() {
     }
 
     setCurrentPage(1);
+
+    // 통계 데이터 업데이트를 위한 강제 리렌더링 트리거
+    setRefetchTrigger((prev) => prev + 1);
   };
 
   // 조직 전환 핸들러
@@ -131,6 +134,9 @@ export default function MyCasesContent() {
     setOrganizationCases(selectedOrgCases);
     filterAndPaginateCases(selectedOrgCases, searchTerm, 1);
     setCurrentPage(1);
+
+    // 통계 데이터 업데이트를 위한 강제 리렌더링 트리거
+    setRefetchTrigger((prev) => prev + 1);
   };
 
   // URL 파라미터 업데이트 함수
@@ -292,6 +298,24 @@ export default function MyCasesContent() {
           ["debtor", "defendant", "respondent"].includes(p.party_type)
         );
 
+        // 당사자 이름 설정 (null 체크 강화)
+        let creditorName = "미지정";
+        let debtorName = "미지정";
+
+        if (creditor) {
+          creditorName =
+            creditor.entity_type === "individual"
+              ? creditor.name || "이름 없음"
+              : creditor.company_name || "회사명 없음";
+        }
+
+        if (debtor) {
+          debtorName =
+            debtor.entity_type === "individual"
+              ? debtor.name || "이름 없음"
+              : debtor.company_name || "회사명 없음";
+        }
+
         // 원금 (수임금액)
         const principalAmount = caseItem.principal_amount || 0;
 
@@ -313,21 +337,18 @@ export default function MyCasesContent() {
 
         return {
           ...caseItem,
-          creditor_name: creditor
-            ? creditor.entity_type === "individual"
-              ? creditor.name
-              : creditor.company_name
-            : null,
-          debtor_name: debtor
-            ? debtor.entity_type === "individual"
-              ? debtor.name
-              : debtor.company_name
-            : null,
+          creditor,
+          debtor,
+          creditor_name: creditorName,
+          debtor_name: debtorName,
           interest_amount: interestAmount,
           expense_amount: expenseAmount,
           debt_amount: debtAmount,
           recovered_amount: recoveredAmount,
           recovery_rate: recoveryRate,
+          // KCB 및 납부안내 정보 추가 (null 체크 추가)
+          debtor_kcb_checked: debtor ? !!debtor.kcb_checked : false,
+          debtor_payment_notification_sent: debtor ? !!debtor.payment_notification_sent : false,
         };
       });
     } catch (err) {
@@ -864,11 +885,18 @@ export default function MyCasesContent() {
               <TabsList className="grid w-full grid-cols-2 bg-gray-50 dark:bg-gray-800/50 p-1 rounded-lg">
                 <TabsTrigger value="cases" className="flex items-center rounded-md">
                   <Briefcase className="mr-2 h-4 w-4" />
-                  총의뢰 ({stats.totalCases}건)
+                  총의뢰 (
+                  {selectedTab === "personal" ? personalCases.length : organizationCases.length}건)
                 </TabsTrigger>
                 <TabsTrigger value="recovery" className="flex items-center rounded-md">
                   <CircleDollarSign className="mr-2 h-4 w-4" />
-                  채권정보 ({formatCurrency(recoveryStats.totalDebtAmount).replace("₩", "")})
+                  채권정보 (
+                  {formatCurrency(
+                    calculateRecoveryStats(
+                      selectedTab === "personal" ? personalCases : organizationCases
+                    ).totalDebtAmount
+                  ).replace("₩", "")}
+                  )
                 </TabsTrigger>
               </TabsList>
 
@@ -880,7 +908,15 @@ export default function MyCasesContent() {
                     <ClientSummary
                       userData={userData}
                       cases={selectedTab === "personal" ? personalCases : organizationCases}
-                      totalDebt={recoveryStats.totalDebtAmount}
+                      totalDebt={
+                        calculateRecoveryStats(
+                          selectedTab === "personal"
+                            ? personalCases
+                            : selectedOrg
+                            ? organizations.find((org) => org.orgId === selectedOrg)?.cases || []
+                            : organizationCases
+                        ).totalDebtAmount
+                      }
                       loading={loading}
                       selectedTab={selectedTab}
                       selectedOrg={selectedOrg}
@@ -904,7 +940,14 @@ export default function MyCasesContent() {
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
                     <FileBarChart className="h-5 w-5 mr-2 text-primary" /> 채권 회수 현황
                   </h3>
-                  <StatisticsCards stats={stats} recoveryStats={recoveryStats} />
+                  <StatisticsCards
+                    stats={calculateStats(
+                      selectedTab === "personal" ? personalCases : organizationCases
+                    )}
+                    recoveryStats={calculateRecoveryStats(
+                      selectedTab === "personal" ? personalCases : organizationCases
+                    )}
+                  />
                 </div>
               </TabsContent>
             </Tabs>

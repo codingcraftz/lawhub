@@ -51,6 +51,10 @@ import ClientManageModal from "./components/modals/ClientManageModal";
 import StatusChangeModal from "./components/modals/StatusChangeModal";
 import PartyManageModal from "./components/modals/PartyManageModal";
 import DebtDetailModal from "./components/modals/DebtDetailModal";
+import AddLawsuitModal from "./components/modals/AddLawsuitModal";
+import ScheduleFormModal from "./components/modals/ScheduleFormModal";
+import RecoveryActivityModal from "./components/modals/RecoveryActivityModal";
+import AddSubmissionModal from "./components/modals/AddSubmissionModal";
 
 export default function CasePage() {
   const pathname = usePathname();
@@ -75,6 +79,14 @@ export default function CasePage() {
   const [showClientDetailModal, setShowClientDetailModal] = useState(false);
   const [showPartyDetailModal, setShowPartyDetailModal] = useState(false);
   const [showDebtDetailModal, setShowDebtDetailModal] = useState(false);
+  const [openLawsuitModal, setOpenLawsuitModal] = useState(false);
+  const [openScheduleModal, setOpenScheduleModal] = useState(false);
+  const [openRecoveryModal, setOpenRecoveryModal] = useState(false);
+  const [openSubmissionModal, setOpenSubmissionModal] = useState(false);
+  const [editingLawsuit, setEditingLawsuit] = useState(null);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+  const [editingSubmission, setEditingSubmission] = useState(null);
+  const [editingRecovery, setEditingRecovery] = useState(null);
 
   // 추가 상태 관리
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -960,6 +972,39 @@ export default function CasePage() {
     }
   };
 
+  // 소송 생성 또는 수정 후 콜백 함수
+  const onLawsuitCreated = async () => {
+    // 소송 정보가 변경되면 사건 정보를 새로 불러옵니다
+    toast.success("소송 정보가 저장되었습니다");
+    await fetchCaseDetails();
+  };
+
+  // 일정 추가 후 콜백 함수
+  const onScheduleAdded = async () => {
+    // 일정 정보가 변경되면 사건 정보를 새로 불러옵니다
+    toast.success("일정 정보가 저장되었습니다");
+    await fetchCaseDetails();
+    setEditingLawsuit(null);
+    setEditingSchedule(null);
+  };
+
+  // 회수 활동 추가 후 콜백 함수
+  const onRecoveryAdded = async () => {
+    // 회수 활동 정보가 변경되면 사건 정보를 새로 불러옵니다
+    toast.success("회수 활동 정보가 저장되었습니다");
+    await fetchCaseDetails();
+    setEditingRecovery(null);
+  };
+
+  // 제출 서류 추가 후 콜백 함수
+  const onSubmissionAdded = async () => {
+    // 제출 서류 정보가 변경되면 사건 정보를 새로 불러옵니다
+    toast.success("제출 서류 정보가 저장되었습니다");
+    await fetchCaseDetails();
+    setEditingLawsuit(null);
+    setEditingSubmission(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
       <div className="container p-6 mx-auto">
@@ -1382,6 +1427,52 @@ export default function CasePage() {
           caseData={caseData}
           user={user}
           onUpdateDebtInfo={handleUpdateDebtInfo}
+        />
+
+        <AddLawsuitModal
+          open={openLawsuitModal}
+          onOpenChange={setOpenLawsuitModal}
+          parties={parties}
+          onSuccess={onLawsuitCreated}
+          caseId={caseId}
+          caseDetails={caseData}
+          clients={clients}
+        />
+
+        <ScheduleFormModal
+          open={openScheduleModal}
+          onOpenChange={setOpenScheduleModal}
+          lawsuit={editingLawsuit}
+          onSuccess={onScheduleAdded}
+          editingSchedule={editingSchedule}
+          caseDetails={caseData}
+          clients={clients}
+        />
+
+        <RecoveryActivityModal
+          open={openRecoveryModal}
+          onOpenChange={setOpenRecoveryModal}
+          onSuccess={onRecoveryAdded}
+          caseId={caseId}
+          user={user}
+          parties={parties}
+          activity={editingRecovery}
+          isEditing={!!editingRecovery}
+          caseDetails={caseData}
+          clients={clients}
+        />
+
+        <AddSubmissionModal
+          open={openSubmissionModal}
+          onOpenChange={setOpenSubmissionModal}
+          onSuccess={onSubmissionAdded}
+          caseId={caseId}
+          lawsuitId={editingLawsuit?.id}
+          parties={parties}
+          lawsuitType={editingLawsuit?.lawsuit_type}
+          editingSubmission={editingSubmission}
+          caseDetails={caseData}
+          clients={clients}
         />
       </div>
     </div>

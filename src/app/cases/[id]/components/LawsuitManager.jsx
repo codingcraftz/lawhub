@@ -236,35 +236,129 @@ export default function LawsuitManager({ caseId, onDataChange }) {
 
   const handleDeleteLawsuit = async (lawsuitId) => {
     try {
-      // 1. 해당 소송에 속한 모든 제출 삭제
-      const { error: submissionsError } = await supabase
-        .from("test_lawsuit_submissions")
-        .delete()
-        .eq("lawsuit_id", lawsuitId);
+      console.log("소송 삭제 시작:", lawsuitId);
 
-      if (submissionsError) throw submissionsError;
+      // 0. 삭제 전 테이블과 소송 데이터 확인
+      try {
+        const { data, error } = await supabase
+          .from("test_case_lawsuits")
+          .select("*")
+          .eq("id", lawsuitId)
+          .single();
+
+        if (error) {
+          console.error("소송 데이터 확인 실패:", error);
+        } else {
+          console.log("삭제할 소송 데이터:", data);
+        }
+      } catch (checkError) {
+        console.error("소송 데이터 확인 중 오류:", checkError);
+      }
+
+      // 1. 해당 소송에 속한 모든 제출 삭제
+      try {
+        console.log("제출 서류 삭제 시작");
+        const { data: submissionsData, error: submissionsCheckError } = await supabase
+          .from("test_lawsuit_submissions")
+          .select("count")
+          .eq("lawsuit_id", lawsuitId);
+
+        if (submissionsCheckError) {
+          console.error("제출 서류 조회 실패:", submissionsCheckError);
+        } else {
+          console.log("삭제할 제출 서류 수:", submissionsData);
+        }
+
+        const { error: submissionsError } = await supabase
+          .from("test_lawsuit_submissions")
+          .delete()
+          .eq("lawsuit_id", lawsuitId);
+
+        if (submissionsError) {
+          console.error("제출 서류 삭제 실패:", submissionsError);
+        } else {
+          console.log("제출 서류 삭제 완료");
+        }
+      } catch (submissionsDeleteError) {
+        console.error("제출 서류 삭제 중 오류:", submissionsDeleteError);
+        // 오류가 발생해도 계속 진행
+      }
 
       // 2. 해당 소송에 속한 기일 정보 삭제
-      const { error: schedulesError } = await supabase
-        .from("test_lawsuit_schedules")
-        .delete()
-        .eq("lawsuit_id", lawsuitId);
+      try {
+        console.log("기일 정보 삭제 시작");
+        const { data: schedulesData, error: schedulesCheckError } = await supabase
+          .from("test_schedules")
+          .select("id") // count 대신 id만 조회
+          .eq("lawsuit_id", lawsuitId);
 
-      if (schedulesError) throw schedulesError;
+        if (schedulesCheckError) {
+          console.error("기일 정보 조회 실패:", schedulesCheckError);
+        } else {
+          console.log(`삭제할 기일 정보 수: ${schedulesData ? schedulesData.length : 0}개`);
+        }
+
+        const { error: schedulesError } = await supabase
+          .from("test_schedules")
+          .delete()
+          .eq("lawsuit_id", lawsuitId);
+
+        if (schedulesError) {
+          console.error("기일 정보 삭제 실패:", schedulesError);
+        } else {
+          console.log("기일 정보 삭제 완료");
+        }
+      } catch (schedulesDeleteError) {
+        console.error("기일 정보 삭제 중 오류:", schedulesDeleteError);
+        // 오류가 발생해도 계속 진행
+      }
 
       // 3. 해당 소송에 속한 당사자 관계 삭제
-      const { error: partiesError } = await supabase
-        .from("test_lawsuit_parties")
-        .delete()
-        .eq("lawsuit_id", lawsuitId);
+      try {
+        console.log("소송 당사자 관계 삭제 시작");
+        const { data: partiesData, error: partiesCheckError } = await supabase
+          .from("test_lawsuit_parties")
+          .select("count")
+          .eq("lawsuit_id", lawsuitId);
 
-      if (partiesError) throw partiesError;
+        if (partiesCheckError) {
+          console.error("소송 당사자 관계 조회 실패:", partiesCheckError);
+        } else {
+          console.log("삭제할 소송 당사자 관계 수:", partiesData);
+        }
+
+        const { error: partiesError } = await supabase
+          .from("test_lawsuit_parties")
+          .delete()
+          .eq("lawsuit_id", lawsuitId);
+
+        if (partiesError) {
+          console.error("소송 당사자 관계 삭제 실패:", partiesError);
+        } else {
+          console.log("소송 당사자 관계 삭제 완료");
+        }
+      } catch (partiesDeleteError) {
+        console.error("소송 당사자 관계 삭제 중 오류:", partiesDeleteError);
+        // 오류가 발생해도 계속 진행
+      }
 
       // 4. 마지막으로 소송 자체 삭제
-      const { error } = await supabase.from("test_case_lawsuits").delete().eq("id", lawsuitId);
+      try {
+        console.log("소송 삭제 시작");
+        const { error } = await supabase.from("test_case_lawsuits").delete().eq("id", lawsuitId);
 
-      if (error) throw error;
+        if (error) {
+          console.error("소송 삭제 실패:", error);
+          throw error; // 소송 삭제 실패는 중요하므로 예외 발생
+        } else {
+          console.log("소송 삭제 완료");
+        }
+      } catch (lawsuitDeleteError) {
+        console.error("소송 삭제 중 오류:", lawsuitDeleteError);
+        throw lawsuitDeleteError; // 소송 삭제 실패는 중요하므로 예외 발생
+      }
 
+      console.log("소송 삭제 성공");
       toast.success("소송 정보가 삭제되었습니다");
 
       // 소송 목록 새로고침
@@ -277,7 +371,7 @@ export default function LawsuitManager({ caseId, onDataChange }) {
       // 데이터 변경 알림
       if (onDataChange) onDataChange();
     } catch (error) {
-      console.error("소송 삭제 실패:", error);
+      console.error("소송 삭제 실패:", error.message || error);
       toast.error("소송 삭제에 실패했습니다");
     }
   };
@@ -526,11 +620,11 @@ export default function LawsuitManager({ caseId, onDataChange }) {
             ) : (
               lawsuits.map((lawsuit) => {
                 const type = LAWSUIT_TYPES[lawsuit.lawsuit_type] || {
-                  label: lawsuit.lawsuit_type,
+                  label: lawsuits.lawsuit_type,
                   variant: "default",
                 };
                 const status = LAWSUIT_STATUS[lawsuit.status] || {
-                  label: lawsuit.status,
+                  label: lawsuits.status,
                   variant: "default",
                 };
 

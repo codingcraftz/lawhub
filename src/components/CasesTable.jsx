@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import { supabase } from "@/utils/supabase";
 import { getStatusByValue, getCaseTypeByValue, getDebtCategoryByValue } from "@/utils/constants";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -454,11 +456,12 @@ export function CasesTable({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800">
-                  <TableHead className="pl-4">상태</TableHead>
-                  <TableHead>당사자</TableHead>
-                  <TableHead>원리금</TableHead>
-                  <TableHead>회수금</TableHead>
-                  <TableHead className="hidden sm:table-cell text-center">회수율</TableHead>
+                  <TableHead className="text-center">상태</TableHead>
+                  <TableHead className="text-center">회수율</TableHead>
+                  <TableHead className="text-center">채권자</TableHead>
+                  <TableHead className="text-center">채무자</TableHead>
+                  <TableHead className="text-center">원금</TableHead>
+                  <TableHead className="text-center">회수금</TableHead>
                   <TableHead className="text-center">알림</TableHead>
                   <TableHead className="text-center">관리</TableHead>
                 </TableRow>
@@ -487,48 +490,10 @@ export function CasesTable({
                       className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
                       onClick={() => router.push(`/cases/${caseItem.id}`)}
                     >
-                      <TableCell className="py-3 pl-4">
+                      <TableCell className="flex justify-center items-center my-3">
                         {getCaseStatusBadge(caseItem.status)}
                       </TableCell>
-                      <TableCell className="py-3">
-                        <div className="flex gap-2 justify-start">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 text-blue-600 border-blue-200 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
-                              >
-                                채권자
-                              </Badge>
-                              <span className="text-sm truncate max-w-[190px]">
-                                {caseItem.creditor_name || "-"}
-                              </span>
-                            </div>
-                            <div className="items-center">
-                              <Badge
-                                variant="outline"
-                                className="bg-destructive/10 text-destructive border-destructive/20 mr-2 text-xs font-medium px-1.5 w-[55px] text-center flex-shrink-0"
-                              >
-                                채무자
-                              </Badge>
-                              <span className="text-sm truncate max-w-[190px]">
-                                {caseItem.debtor_name || "-"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <span className="font-medium text-gray-900 dark:text-gray-100 text-sm md:text-base">
-                          {formatCurrency(caseItem.principal_amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <span className="font-medium text-gray-700 dark:text-gray-300 text-sm md:text-base">
-                          {formatCurrency(caseItem.recovered_amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell py-3 ">
+                      <TableCell className="text-center">
                         {(() => {
                           const recoveryRate =
                             caseItem.principal_amount && caseItem.recovered_amount
@@ -575,8 +540,81 @@ export function CasesTable({
                           );
                         })()}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col gap-1 items-center justify-center">
+                          <div className="flex items-center">
+                            <CircleDollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+                            <span className="font-medium">
+                              {caseItem.creditor_name || "미지정"}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col gap-1 items-center justify-center">
+                          <div className="flex items-center">
+                            <Scale className="w-4 h-4 mr-2 text-muted-foreground" />
+                            <span className="font-medium">{caseItem.debtor_name || "미지정"}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground ml-6">
+                            {caseItem.debtor_kcb_checked ? (
+                              <>
+                                <span className="text-indigo-600 font-medium">KCB조회</span>
+                                {caseItem.debtor?.kcb_checked_date && (
+                                  <span className="text-xs ml-1">
+                                    (
+                                    {format(new Date(caseItem.debtor.kcb_checked_date), "yy.MM.dd")}
+                                    )
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-amber-600">KCB미조회</span>
+                              </>
+                            )}{" "}
+                            ·{" "}
+                            {caseItem.debtor_payment_notification_sent ? (
+                              <>
+                                <span className="text-emerald-600 font-medium">변제통보</span>
+                                {caseItem.debtor?.payment_notification_date && (
+                                  <span className="text-xs ml-1">
+                                    (
+                                    {format(
+                                      new Date(caseItem.debtor.payment_notification_date),
+                                      "yy.MM.dd"
+                                    )}
+                                    )
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-gray-500">변제통보 미발송</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col gap-2 items-center justify-center">
+                          <div className="flex items-center">
+                            <GanttChartSquare className="w-4 h-4 mr-2 text-muted-foreground" />
+                            <span>{formatCurrency(caseItem.principal_amount)}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col gap-2 items-center justify-center">
+                          <div className="flex items-center">
+                            <CircleDollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                              {formatCurrency(caseItem.recovered_amount)}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center py-3">
-                        {/* 알림 버튼 */}
                         {getUnreadNotificationCount(caseItem.id) > 0 ? (
                           <Button
                             variant="ghost"
@@ -602,7 +640,6 @@ export function CasesTable({
                         )}
                       </TableCell>
                       <TableCell className="text-center py-3 pr-4">
-                        {/* 기존 메뉴 버튼 */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

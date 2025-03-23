@@ -5,8 +5,8 @@ import { supabaseAdmin } from "@/utils/supabaseAdmin";
 const authOptions = {
   providers: [
     KakaoProvider({
-      clientId: process.env.NEXT_PUBLIC_KAKAO_API_KEY,
-      clientSecret: process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY,
+      clientId: process.env.KAKAO_API_KEY,
+      clientSecret: process.env.KAKAO_REST_API_KEY,
     }),
   ],
   callbacks: {

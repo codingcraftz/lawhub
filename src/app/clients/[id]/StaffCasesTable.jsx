@@ -281,10 +281,13 @@ export function StaffCasesTable({
 
     // 페이지 변경 핸들러
     const handlePageClick = (page, e) => {
-      e.preventDefault();
-      e.stopPropagation(); // 이벤트 버블링 방지
+      // 이벤트 중지
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation(); // 이벤트 버블링 방지
+      }
 
-      // 현재 페이지와 같은 페이지를 클릭한 경우 아무것도 하지 않음
+      // 성능 최적화: 같은 페이지 클릭 시 작업 중단
       if (page === currentPage) {
         console.log("이미 현재 페이지입니다:", page);
         return;
@@ -312,11 +315,13 @@ export function StaffCasesTable({
       }
     };
 
+    // 이벤트 버블링 방지를 위한 컨테이너 클릭 핸들러
+    const handleContainerClick = (e) => {
+      e.stopPropagation();
+    };
+
     return (
-      <div
-        className="flex items-center justify-center mt-4 gap-1"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex items-center justify-center mt-4 gap-1" onClick={handleContainerClick}>
         {/* 처음 페이지로 버튼 */}
         <button
           onClick={(e) => handlePageClick(1, e)}
@@ -326,6 +331,7 @@ export function StaffCasesTable({
               ? "text-gray-400 cursor-not-allowed"
               : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
+          aria-label="첫 페이지로 이동"
         >
           <svg
             className="w-4 h-4"
@@ -350,6 +356,7 @@ export function StaffCasesTable({
               ? "text-gray-400 cursor-not-allowed"
               : "text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
+          aria-label="이전 페이지로 이동"
         >
           <svg
             className="w-4 h-4"

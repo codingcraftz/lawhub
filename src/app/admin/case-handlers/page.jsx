@@ -123,50 +123,163 @@ export default function CaseHandlersPage() {
     try {
       console.log("담당자 관리 페이지 - 사건 정보 로딩 중...");
 
-      // 모든 사건 가져오기
+      // 모든 사건 가져오기 - deleted_at 컬럼이 없으므로 해당 조건 제거
       const { data: casesData, error: casesError } = await supabase
         .from("test_cases")
         .select("*")
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-      if (casesError) throw casesError;
+      if (casesError) {
+        console.error("사건 데이터 가져오기 실패:", casesError);
+        throw casesError;
+      }
+
+      if (!casesData) {
+        console.error("사건 데이터가 없습니다.");
+        throw new Error("사건 데이터가 없습니다.");
+      }
+
+      console.log(`${casesData.length}개의 사건 데이터를 가져왔습니다.`);
+
+      if (casesData.length === 0) {
+        setCases([]);
+        setFilteredCases([]);
+        setTotalItems(0);
+        setTotalPages(0);
+        setLoading(false);
+        return;
+      }
 
       // 담당자 정보 가져오기
       const { data: handlersData, error: handlersError } = await supabase
         .from("test_case_handlers")
         .select("case_id, user_id, user:user_id(id, name, profile_image)");
 
-      if (handlersError) throw handlersError;
+      if (handlersError) {
+        console.error("담당자 데이터 가져오기 실패:", handlersError);
+        throw handlersError;
+      }
 
-      // 모든 사건 정보에 담당자 정보와 상태 정보 추가하기
-      const casesWithHandlers = casesData.map((caseItem) => {
-        // 담당자 정보 추가
-        const handlers = handlersData.filter((h) => h.case_id === caseItem.id) || [];
+      if (!handlersData) {
+        console.warn("담당자 데이터가 없습니다.");
+      } else {
+        console.log(`${handlersData.length}개의 담당자 데이터를 가져왔습니다.`);
+      }
 
-        // status_id로 상태 정보 가져오기
-        let statusInfo = { name: "알 수 없음", color: "#999999" };
-        if (caseItem.status_id) {
-          statusInfo = getStatusById(caseItem.status_id);
+      // 각 사건의 당사자 정보를 가져와서 사건 정보 보강
+      const enrichedCases = await enrichCasesWithPartyInfo(casesData || []);
+      console.log("당사자 정보 보강 완료");
+
+      // 사건번호 정보 가져오기 (test_case_lawsuits 테이블에서)
+      const caseIds = casesData.map((c) => c.id);
+      const { data: lawsuitsData, error: lawsuitsError } = await supabase
+        .from("test_case_lawsuits")
+        .select("case_id, case_number, id")
+        .in("case_id", caseIds);
+
+      if (lawsuitsError) {
+        console.error("소송 정보 가져오기 실패:", lawsuitsError);
+      } else {
+        console.log(`${lawsuitsData?.length || 0}개의 소송 정보를 가져왔습니다.`);
+      }
+
+      // 사건 정보에 소송 정보 매핑 (사건번호)
+      const caseNumberMap = {};
+      if (lawsuitsData && lawsuitsData.length > 0) {
+        lawsuitsData.forEach((lawsuit) => {
+          if (lawsuit.case_id && lawsuit.case_number) {
+            if (!caseNumberMap[lawsuit.case_id]) {
+              caseNumberMap[lawsuit.case_id] = lawsuit.case_number;
+            }
+          }
+        });
+      }
+
+      // 모든 사건 정보에 담당자 정보와 소송번호 추가하기
+      const casesWithHandlers = enrichedCases.map((caseItem) => {
+        try {
+          // 담당자 정보 추가
+          const handlers = handlersData
+            ? handlersData.filter((h) => h.case_id === caseItem.id) || []
+            : [];
+
+          // status_id로 상태 정보 가져오기
+          let statusInfo = { name: "알 수 없음", color: "#999999" };
+          try {
+            if (caseItem.status_id) {
+              statusInfo = getStatusById(caseItem.status_id);
+            }
+          } catch (statusErr) {
+            console.error("상태 정보 가져오기 실패:", statusErr, caseItem.status_id);
+          }
+
+          return {
+            ...caseItem,
+            handlers: handlers.map((h) => h.user),
+            // 소송 번호 추가
+            case_number: caseNumberMap[caseItem.id] || null,
+            // 상태 정보 추가
+            status_info: statusInfo,
+            // 검색어와 일치하는지 확인 - 하이라이트 표시용
+            search_matched_creditor:
+              searchTerm.trim() &&
+              caseItem.creditor_name &&
+              caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase()),
+            search_matched_debtor:
+              searchTerm.trim() &&
+              caseItem.debtor_name &&
+              caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()),
+            search_matched_case_number:
+              searchTerm.trim() &&
+              caseNumberMap[caseItem.id] &&
+              caseNumberMap[caseItem.id].toLowerCase().includes(searchTerm.toLowerCase()),
+          };
+        } catch (itemError) {
+          console.error("사건 정보 처리 중 오류:", itemError, caseItem);
+          return {
+            ...caseItem,
+            handlers: [],
+            case_number: caseNumberMap[caseItem.id] || null,
+            status_info: { name: "알 수 없음", color: "#999999" },
+            search_matched_creditor: false,
+            search_matched_debtor: false,
+            search_matched_case_number: false,
+          };
         }
-
-        return {
-          ...caseItem,
-          handlers: handlers.map((h) => h.user),
-          status_info: {
-            name: statusInfo.name,
-            color: statusInfo.color,
-          },
-        };
       });
 
       setCases(casesWithHandlers);
-      setFilteredCases(casesWithHandlers);
-      setTotalItems(casesWithHandlers.length);
-      setTotalPages(Math.ceil(casesWithHandlers.length / itemsPerPage));
+
+      // 검색어로 필터링
+      let filtered = [...casesWithHandlers];
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(
+          (c) =>
+            (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+            (c.debtor_name && c.debtor_name.toLowerCase().includes(term)) ||
+            (c.case_number && c.case_number.toLowerCase().includes(term))
+        );
+      }
+
+      setFilteredCases(filtered);
+      setTotalItems(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / itemsPerPage));
     } catch (error) {
       console.error("사건 정보 로딩 실패:", error);
-      toast.error("사건 정보를 불러오는데 실패했습니다");
+      console.error(
+        "오류 세부 정보:",
+        error?.message || "오류 세부 정보 없음",
+        error?.code || "코드 없음"
+      );
+
+      // 빈 배열로 상태 설정하여 UI가 정상적으로 표시되도록 함
+      setCases([]);
+      setFilteredCases([]);
+      setTotalItems(0);
+      setTotalPages(0);
+
+      toast.error(`사건 정보를 불러오는데 실패했습니다: ${error?.message || "알 수 없는 오류"}`);
     } finally {
       setLoading(false);
     }
@@ -175,27 +288,56 @@ export default function CaseHandlersPage() {
   // 담당자 정보 가져오기
   const fetchHandlers = async () => {
     try {
+      console.log("담당자 정보 가져오기 시작...");
       const { data: handlersData, error: handlersError } = await supabase
         .from("test_case_handlers")
         .select("*, user:user_id(id, name, email, profile_image, role, employee_type)");
 
-      if (handlersError) throw handlersError;
+      if (handlersError) {
+        console.error("담당자 정보 가져오기 실패:", handlersError);
+        throw handlersError;
+      }
+
+      if (!handlersData) {
+        console.warn("담당자 데이터가 없습니다.");
+        setHandlers([]);
+        return;
+      }
+
+      console.log(`${handlersData.length}개의 담당자 정보를 가져왔습니다.`);
       setHandlers(handlersData || []);
     } catch (error) {
       console.error("담당자 정보 가져오기 실패:", error);
-      toast.error("담당자 정보를 불러오는데 실패했습니다");
+      toast.error(
+        "담당자 정보를 불러오는데 실패했습니다: " + (error?.message || "알 수 없는 오류")
+      );
+      setHandlers([]); // 에러 발생 시 빈 배열로 설정
     }
   };
 
   // 직원 사용자 목록 가져오기
   const fetchStaffUsers = async () => {
     try {
+      console.log("직원 목록 가져오기 시작...");
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("*")
         .eq("role", "staff");
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error("직원 목록 가져오기 실패:", userError);
+        throw userError;
+      }
+
+      if (!userData) {
+        console.warn("직원 데이터가 없습니다.");
+        setStaffUsers([]);
+        setFilteredStaff([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log(`${userData.length}명의 직원 정보를 가져왔습니다.`);
       setStaffUsers(userData || []);
       setFilteredStaff(userData || []);
 
@@ -203,7 +345,16 @@ export default function CaseHandlersPage() {
       setLoading(false);
     } catch (error) {
       console.error("직원 목록 가져오기 실패:", error);
-      toast.error("직원 목록을 불러오는데 실패했습니다");
+      console.error(
+        "오류 세부 정보:",
+        error?.message || "오류 세부 정보 없음",
+        error?.code || "코드 없음"
+      );
+      toast.error("직원 목록을 불러오는데 실패했습니다: " + (error?.message || "알 수 없는 오류"));
+
+      // 에러가 발생해도 빈 배열로 설정하여 UI가 정상적으로 표시되도록 함
+      setStaffUsers([]);
+      setFilteredStaff([]);
       setLoading(false);
     }
   };
@@ -478,23 +629,95 @@ export default function CaseHandlersPage() {
 
     setIsFetchingCases(true);
     try {
-      // 사건 정보 가져오기
+      console.log(`${caseIds.length}개 담당 사건 정보 가져오기 시작...`);
+
+      // 사건 정보 가져오기 - status_id:status_id(*) 대신 status_id만 가져옵니다
       const { data: casesData, error: casesError } = await supabase
         .from("test_cases")
-        .select("*, status_info:status_id(*)")
+        .select("*")
         .in("id", caseIds)
         .order("created_at", { ascending: false });
 
-      if (casesError) throw casesError;
+      if (casesError) {
+        console.error("담당 사건 정보 가져오기 실패:", casesError);
+        throw casesError;
+      }
+
+      if (!casesData || casesData.length === 0) {
+        console.warn("담당 사건이 없습니다.");
+        setCases([]);
+        setFilteredCases([]);
+        setIsFetchingCases(false);
+        return;
+      }
+
+      console.log(`${casesData.length}개의 담당 사건 정보를 가져왔습니다.`);
+
+      // 소송 정보 가져오기 (사건번호)
+      const { data: lawsuitsData, error: lawsuitsError } = await supabase
+        .from("test_case_lawsuits")
+        .select("case_id, case_number")
+        .in("case_id", caseIds);
+
+      if (lawsuitsError) {
+        console.error("소송 정보 가져오기 실패:", lawsuitsError);
+      } else {
+        console.log(`${lawsuitsData?.length || 0}개의 소송 정보를 가져왔습니다.`);
+      }
+
+      // 사건 정보에 소송 정보 매핑 (사건번호)
+      const caseNumberMap = {};
+      if (lawsuitsData && lawsuitsData.length > 0) {
+        lawsuitsData.forEach((lawsuit) => {
+          if (lawsuit.case_id && lawsuit.case_number) {
+            if (!caseNumberMap[lawsuit.case_id]) {
+              caseNumberMap[lawsuit.case_id] = lawsuit.case_number;
+            }
+          }
+        });
+      }
 
       // 각 사건의 당사자 정보 가져오기
-      const caseParties = await enrichCasesWithPartyInfo(casesData || []);
+      const enrichedCases = await enrichCasesWithPartyInfo(casesData || []);
 
-      setCases(caseParties);
-      setFilteredCases(caseParties);
+      // 사건번호 정보 추가
+      const finalCases = enrichedCases.map((caseItem) => {
+        // status_id로 상태 정보 가져오기
+        let statusInfo = { name: "알 수 없음", color: "#999999" };
+        try {
+          if (caseItem.status_id) {
+            statusInfo = getStatusById(caseItem.status_id);
+          }
+        } catch (statusErr) {
+          console.error("상태 정보 가져오기 실패:", statusErr, caseItem.status_id);
+        }
+
+        return {
+          ...caseItem,
+          case_number: caseNumberMap[caseItem.id] || null,
+          status_info: statusInfo,
+          search_matched_creditor: false,
+          search_matched_debtor: false,
+          search_matched_case_number: false,
+        };
+      });
+
+      setCases(finalCases);
+      setFilteredCases(finalCases);
     } catch (error) {
       console.error("담당 사건 정보 가져오기 실패:", error);
-      toast.error("담당 사건 정보를 불러오는데 실패했습니다");
+      console.error(
+        "오류 세부 정보:",
+        error?.message || "오류 세부 정보 없음",
+        error?.code || "코드 없음"
+      );
+      toast.error(
+        "담당 사건 정보를 불러오는데 실패했습니다: " + (error?.message || "알 수 없는 오류")
+      );
+
+      // 빈 배열로 상태 설정하여 UI가 정상적으로 표시되도록 함
+      setCases([]);
+      setFilteredCases([]);
     } finally {
       setIsFetchingCases(false);
     }
@@ -505,6 +728,7 @@ export default function CaseHandlersPage() {
     if (!cases || cases.length === 0) return [];
 
     const caseIds = cases.map((c) => c.id);
+    console.log(`총 ${caseIds.length}개 사건의 당사자 정보 가져오기 시작`);
 
     try {
       // 각 사건의 당사자 정보 가져오기
@@ -513,7 +737,16 @@ export default function CaseHandlersPage() {
         .select("*")
         .in("case_id", caseIds);
 
-      if (partiesError) throw partiesError;
+      if (partiesError) {
+        console.error("당사자 정보 가져오기 실패:", partiesError);
+        throw partiesError;
+      }
+
+      if (!partiesData) {
+        console.warn("당사자 정보가 없습니다.");
+      } else {
+        console.log(`${partiesData.length}개의 당사자 정보를 가져왔습니다.`);
+      }
 
       // 이자 정보 가져오기
       const { data: interestsData, error: interestsError } = await supabase
@@ -521,25 +754,62 @@ export default function CaseHandlersPage() {
         .select("*")
         .in("case_id", caseIds);
 
-      if (interestsError) throw interestsError;
+      if (interestsError) {
+        console.error("이자 정보 가져오기 실패:", interestsError);
+        throw interestsError;
+      }
 
       // 당사자 정보와 원리금 정보로 사건 정보 보강
-      return cases.map((caseItem) => {
+      const enrichedCases = cases.map((caseItem) => {
+        // 당사자 정보 필터링
         const caseParties = partiesData
           ? partiesData.filter((p) => p.case_id === caseItem.id) || []
           : [];
 
+        // 이자 정보 필터링
         const caseInterests = interestsData
           ? interestsData.filter((i) => i.case_id === caseItem.id) || []
           : [];
 
+        // 채권자(원고, 신청인) 찾기
         const creditor = caseParties.find((p) =>
           ["creditor", "plaintiff", "applicant"].includes(p.party_type)
         );
 
+        // 채무자(피고, 피신청인) 찾기
         const debtor = caseParties.find((p) =>
           ["debtor", "defendant", "respondent"].includes(p.party_type)
         );
+
+        // 채권자 이름 결정 (개인 또는 법인)
+        let creditorName = null;
+        if (creditor) {
+          try {
+            if (creditor.entity_type === "individual") {
+              creditorName = creditor.name || "이름 없음";
+            } else {
+              creditorName = creditor.company_name || "회사명 없음";
+            }
+          } catch (err) {
+            console.error("채권자 정보 처리 중 오류:", err, creditor);
+            creditorName = "정보 오류";
+          }
+        }
+
+        // 채무자 이름 결정 (개인 또는 법인)
+        let debtorName = null;
+        if (debtor) {
+          try {
+            if (debtor.entity_type === "individual") {
+              debtorName = debtor.name || "이름 없음";
+            } else {
+              debtorName = debtor.company_name || "회사명 없음";
+            }
+          } catch (err) {
+            console.error("채무자 정보 처리 중 오류:", err, debtor);
+            debtorName = "정보 오류";
+          }
+        }
 
         // 원금 (principal_amount가 있으면 사용, 없으면 0)
         const principal = parseFloat(caseItem.principal_amount || 0);
@@ -547,34 +817,41 @@ export default function CaseHandlersPage() {
         // 이자 계산
         let totalInterest = 0;
 
-        // 간단한 이자 계산 (실제로는 더 복잡한 계산이 필요할 수 있음)
-        caseInterests.forEach((interest) => {
-          const rate = parseFloat(interest.rate || 0) / 100; // 비율로 변환
-          // 원금에 이자율을 곱한 값을 이자로 간주 (실제로는 기간에 따른 계산 필요)
-          totalInterest += principal * rate;
-        });
+        // 이자 계산 로직
+        if (caseInterests && caseInterests.length > 0) {
+          try {
+            caseInterests.forEach((interest) => {
+              const rate = parseFloat(interest.rate || 0) / 100; // 비율로 변환
+              // 원금에 이자율을 곱한 값을 이자로 간주
+              totalInterest += principal * rate;
+            });
+          } catch (err) {
+            console.error("이자 계산 중 오류:", err);
+          }
+        }
 
         // 총 원리금 계산
         const totalDebt = principal + totalInterest;
 
         return {
           ...caseItem,
-          creditor_name: creditor
-            ? creditor.entity_type === "individual"
-              ? creditor.name
-              : creditor.company_name
-            : null,
-          debtor_name: debtor
-            ? debtor.entity_type === "individual"
-              ? debtor.name
-              : debtor.company_name
-            : null,
+          creditor_name: creditorName,
+          debtor_name: debtorName,
           total_debt: totalDebt,
         };
       });
+
+      console.log(`${enrichedCases.length}개 사건의 당사자 정보 보강 완료`);
+      return enrichedCases;
     } catch (err) {
       console.error("사건 정보 보강 실패:", err);
-      return cases;
+      // 오류가 발생해도 원본 사건 정보는 반환
+      return cases.map((caseItem) => ({
+        ...caseItem,
+        creditor_name: null,
+        debtor_name: null,
+        total_debt: parseFloat(caseItem.principal_amount || 0),
+      }));
     }
   };
 
@@ -1043,6 +1320,22 @@ export default function CaseHandlersPage() {
                                 <div className="flex items-center font-medium">
                                   <FileText className="h-4 w-4 mr-2 text-gray-500" />
                                   {caseItem.id ? caseItem.id.substring(0, 8) + "..." : "ID 미지정"}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {caseItem.case_number ? (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "text-xs",
+                                        caseItem.search_matched_case_number &&
+                                          "bg-yellow-100 dark:bg-yellow-900/20 border-yellow-200"
+                                      )}
+                                    >
+                                      {caseItem.case_number}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">사건번호 없음</span>
+                                  )}
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {getCaseStatusBadge(caseItem.status, caseItem.status_info)}
