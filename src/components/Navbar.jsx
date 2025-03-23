@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "@/contexts/UserContext";
 import { usePathname } from "next/navigation";
@@ -42,6 +42,19 @@ export default function Navbar() {
   const { user, loading, signOut, isAdmin, isStaff, isClient } = useUser();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+
+  // 디버깅을 위한 코드
+  useEffect(() => {
+    console.log("🧭 Navbar - 사용자 상태:", user ? "로그인됨" : "로그인되지 않음");
+    console.log("🧭 Navbar - 로딩 상태:", loading ? "로딩 중" : "로딩 완료");
+    if (user) {
+      console.log("🧭 Navbar - 사용자 정보:", user);
+      console.log("🧭 Navbar - 사용자 역할:", user.role);
+      console.log("🧭 Navbar - 관리자?", isAdmin());
+      console.log("🧭 Navbar - 스태프?", isStaff());
+      console.log("🧭 Navbar - 클라이언트?", isClient());
+    }
+  }, [user, loading, isAdmin, isStaff, isClient]);
 
   // 현재 경로에 따라 네비게이션 아이템의 활성화 상태 결정
   const isActive = (path) => {
@@ -379,7 +392,9 @@ export default function Navbar() {
                     variant={isActive("/debts") ? "default" : "ghost"}
                     className={cn(
                       "w-full justify-start",
-                      isActive("/debts") ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""
+                      isActive("/debts")
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
                     )}
                   >
                     <Briefcase className="mr-2 h-5 w-5" />

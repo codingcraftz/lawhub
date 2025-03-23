@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSession, signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,32 +13,77 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { supabase } from "@/utils/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const [loading, setLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    // 이미 로그인한 사용자는 홈으로 리다이렉트
-    if (status === "authenticated" && session) {
-      setIsRedirecting(true);
-      router.push("/");
-    }
-  }, [session, status, router]);
+    // 이미 로그인한 사용자 확인
+    const checkSession = async () => {
+      try {
+        console.log("🔍 로그인 페이지 - 세션 확인 중...");
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("🔴 로그인 페이지 - 세션 확인 오류:", error);
+          setLoading(false);
+          return;
+        }
+
+        console.log("🔑 로그인 페이지 - 세션 데이터:", data.session ? "세션 있음" : "세션 없음");
+
+        if (data?.session) {
+          console.log("✅ 로그인 페이지 - 이미 로그인됨, 홈으로 리디렉션");
+          setIsRedirecting(true);
+          router.push("/");
+        } else {
+          console.log("ℹ️ 로그인 페이지 - 로그인 필요");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("🔴 로그인 페이지 - 세션 확인 오류:", error);
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+  }, [router]);
 
   const handleKakaoLogin = async () => {
     try {
-      await signIn("kakao", { callbackUrl: "/" });
+      console.log("🔄 카카오 로그인 시도...");
+      // Supabase Kakao OAuth 로그인
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "kakao",
+        options: {
+          redirectTo: process.env.NEXT_PUBLIC_SITE_URL
+            ? `${process.env.NEXT_PUBLIC_SITE_URL}/`
+            : `${window.location.origin}/`,
+          scopes:
+            "profile_nickname profile_image account_email gender birthday birthyear phone_number",
+        },
+      });
+
+      if (error) {
+        console.error("🔴 카카오 로그인 오류:", error);
+        toast.error("로그인 중 오류가 발생했습니다", {
+          description: "잠시 후 다시 시도해주세요.",
+        });
+      } else {
+        console.log("✅ 카카오 로그인 리디렉션:", data);
+      }
     } catch (error) {
-      console.error("카카오 로그인 오류:", error);
+      console.error("🔴 카카오 로그인 예외:", error);
       toast.error("로그인 중 오류가 발생했습니다", {
         description: "잠시 후 다시 시도해주세요.",
       });
     }
   };
 
-  if (isRedirecting) {
+  if (loading || isRedirecting) {
     return (
       <>
         <div className="container mx-auto py-20 text-center">

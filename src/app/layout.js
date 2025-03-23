@@ -1,7 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "@/contexts/UserContext";
-import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { Toaster } from "sonner";
 import Navbar from "@/components/Navbar";
@@ -26,15 +25,13 @@ export default function RootLayout({ children }) {
     <html lang="ko" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
-          <AuthProvider>
-            <UserProvider>
-              <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-950 dark:to-gray-900">
-                <Navbar />
-                <main className="flex-1 pt-2">{children}</main>
-              </div>
-              <Toaster position="top-right" theme="system" richColors />
-            </UserProvider>
-          </AuthProvider>
+          <UserProvider>
+            <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-950 dark:to-gray-900">
+              <Navbar />
+              <main className="flex-1 pt-2">{children}</main>
+            </div>
+            <Toaster position="top-right" theme="system" richColors />
+          </UserProvider>
         </ThemeProvider>
       </body>
     </html>
