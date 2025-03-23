@@ -185,6 +185,12 @@ export default function CaseTimeline({
     }
   };
 
+  // 통합 조회 함수 추가
+  const fetchSubmissionsAndSchedules = () => {
+    fetchSubmissions();
+    fetchSchedules();
+  };
+
   const validateForm = () => {
     const errors = {};
 
@@ -214,33 +220,88 @@ export default function CaseTimeline({
     return urlData.publicUrl;
   };
 
-  const handleDelete = async (submissionId) => {
+  const handleDeleteSubmission = async (submissionId) => {
     if (!user || (user.role !== "admin" && user.role !== "staff")) {
       toast.error("권한이 없습니다", {
-        description: "관리자 또는 직원만 타임라인을 삭제할 수 있습니다",
+        description: "관리자 또는 직원만 송달문서를 삭제할 수 있습니다",
       });
       return;
     }
 
     try {
       // 1. 먼저 관련된 알림 삭제
-      const { data: notificationsData, error: notificationsError } = await supabase
+      console.log("송달문서 관련 알림 삭제 시작:", submissionId);
+
+      // 사건 알림 삭제 (test_case_notifications 테이블)
+      const { data: caseNotificationsData, error: caseNotificationsError } = await supabase
         .from("test_case_notifications")
         .delete()
         .match({
-          related_entity: "submission",
+          notification_type: "submission",
           related_id: submissionId,
         })
         .select("id");
 
-      if (notificationsError) {
-        console.error("알림 삭제 실패:", notificationsError);
-        // 알림 삭제 실패 시에도 타임라인 항목은 삭제 진행
+      if (caseNotificationsError) {
+        console.error("사건 알림 삭제 실패:", caseNotificationsError);
+        // 알림 삭제 실패 시에도 문서 삭제는 진행
       } else {
-        console.log(`${notificationsData.length}개의 관련 알림이 함께 삭제되었습니다.`);
+        console.log(`${caseNotificationsData?.length || 0}개의 사건 알림이 삭제되었습니다.`);
       }
 
-      // 2. 타임라인 항목 삭제
+      // 개인 알림 삭제 (test_individual_notifications 테이블)
+      const { data: individualNotificationsData, error: individualNotificationsError } =
+        await supabase
+          .from("test_individual_notifications")
+          .delete()
+          .match({
+            notification_type: "submission",
+            related_id: submissionId,
+          })
+          .select("id");
+
+      if (individualNotificationsError) {
+        console.error("개인 알림 삭제 실패:", individualNotificationsError);
+        // 알림 삭제 실패 시에도 문서 삭제는 진행
+      } else {
+        console.log(`${individualNotificationsData?.length || 0}개의 개인 알림이 삭제되었습니다.`);
+      }
+
+      // 해당 문서가 첨부파일을 가지고 있는지 확인
+      const { data: submissionData, error: submissionError } = await supabase
+        .from("test_lawsuit_submissions")
+        .select("file_url")
+        .eq("id", submissionId)
+        .single();
+
+      if (!submissionError && submissionData && submissionData.file_url) {
+        // 첨부파일 경로 추출
+        try {
+          const fileUrl = submissionData.file_url;
+          // URL에서 파일 경로 추출
+          const filePathMatch = fileUrl.match(/case-files\/(.+)/);
+
+          if (filePathMatch && filePathMatch[1]) {
+            const filePath = filePathMatch[1];
+            console.log("첨부파일 삭제 시도:", filePath);
+
+            // 스토리지에서 파일 삭제
+            const { error: deleteFileError } = await supabase.storage
+              .from("case-files")
+              .remove([filePath]);
+
+            if (deleteFileError) {
+              console.error("첨부파일 삭제 실패:", deleteFileError);
+            } else {
+              console.log("첨부파일이 성공적으로 삭제되었습니다.");
+            }
+          }
+        } catch (fileError) {
+          console.error("첨부파일 삭제 중 오류 발생:", fileError);
+        }
+      }
+
+      // 2. 문서 삭제
       const { error } = await supabase
         .from("test_lawsuit_submissions")
         .delete()
@@ -248,15 +309,15 @@ export default function CaseTimeline({
 
       if (error) throw error;
 
-      toast.success("타임라인 항목이 삭제되었습니다", {
-        description: "내역이 성공적으로 삭제되었습니다.",
+      toast.success("송달문서가 삭제되었습니다", {
+        description: "송달문서와 관련된 알림이 모두 삭제되었습니다.",
       });
 
       // 업데이트된 목록 가져오기
       fetchSubmissions();
     } catch (error) {
-      console.error("타임라인 삭제 실패:", error);
-      toast.error("타임라인 삭제 실패", {
+      console.error("송달문서 삭제 실패:", error);
+      toast.error("송달문서 삭제 실패", {
         description: error.message,
       });
     }
@@ -389,7 +450,9 @@ export default function CaseTimeline({
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => (isSchedule ? handleDeleteSchedule(item.id) : handleDelete(item.id))}
+                onClick={() =>
+                  isSchedule ? handleDeleteSchedule(item.id) : handleDeleteSubmission(item.id)
+                }
               >
                 <Trash className="h-3.5 w-3.5" />
               </Button>
@@ -601,55 +664,55 @@ export default function CaseTimeline({
     }
 
     try {
-      // 1. 먼저 관련된 알림 삭제 - 메시지에 기일 ID가 포함된 알림 찾기
-      const { data: notificationsData, error: notificationsError } = await supabase
+      // 1. 먼저 관련된 알림 삭제
+      console.log("기일 관련 알림 삭제 시작:", scheduleId);
+
+      // 사건 알림 삭제 (test_case_notifications 테이블)
+      const { data: caseNotificationsData, error: caseNotificationsError } = await supabase
         .from("test_case_notifications")
         .delete()
-        .like("message", `%기일 ID: ${scheduleId}%`)
+        .match({
+          notification_type: "schedule",
+          related_id: scheduleId,
+        })
         .select("id");
 
-      if (notificationsError) {
-        console.error("알림 삭제 실패:", notificationsError);
+      if (caseNotificationsError) {
+        console.error("사건 알림 삭제 실패:", caseNotificationsError);
         // 알림 삭제 실패 시에도 기일 항목은 삭제 진행
       } else {
-        console.log(`${notificationsData?.length || 0}개의 관련 알림이 함께 삭제되었습니다.`);
+        console.log(`${caseNotificationsData?.length || 0}개의 사건 알림이 삭제되었습니다.`);
       }
 
-      // 2. 또는 더 정확한 알림 삭제를 위해 해당 기일 정보로 검색
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from("test_schedules")
-        .select("event_type, case_id")
-        .eq("id", scheduleId)
-        .single();
-
-      if (!scheduleError && scheduleData) {
-        // 기일 정보를 이용해 관련 알림 추가 검색 및 삭제
-        const { data: moreNotifications, error: moreNotificationsError } = await supabase
-          .from("test_case_notifications")
+      // 개인 알림 삭제 (test_individual_notifications 테이블)
+      const { data: individualNotificationsData, error: individualNotificationsError } =
+        await supabase
+          .from("test_individual_notifications")
           .delete()
           .match({
-            case_id: scheduleData.case_id,
             notification_type: "schedule",
+            related_id: scheduleId,
           })
-          .like("message", `%${scheduleData.event_type}%`)
           .select("id");
 
-        if (!moreNotificationsError && moreNotifications) {
-          console.log(`${moreNotifications.length}개의 기일 관련 알림이 추가로 삭제되었습니다.`);
-        }
+      if (individualNotificationsError) {
+        console.error("개인 알림 삭제 실패:", individualNotificationsError);
+        // 알림 삭제 실패 시에도 기일 항목은 삭제 진행
+      } else {
+        console.log(`${individualNotificationsData?.length || 0}개의 개인 알림이 삭제되었습니다.`);
       }
 
-      // 3. 기일 항목 삭제
+      // 2. 기일 항목 삭제
       const { error } = await supabase.from("test_schedules").delete().eq("id", scheduleId);
 
       if (error) throw error;
 
       toast.success("기일이 삭제되었습니다", {
-        description: "기일이 성공적으로 삭제되었습니다.",
+        description: "기일과 관련된 알림이 모두 삭제되었습니다.",
       });
 
       // 업데이트된 목록 가져오기
-      fetchSchedules();
+      fetchSubmissionsAndSchedules();
     } catch (error) {
       console.error("기일 삭제 실패:", error);
       toast.error("기일 삭제 실패", {
@@ -947,6 +1010,7 @@ export default function CaseTimeline({
         message: message,
         notification_type: "submission",
         created_at: new Date().toISOString(),
+        related_id: editingSubmission?.id || submissionData.id,
       };
 
       console.log("알림 생성: 사건 알림 생성 시작", caseNotification);
@@ -991,6 +1055,7 @@ export default function CaseTimeline({
         is_read: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        related_id: editingSubmission?.id || submissionData.id,
       }));
 
       console.log(

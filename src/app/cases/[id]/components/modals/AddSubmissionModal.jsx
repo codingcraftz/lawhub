@@ -489,6 +489,7 @@ export default function AddSubmissionModal({
         message: message,
         notification_type: "submission",
         created_at: new Date().toISOString(),
+        related_id: editingSubmission?.id || submissionData.id,
       };
 
       console.log("알림 생성: 사건 알림 생성 시작", caseNotification);
@@ -526,6 +527,7 @@ export default function AddSubmissionModal({
         is_read: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        related_id: editingSubmission?.id || submissionData.id,
       }));
 
       console.log(

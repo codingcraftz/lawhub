@@ -427,6 +427,7 @@ export default function ScheduleFormModal({
         message: message,
         notification_type: "schedule",
         created_at: new Date().toISOString(),
+        related_id: scheduleData.id,
       };
 
       console.log("알림 생성: 사건 알림 생성 시작", caseNotification);
@@ -460,7 +461,7 @@ export default function ScheduleFormModal({
 
       console.log(`${finalUserIds.length}명의 사용자에게 개인 알림을 생성합니다:`, finalUserIds);
 
-      // 각 사용자에 대한 알림 생성 (AddLawsuitModal.jsx 참고)
+      // 각 사용자에 대한 알림 생성
       const individualNotifications = finalUserIds.map((userId) => ({
         id: uuidv4(),
         user_id: userId,
@@ -471,6 +472,7 @@ export default function ScheduleFormModal({
         is_read: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        related_id: scheduleData.id,
       }));
 
       console.log(

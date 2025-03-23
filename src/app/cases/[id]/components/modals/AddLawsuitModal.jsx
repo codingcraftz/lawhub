@@ -555,6 +555,7 @@ export default function AddLawsuitModal({
         message: message,
         notification_type: "lawsuit",
         created_at: new Date().toISOString(),
+        related_id: lawsuitData.id,
       };
 
       console.log("알림 생성: 사건 알림 생성 시작", caseNotification);
@@ -587,6 +588,7 @@ export default function AddLawsuitModal({
         is_read: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        related_id: lawsuitData.id,
       }));
 
       console.log("알림 생성: 개인 알림 생성 시작", JSON.stringify(individualNotifications));
