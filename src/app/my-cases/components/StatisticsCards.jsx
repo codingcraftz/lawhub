@@ -201,53 +201,6 @@ export default function StatisticsCards({ stats, recoveryStats }) {
                   </div>
                 </div>
               </div>
-
-              {/* 월별 회수 통계 */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">월별 회수 추이</h4>
-                <div className="relative h-[180px] flex items-end space-x-2 border-b border-l border-gray-200 dark:border-gray-700 p-2">
-                  {monthlyStatsLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
-                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-                    </div>
-                  ) : monthlyRecoveryStats.length === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-muted-foreground text-sm">회수 데이터가 없습니다</p>
-                    </div>
-                  ) : (
-                    monthlyRecoveryStats.map((item, index) => {
-                      // 최대값 기준으로 높이 계산
-                      const maxValue = Math.max(...monthlyRecoveryStats.map((d) => d.회수금액));
-                      const height = (item.회수금액 / maxValue) * 100;
-
-                      return (
-                        <div key={index} className="flex flex-col items-center flex-1">
-                          <div className="w-full flex justify-center">
-                            <div
-                              className="w-5/6 rounded-t-sm bg-emerald-500 dark:bg-emerald-600 relative group cursor-pointer"
-                              style={{ height: `${Math.max(height, 15)}%` }}
-                            >
-                              <div className="absolute inset-x-0 bottom-full mb-1 hidden group-hover:block z-10">
-                                <div className="bg-black text-white text-xs rounded py-1 px-2 text-center mx-auto w-max transform -translate-x-1/2 left-1/2 relative">
-                                  {formatCurrency(item.회수금액)}
-                                </div>
-                              </div>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-xs text-white font-semibold">
-                                  {item.회수건수}건
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {item.name.split("-")[1]}월
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
