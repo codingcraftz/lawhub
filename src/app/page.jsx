@@ -22,6 +22,8 @@ import {
   CalendarRange,
   ChevronDown,
   ChevronUp,
+  GavelIcon,
+  Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -36,15 +38,16 @@ export default function Home() {
         <section className="mb-20 text-center md:text-left md:flex md:items-center md:justify-between md:space-x-10">
           <div className="md:w-1/2 space-y-6">
             <div className="inline-block mb-2 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-              민사소송 및 채권관리 시스템
+              민사소송 · 채권관리 시스템
             </div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 dark:from-gray-100 dark:via-gray-200 dark:to-gray-300 bg-clip-text text-transparent">
-              효율적인 채권관리와
+              효율적인 법률사건 관리와
               <br />
-              소송진행의 시작
+              채권회수의 시작
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400">
-              LawHub은 법무법인과 기업에게 민사소송 및 채권관리를 위한 종합적인 솔루션을 제공합니다.
+              LawHub은 법무법인과 기업에게 소송 관리부터 채권 회수까지 한 번에 해결하는 종합
+              솔루션을 제공합니다.
             </p>
             <div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
               <Link href="/login">
@@ -72,7 +75,7 @@ export default function Home() {
               주요 기능
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-2xl mx-auto">
-              LawHub은 민사소송과 채권관리의 모든 단계를 관리하고 추적할 수 있는 종합 기능을
+              LawHub은 민사소송과 채권관리의 모든 단계를 체계적으로 관리할 수 있는 기능을
               제공합니다.
             </p>
           </div>
@@ -85,7 +88,7 @@ export default function Home() {
                 </div>
                 <CardTitle className="text-xl">사건 관리</CardTitle>
                 <CardDescription className="text-gray-600 dark:text-gray-400">
-                  민사소송 전 과정을 체계적으로 관리하고 진행 상황을 실시간으로 파악하세요.
+                  민사, 회생파산, 지급명령, 민사집행 등 다양한 소송 유형을 효율적으로 관리하세요.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -94,19 +97,19 @@ export default function Home() {
                     <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                     </div>
-                    소송 일정 알림 및 관리
+                    다양한 소송 유형별 맞춤형 관리
                   </li>
                   <li className="flex items-center text-gray-700 dark:text-gray-300">
                     <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                     </div>
-                    관련 서류 디지털 보관
+                    소장, 답변서, 준비서면 등 문서 관리
                   </li>
                   <li className="flex items-center text-gray-700 dark:text-gray-300">
                     <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                     </div>
-                    소송 진행 상황 실시간 업데이트
+                    법원 일정 및 기일 자동 관리
                   </li>
                 </ul>
               </CardContent>
@@ -130,7 +133,7 @@ export default function Home() {
                 </div>
                 <CardTitle className="text-xl">채권 관리</CardTitle>
                 <CardDescription className="text-gray-600 dark:text-gray-400">
-                  채권 회수와 관련된 모든 과정을 한 곳에서 효율적으로 관리하세요.
+                  원금부터 이자 관리, 회수 활동 기록까지 효율적인 채권 관리 솔루션을 제공합니다.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -139,19 +142,19 @@ export default function Home() {
                     <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    채권 현황 대시보드
+                    자동 이자 계산 및 납부 추적
                   </li>
                   <li className="flex items-center text-gray-700 dark:text-gray-300">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    자동 이자 계산 및 추적
+                    맞춤형 상환 계획 수립
                   </li>
                   <li className="flex items-center text-gray-700 dark:text-gray-300">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    회수 활동 기록 및 보고서
+                    채무자 상환 활동 기록 및 관리
                   </li>
                 </ul>
               </CardContent>
@@ -173,9 +176,9 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center mb-4 shadow-md">
                   <Users className="h-6 w-6 text-white" />
                 </div>
-                <CardTitle className="text-xl">클라이언트 포털</CardTitle>
+                <CardTitle className="text-xl">종합 알림 센터</CardTitle>
                 <CardDescription className="text-gray-600 dark:text-gray-400">
-                  클라이언트에게 실시간 진행 상황과 문서 접근 권한을 제공하세요.
+                  소송 진행, 채권 회수, 중요 일정을 놓치지 않도록 실시간 알림을 제공합니다.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -184,24 +187,24 @@ export default function Home() {
                     <div className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                     </div>
-                    클라이언트 전용 대시보드
+                    법원 기일 및 제출 마감일 알림
                   </li>
                   <li className="flex items-center text-gray-700 dark:text-gray-300">
                     <div className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                     </div>
-                    문서 공유 및 승인 워크플로우
+                    채무자 납부 계획 및 기한 알림
                   </li>
                   <li className="flex items-center text-gray-700 dark:text-gray-300">
                     <div className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center mr-3">
                       <ArrowRight className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                     </div>
-                    실시간 알림 및 메시징
+                    개인 및 법인 구분 맞춤형 알림
                   </li>
                 </ul>
               </CardContent>
               <CardFooter>
-                <Link href="/clients" className="w-full">
+                <Link href="/my-cases" className="w-full">
                   <Button
                     variant="outline"
                     className="w-full bg-white/90 dark:bg-slate-800/90 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -221,7 +224,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(109,103,220,0.1),rgba(255,255,255,0))]"></div>
             <div className="relative z-10">
               <h2 className="text-3xl font-bold mb-8 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
-                LawHub을 사용하면 얻을 수 있는 혜택
+                LawHub이 제공하는 차별화된 혜택
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm flex items-start">
@@ -229,9 +232,10 @@ export default function Home() {
                     <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">시간 절약</h3>
+                    <h3 className="font-semibold text-lg mb-2">통합 사건 관리</h3>
                     <p className="text-gray-600 dark:text-gray-400">
-                      반복적인 관리 업무를 자동화하여 업무 효율성을 30% 이상 높일 수 있습니다.
+                      민사, 회생파산, 지급명령, 민사집행 등 다양한 유형의 사건을 한 번에 관리할 수
+                      있습니다.
                     </p>
                   </div>
                 </div>
@@ -240,9 +244,10 @@ export default function Home() {
                     <Shield className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">안전한 데이터 관리</h3>
+                    <h3 className="font-semibold text-lg mb-2">개인 및 법인 맞춤 관리</h3>
                     <p className="text-gray-600 dark:text-gray-400">
-                      은행 수준의 암호화로 민감한 법률 문서와 클라이언트 정보를 안전하게 보호합니다.
+                      개인과 법인 고객을 위한 맞춤형 인터페이스로 효율적인 관리와 알림 시스템을
+                      제공합니다.
                     </p>
                   </div>
                 </div>
@@ -251,9 +256,10 @@ export default function Home() {
                     <CalendarRange className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">일정 관리</h3>
+                    <h3 className="font-semibold text-lg mb-2">자동화된 일정 관리</h3>
                     <p className="text-gray-600 dark:text-gray-400">
-                      중요한 소송 일정과 기한을 놓치지 않도록 자동 알림 시스템을 제공합니다.
+                      소송 일정, 채무 납부일, 법정 기일 등 중요한 일정을 자동으로 관리하고 알림을
+                      제공합니다.
                     </p>
                   </div>
                 </div>
@@ -267,9 +273,9 @@ export default function Home() {
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-8 md:p-12 shadow-lg relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.15),rgba(255,255,255,0))]"></div>
             <div className="relative z-10 max-w-2xl mx-auto">
-              <h2 className="text-3xl font-bold text-white mb-4">효율적인 사건관리의 시작</h2>
+              <h2 className="text-3xl font-bold text-white mb-4">지금 바로 시작하세요</h2>
               <p className="text-blue-100 mb-8">
-                지금 LawHub에 가입하고 체계적인 민사소송 및 채권관리 시스템을 경험해보세요.
+                소송 관리부터 채권 회수까지, LawHub과 함께 효율적인 법률 사건 관리를 경험해보세요.
               </p>
               <div className="flex justify-center">
                 <Link href="/login">

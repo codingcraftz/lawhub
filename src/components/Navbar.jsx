@@ -277,14 +277,14 @@ export default function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer flex items-center">
+                {/* <DropdownMenuItem className="cursor-pointer flex items-center">
                   <User className="mr-2 h-4 w-4" />
                   프로필
                 </DropdownMenuItem>
                 <DropdownMenuItem className="cursor-pointer flex items-center">
                   <Settings className="mr-2 h-4 w-4" />
                   설정
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer flex items-center text-red-500 dark:text-red-400"

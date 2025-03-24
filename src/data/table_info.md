@@ -47,17 +47,16 @@
 
 ## 사건 테이블 (test_cases)
 
-| 컬럼명           | 데이터 타입              | 설명                                                  |
-| ---------------- | ------------------------ | ----------------------------------------------------- |
-| id               | uuid                     | 사건 고유 식별자                                      |
-| case_type        | character varying        | 사건 유형 (civil, debt_collection 등)                 |
-| status           | character varying        | 상태 (pending, in_progress, completed, cancelled 등)  |
-| status_id        | character varying        | 상태 ID (constants.js의 CASE_STATUS에 정의된 값 참조) |
-| filing_date      | date                     | 접수일                                                |
-| principal_amount | numeric                  | 청구 금액                                             |
-| created_at       | timestamp with time zone | 생성 시간                                             |
-| updated_at       | timestamp with time zone | 수정 시간                                             |
-| debt_category    | text                     | 채권 분류 (normal, bad, interest, special 등)         |
+| 컬럼명           | 데이터 타입              | 설명                                                 |
+| ---------------- | ------------------------ | ---------------------------------------------------- |
+| id               | uuid                     | 사건 고유 식별자                                     |
+| case_type        | character varying        | 사건 유형 (civil, debt_collection 등)                |
+| status           | character varying        | 상태 (pending, in_progress, completed, cancelled 등) |
+| filing_date      | date                     | 접수일                                               |
+| principal_amount | numeric                  | 청구 금액                                            |
+| created_at       | timestamp with time zone | 생성 시간                                            |
+| updated_at       | timestamp with time zone | 수정 시간                                            |
+| debt_category    | text                     | 채권 분류 (normal, bad, interest, special 등)        |
 
 ## 사건 당사자 테이블 (test_case_parties)
 
@@ -109,8 +108,7 @@
 | end_date   | date                     | 종기일           |
 | rate       | numeric                  | 이자율 (%)       |
 | created_at | timestamp with time zone | 생성 시간        |
-
-| updated_at | timestamp with time zone | 수정 시간 |
+| updated_at | timestamp with time zone | 수정 시간        |
 
 ## 사건 비용 정보 테이블 (test_case_expenses)
 
@@ -125,100 +123,42 @@
 
 ## 사건 담당자 테이블 (test_case_handlers)
 
-| 컬럼명     | 데이터 타입              | 설명                       |
-| ---------- | ------------------------ | -------------------------- |
-| id         | uuid                     | 담당자 고유 식별자         |
-| case_id    | uuid                     | 사건 ID (외래키)           |
-| user_id    | uuid                     | 사용자 ID (외래키)         |
-| role       | character varying        | 역할 (담당변호사, 직원 등) |
-| created_at | timestamp with time zone | 생성 시간                  |
-| updated_at | timestamp with time zone | 수정 시간                  |
-
-## 법적 프로세스 단계 테이블 (test_legal_process_stages)
-
-| 컬럼명       | 데이터 타입              | 설명                                               |
-| ------------ | ------------------------ | -------------------------------------------------- |
-| id           | uuid                     | 단계 고유 식별자                                   |
-| name         | character varying        | 단계 이름                                          |
-| description  | text                     | 단계 설명                                          |
-| process_type | character varying        | 프로세스 유형 (civil, payment_order, execution 등) |
-| order_number | integer                  | 단계 순서                                          |
-| created_at   | timestamp with time zone | 생성 시간                                          |
-| updated_at   | timestamp with time zone | 수정 시간                                          |
-
-## 사건 진행 상태 테이블 (test_case_progress)
-
-| 컬럼명     | 데이터 타입              | 설명                                               |
-| ---------- | ------------------------ | -------------------------------------------------- |
-| id         | uuid                     | 진행 상태 고유 식별자                              |
-| case_id    | uuid                     | 사건 ID (외래키)                                   |
-| stage_id   | uuid                     | 단계 ID (외래키, test_legal_process_stages 테이블) |
-| status     | character varying        | 상태 (pending, in_progress, completed, skipped)    |
-| start_date | date                     | 시작일                                             |
-| end_date   | date                     | 종료일                                             |
-| notes      | text                     | 비고                                               |
-| created_by | uuid                     | 업데이트한 사용자 ID (외래키, users 테이블)        |
-| created_at | timestamp with time zone | 생성 시간                                          |
-| updated_at | timestamp with time zone | 수정 시간                                          |
-
-## 회수 활동 로그 테이블 (test_recovery_activities)
-
-| 컬럼명        | 데이터 타입              | 설명                                               |
-| ------------- | ------------------------ | -------------------------------------------------- |
-| id            | uuid                     | 활동 고유 식별자                                   |
-| case_id       | uuid                     | 사건 ID (외래키)                                   |
-| activity_type | character varying        | 활동 유형 (call, visit, payment, letter, legal 등) |
-| date          | date                     | 활동 날짜                                          |
-| description   | text                     | 활동 설명                                          |
-| notes         | text                     | 추가 메모                                          |
-| amount        | numeric                  | 납부 금액 (있는 경우)                              |
-| created_by    | uuid                     | 생성자 ID (외래키, auth.users 테이블)              |
-| created_at    | timestamp with time zone | 생성 시간                                          |
-| updated_at    | timestamp with time zone | 수정 시간                                          |
-| status        | text                     | 상태 (predicted: 예정, completed: 완료)            |
-| file_url      | text                     | 첨부파일 URL                                       |
-
-## 사건 알림 테이블 (test_case_notifications)
-
-| 컬럼              | 데이터 타입              | 설명                                               |
-| ----------------- | ------------------------ | -------------------------------------------------- |
-| id                | uuid                     | 알림 고유 식별자                                   |
-| case_id           | uuid                     | 사건 ID (외래키)                                   |
-| title             | character varying        | 알림 제목                                          |
-| message           | text                     | 알림 내용                                          |
-| notification_type | character varying        | 알림 유형 (lawsuit_update, recovery_activity, etc) |
-| is_read           | boolean                  | 읽음 여부                                          |
-| user_id           | uuid                     | 사용자 ID (외래키, users 테이블)                   |
-| created_at        | timestamp with time zone | 생성 시간                                          |
-| related_id        | uuid                     | 관련 활동 ID (삭제 시 함께 삭제하기 위한 참조)     |
+| 컬럼명     | 데이터 타입 | 설명                       |
+| ---------- | ----------- | -------------------------- |
+| id         | uuid        | 담당자 고유 식별자         |
+| case_id    | uuid        | 사건 ID (외래키)           |
+| user_id    | uuid        | 사용자 ID (외래키)         |
+| role       | text        | 역할 (담당변호사, 직원 등) |
+| created_at | date        | 생성 시간                  |
+| updated_at | date        | 수정 시간                  |
 
 ## 소송 테이블 (test_case_lawsuits)
 
-| 컬럼         | 데이터 타입              | 설명                                                               |
-| ------------ | ------------------------ | ------------------------------------------------------------------ |
-| id           | uuid                     | 소송 고유 식별자                                                   |
-| case_id      | uuid                     | 사건 ID (외래키)                                                   |
-| lawsuit_type | text                     | 소송 유형 (civil, payment_order,property_disclosure, execution 등) |
-| court_name   | text                     | 법원명                                                             |
-| case_number  | text                     | 사건번호                                                           |
-| type         | text                     | 구분 (손해배상(기), 대여금, 약정금 등)                             |
-| filing_date  | timestamp with time zone | 접수일                                                             |
-| description  | text                     | 설명                                                               |
-| status       | text                     | 상태 (pending, filed, in_progress, completed 등)                   |
-| created_by   | uuid                     | 생성자 ID (외래키, auth.users 테이블)                              |
-| created_at   | timestamp with time zone | 생성 시간                                                          |
-| updated_at   | timestamp with time zone | 수정 시간                                                          |
+| 컬럼         | 데이터 타입              | 설명                                                       |
+| ------------ | ------------------------ | ---------------------------------------------------------- |
+| id           | uuid                     | 소송 고유 식별자                                           |
+| case_id      | uuid                     | 사건 ID (외래키)                                           |
+| lawsuit_type | text                     | 소송 유형 (civil, payment_order, bankruptcy, execution 등) |
+| court_name   | text                     | 법원명                                                     |
+| case_number  | text                     | 사건번호                                                   |
+| type         | text                     | 구분 (손해배상(기), 대여금, 약정금 등)                     |
+| filing_date  | timestamp with time zone | 접수일                                                     |
+| description  | text                     | 설명                                                       |
+| status       | text                     | 상태 (pending, in_progress, completed 등)                  |
+| created_by   | uuid                     | 생성자 ID (외래키, users 테이블)                           |
+| created_at   | timestamp with time zone | 생성 시간                                                  |
+| updated_at   | timestamp with time zone | 수정 시간                                                  |
 
 ## 소송 당사자 연결 테이블 (test_lawsuit_parties)
 
-| 컬럼명     | 데이터 타입              | 설명                                         |
-| ---------- | ------------------------ | -------------------------------------------- |
-| id         | uuid                     | 소송 당사자 연결 고유 식별자                 |
-| lawsuit_id | uuid                     | 소송 ID (외래키, test_case_lawsuits 테이블)  |
-| party_id   | uuid                     | 당사자 ID (외래키, test_case_parties 테이블) |
-| party_type | text                     | 당사자 유형 (원고, 피고, 신청인, 피신청인)   |
-| created_at | timestamp with time zone | 생성 시간                                    |
-| updated_at | timestamp with time zone | 수정 시간                                    |
+| 컬럼명     | 데이터 타입              | 설명                                                     |
+| ---------- | ------------------------ | -------------------------------------------------------- |
+| id         | uuid                     | 소송 당사자 연결 고유 식별자                             |
+| lawsuit_id | uuid                     | 소송 ID (외래키, test_case_lawsuits 테이블)              |
+| party_id   | uuid                     | 당사자 ID (외래키, test_case_parties 테이블)             |
+| party_type | text                     | 당사자 유형 (plaintiff, defendant, applicant, debtor 등) |
+| created_at | timestamp with time zone | 생성 시간                                                |
+| updated_at | timestamp with time zone | 수정 시간                                                |
 
 ## 소송 송달 및 제출 내역 테이블 (test_lawsuit_submissions)
 
@@ -232,23 +172,24 @@
 | description     | text                     | 설명                                                  |
 | file_url        | text                     | 첨부파일 URL                                          |
 | related_docs    | ARRAY                    | 관련 문서 배열                                        |
-| created_by      | uuid                     | 생성자 ID (외래키, auth.users 테이블)                 |
+| created_by      | uuid                     | 생성자 ID (외래키, users 테이블)                      |
 | created_at      | timestamp with time zone | 생성 시간                                             |
 | updated_at      | timestamp with time zone | 수정 시간                                             |
 
-## 알림 테이블 (test_case_notifications)
+## 개인 알림 테이블 (test_individual_notifications)
 
-| 컬럼              | 데이터 타입 | 설명                                                                          |
-| ----------------- | ----------- | ----------------------------------------------------------------------------- |
-| id                | uuid        | 고유 식별자                                                                   |
-| case_id           | uuid        | 관련 사건 ID                                                                  |
-| title             | varchar     | 알림 제목                                                                     |
-| message           | text        | 알림 내용                                                                     |
-| notification_type | varchar     | 알림 유형 (lawsuit, lawsuit_update, recovery_activity, deadline, document 등) |
-| is_read           | boolean     | 읽음 여부                                                                     |
-| user_id           | uuid        | 수신자 ID                                                                     |
-| created_at        | timestamptz | 생성 시간                                                                     |
-| related_id        | uuid        | 관련 활동 ID (삭제 시 함께 삭제하기 위한 참조)                                |
+| 컬럼              | 데이터 타입              | 설명                                                                          |
+| ----------------- | ------------------------ | ----------------------------------------------------------------------------- |
+| id                | uuid                     | 고유 식별자                                                                   |
+| user_id           | uuid                     | 사용자 ID                                                                     |
+| case_id           | uuid                     | 관련 사건 ID                                                                  |
+| title             | text                     | 알림 제목                                                                     |
+| message           | text                     | 알림 내용                                                                     |
+| notification_type | text                     | 알림 유형 (lawsuit, lawsuit_update, recovery_activity, deadline, document 등) |
+| is_read           | boolean                  | 읽음 여부                                                                     |
+| created_at        | timestamp with time zone | 생성 시간                                                                     |
+| updated_at        | timestamp with time zone | 수정 시간                                                                     |
+| related_id        | uuid                     | 관련 활동 ID (삭제 시 함께 삭제하기 위한 참조)                                |
 
 ## 결제 계획 테이블 (test_payment_plans)
 
@@ -271,6 +212,38 @@
 | created_by         | uuid                     | 생성자 ID             |
 | created_at         | timestamp with time zone | 생성 시간             |
 | updated_at         | timestamp with time zone | 수정 시간             |
+
+## 회수 활동 로그 테이블 (test_recovery_activities)
+
+| 컬럼명        | 데이터 타입              | 설명                                               |
+| ------------- | ------------------------ | -------------------------------------------------- |
+| id            | uuid                     | 활동 고유 식별자                                   |
+| case_id       | uuid                     | 사건 ID (외래키)                                   |
+| activity_type | character varying        | 활동 유형 (call, visit, payment, letter, legal 등) |
+| date          | date                     | 활동 날짜                                          |
+| description   | text                     | 활동 설명                                          |
+| notes         | text                     | 추가 메모                                          |
+| amount        | numeric                  | 납부 금액 (있는 경우)                              |
+| created_by    | uuid                     | 생성자 ID (외래키, users 테이블)                   |
+| created_at    | timestamp with time zone | 생성 시간                                          |
+| updated_at    | timestamp with time zone | 수정 시간                                          |
+| status        | text                     | 상태 (predicted: 예정, completed: 완료)            |
+| file_url      | text                     | 첨부파일 URL                                       |
+
+## 관련 소송 테이블 (test_related_lawsuits)
+
+| 컬럼명       | 데이터 타입              | 설명                  |
+| ------------ | ------------------------ | --------------------- |
+| id           | uuid                     | 고유 식별자           |
+| lawsuit_id   | uuid                     | 관련 소송 ID (외래키) |
+| court_name   | text                     | 법원명                |
+| case_number  | text                     | 사건번호              |
+| type         | text                     | 구분 (사건 종류)      |
+| description  | text                     | 설명                  |
+| created_at   | timestamp with time zone | 생성 시간             |
+| created_by   | uuid                     | 생성자 ID             |
+| updated_at   | timestamp with time zone | 수정 시간             |
+| lawsuit_type | text                     | 소송 유형             |
 
 ## 일정 테이블 (test_schedules)
 
@@ -295,25 +268,26 @@
 | created_by     | uuid                     | 생성자 ID        |
 | created_at     | timestamp with time zone | 생성 시간        |
 | updated_at     | timestamp with time zone | 수정 시간        |
+| file_url       | text                     | 첨부파일 URL     |
 
 ## 테이블 관계
 
 - **users** ↔ **test_organization_members**: 1:N (한 사용자는 여러 조직에 소속될 수 있음)
 - **users** ↔ **test_case_clients**: 1:N (한 사용자는 여러 사건의 의뢰인이 될 수 있음)
-- **users** ↔ **test_case_documents**: 1:N (한 사용자는 여러 문서를 업로드할 수 있음)
 - **users** ↔ **test_case_handlers**: 1:N (한 사용자는 여러 사건의 담당자가 될 수 있음)
-- **users** ↔ **test_case_progress**: 1:N (한 사용자는 여러 진행 상태를 업데이트할 수 있음)
 - **users** ↔ **test_recovery_activities**: 1:N (한 사용자는 여러 회수 활동을 기록할 수 있음)
-- **users** ↔ **test_case_notifications**: 1:N (한 사용자는 여러 알림을 생성할 수 있음)
+- **users** ↔ **test_individual_notifications**: 1:N (한 사용자는 여러 알림을 받을 수 있음)
 - **test_organizations** ↔ **test_organization_members**: 1:N (한 조직은 여러 구성원을 가질 수 있음)
 - **test_organizations** ↔ **test_case_clients**: 1:N (한 조직은 여러 사건의 의뢰인이 될 수 있음)
 - **test_cases** ↔ **test_case_parties**: 1:N (한 사건은 여러 당사자를 가질 수 있음)
 - **test_cases** ↔ **test_case_clients**: 1:N (한 사건은 여러 의뢰인을 가질 수 있음)
 - **test_cases** ↔ **test_case_interests**: 1:N (한 사건은 여러 이자 정보를 가질 수 있음)
-- **test_cases** ↔ **test_case_documents**: 1:N (한 사건은 여러 문서를 가질 수 있음)
+- **test_cases** ↔ **test_case_expenses**: 1:N (한 사건은 여러 비용 정보를 가질 수 있음)
 - **test_cases** ↔ **test_case_handlers**: 1:N (한 사건은 여러 담당자를 가질 수 있음)
-- **test_cases** ↔ **test_case_progress**: 1:N (한 사건은 여러 진행 상태를 가질 수 있음)
 - **test_cases** ↔ **test_recovery_activities**: 1:N (한 사건은 여러 회수 활동을 가질 수 있음)
-- **test_cases** ↔ **test_case_notifications**: 1:N (한 사건은 여러 알림을 생성할 수 있음)
-- **test_legal_process_stages** ↔ **test_case_progress**: 1:N (한 법적 프로세스 단계는 여러 사건의 진행 상태에 연결될 수 있음)
-- **test_document_types** ↔ **test_case_documents**: 1:N (한 문서 유형은 여러 문서에 적용될 수 있음)
+- **test_cases** ↔ **test_individual_notifications**: 1:N (한 사건은 여러 알림을 생성할 수 있음)
+- **test_cases** ↔ **test_case_lawsuits**: 1:N (한 사건은 여러 소송을 가질 수 있음)
+- **test_case_lawsuits** ↔ **test_lawsuit_parties**: 1:N (한 소송은 여러 소송 당사자를 가질 수 있음)
+- **test_case_lawsuits** ↔ **test_lawsuit_submissions**: 1:N (한 소송은 여러 송달 및 제출 내역을 가질 수 있음)
+- **test_case_lawsuits** ↔ **test_related_lawsuits**: 1:N (한 소송은 여러 관련 소송을 가질 수 있음)
+- **test_case_parties** ↔ **test_lawsuit_parties**: 1:N (한 당사자는 여러 소송의 당사자가 될 수 있음)
