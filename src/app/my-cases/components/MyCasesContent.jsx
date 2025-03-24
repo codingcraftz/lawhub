@@ -754,21 +754,122 @@ export default function MyCasesContent() {
 
     setNotificationsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("test_individual_notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      let notificationsData = [];
 
-      if (error) throw error;
-      setNotifications(data || []);
-      setFilteredNotifications(data || []);
+      if (selectedTab === "personal") {
+        // 개인 탭인 경우 개인 관련 알림만 가져오기
+        const { data, error } = await supabase
+          .from("test_individual_notifications")
+          .select("*, test_cases:case_id(*)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // 개인 관련 알림만 필터링
+        notificationsData = data.filter((notification) => {
+          // 사건 정보에서 사건 유형 확인 (개인 또는 법인)
+          if (notification.test_cases) {
+            return true; // 일단 모든 알림을 가져오고 아래에서 필터링
+          }
+          return true;
+        });
+      } else if (selectedTab === "organization" && selectedOrg) {
+        // 법인 탭이고 선택된 법인이 있는 경우 - RPC 대신 일반 쿼리 사용
+        // 1. 기본 알림 가져오기
+        const { data, error } = await supabase
+          .from("test_individual_notifications")
+          .select("*, test_cases:case_id(*)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // 2. 선택된 법인과 관련된 사건 ID 가져오기
+        const { data: orgCaseClients, error: orgError } = await supabase
+          .from("test_case_clients")
+          .select("case_id")
+          .eq("client_type", "organization")
+          .eq("organization_id", selectedOrg);
+
+        if (orgError) throw orgError;
+
+        // 3. 법인 관련 사건 ID 목록 추출
+        const orgCaseIds = orgCaseClients.map((client) => client.case_id);
+
+        // 4. 법인 관련 알림만 필터링
+        notificationsData = data.filter(
+          (notification) => notification.case_id && orgCaseIds.includes(notification.case_id)
+        );
+
+        console.log("법인 필터링된 알림:", notificationsData.length);
+      } else {
+        // 법인 탭이지만 선택된 법인이 없는 경우 (또는 기타 경우)
+        const { data, error } = await supabase
+          .from("test_individual_notifications")
+          .select("*, test_cases:case_id(*)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // 법인 관련 알림만 필터링 (선택된 법인 없음)
+        notificationsData = await Promise.all(
+          data.map(async (notification) => {
+            // 알림에 entity_type 추가
+            let entityType = "individual"; // 기본값
+
+            if (notification.case_id) {
+              try {
+                // 사건의 의뢰인 정보 확인
+                const { data: clientsData, error: clientsError } = await supabase
+                  .from("test_case_clients")
+                  .select("client_type, organization_id")
+                  .eq("case_id", notification.case_id);
+
+                if (!clientsError && clientsData && clientsData.length > 0) {
+                  // 법인 의뢰인이 있는지 확인
+                  const orgClient = clientsData.find(
+                    (client) => client.client_type === "organization"
+                  );
+
+                  if (orgClient) {
+                    entityType = "organization";
+                  }
+                }
+              } catch (err) {
+                console.error("의뢰인 정보 확인 실패:", err);
+              }
+            }
+
+            return {
+              ...notification,
+              entity_type: entityType,
+            };
+          })
+        );
+
+        // 법인 탭이면 법인 관련 알림만 필터링
+        if (selectedTab === "organization") {
+          notificationsData = notificationsData.filter((n) => n.entity_type === "organization");
+        }
+      }
+
+      setNotifications(notificationsData);
+      setFilteredNotifications(notificationsData);
     } catch (error) {
       console.error("알림 가져오기 실패:", error);
     } finally {
       setNotificationsLoading(false);
     }
   };
+
+  // 탭이나 선택된 법인이 변경되면 알림 다시 불러오기
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user, selectedTab, selectedOrg]);
 
   // 로딩 중 UI
   if (loading) {
@@ -929,6 +1030,8 @@ export default function MyCasesContent() {
                     <NotificationSummary
                       notifications={notifications}
                       loading={notificationsLoading}
+                      selectedTab={selectedTab === "personal" ? "individual" : "organization"}
+                      selectedOrg={selectedOrg}
                     />
                   </div>
                 </div>

@@ -40,15 +40,8 @@ export default function NotificationSummary({ notifications, loading }) {
     }
   }, [notifications]);
 
-  // 탭이나 알림 목록이 변경될 때 필터링
-  useEffect(() => {
-    if (allNotifications.length > 0) {
-      console.log("NotificationSummary - 필터링 실행:", activeTab, allNotifications.length);
-      filterNotifications(activeTab);
-    }
-  }, [activeTab, allNotifications]);
-
   const filterNotifications = (tab) => {
+    // 읽음/읽지 않음 상태에 따라 필터링
     if (tab === "unread") {
       const unreadNotifs = allNotifications.filter((n) => !n.is_read);
       console.log("읽지 않은 알림 필터링:", unreadNotifs.length);
@@ -58,6 +51,14 @@ export default function NotificationSummary({ notifications, loading }) {
       setFilteredNotifications(allNotifications);
     }
   };
+
+  // 탭이나 알림 목록이 변경될 때 필터링
+  useEffect(() => {
+    if (allNotifications.length > 0) {
+      console.log("NotificationSummary - 필터링 실행:", activeTab, allNotifications.length);
+      filterNotifications(activeTab);
+    }
+  }, [activeTab, allNotifications]);
 
   // 탭 변경 핸들러
   const handleTabChange = (tab) => {

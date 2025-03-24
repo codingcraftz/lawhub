@@ -130,25 +130,6 @@
 | created_at                    | timestamp with time zone | 생성 시간          |
 | updated_at                    | timestamp with time zone | 수정 시간          |
 
-## 채권 청구 테이블 (test_debt_claims)
-
-| 컬럼명            | 데이터 타입              | 설명        |
-| ----------------- | ------------------------ | ----------- |
-| id                | uuid                     | 고유 식별자 |
-| case_id           | uuid                     | 사건 ID     |
-| creditor_party_id | uuid                     | 채권자 ID   |
-| debtor_party_id   | uuid                     | 채무자 ID   |
-| claim_basis       | character varying        | 청구 근거   |
-| principal_amount  | numeric                  | 원금        |
-| interest_rate     | numeric                  | 이자율      |
-| interest_amount   | numeric                  | 이자 금액   |
-| total_amount      | numeric                  | 총액        |
-| due_date          | date                     | 만기일      |
-| status            | character varying        | 상태        |
-| description       | text                     | 설명        |
-| created_at        | timestamp with time zone | 생성 시간   |
-| updated_at        | timestamp with time zone | 수정 시간   |
-
 ## 문서 유형 테이블 (test_document_types)
 
 | 컬럼명      | 데이터 타입              | 설명        |
@@ -294,7 +275,21 @@
 | employee_type | text                     | 직원 유형     |
 | created_at    | timestamp with time zone | 생성 시간     |
 
+## 관련 소송 테이블 (test_related_lawsuits)
+
+| 컬럼명       | 데이터 타입              | 설명                                        |
+| ------------ | ------------------------ | ------------------------------------------- |
+| id           | uuid                     | 관련 소송 고유 식별자 (기본 키)             |
+| lawsuit_id   | uuid                     | 원본 소송 ID (외래키)                       |
+| lawsuit_type | text                     | 소송 유형 (민사/회생파산/지급명령/민사집행) |
+| court_name   | text                     | 법원명                                      |
+| case_number  | text                     | 사건번호                                    |
+| type         | text                     | 구분 (대여금, 약정금, 손해배상(기))         |
+| description  | text                     | 설명 (선택적)                               |
+| created_at   | timestamp with time zone | 생성 일시                                   |
+| created_by   | uuid                     | 생성자 ID (외래키)                          |
+| updated_at   | timestamp with time zone | 수정 일시                                   |
+
 ### 주요 수정사항 (2024-08-13)
 
 1. `test_cases` 테이블에는 `case_number` 필드가 없음. 사건번호(`case_number`)는 `test_case_lawsuits` 테이블에 있음
-2. 기존 코드에서 `test_cases.case_number` 필드를 참조하던 부분을 `test_case_lawsuits.case_number`로 수정

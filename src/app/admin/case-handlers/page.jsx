@@ -107,48 +107,168 @@ export default function CaseHandlersPage() {
 
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
-    if (user && user.role === "admin") {
-      // 직원 정보와 담당자 정보만 초기에 가져옴
-      fetchStaffUsers();
-      fetchHandlers();
-    } else {
-      // 관리자가 아닌 경우 접근 제한
-      router.push("/unauthorized");
+    if (user) {
+      if (user.role === "admin") {
+        // 관리자인 경우 직원 정보와 담당자 정보만 초기에 가져옴
+        fetchStaffUsers();
+        fetchHandlers();
+      } else if (user.role === "staff") {
+        // 스탭 사용자인 경우 자신이 담당하는 사건 가져오기
+        console.log("스탭 사용자의 담당 사건 조회 시작...");
+        fetchStaffCasesForCurrentUser();
+      } else {
+        // 권한이 없는 경우
+        router.push("/unauthorized");
+      }
     }
   }, [user, router]);
 
-  // 사건 목록 가져오기 - 검색 시에만 호출
-  const fetchCases = async () => {
+  // 현재 로그인한 스탭 사용자가 담당하는 사건 가져오기
+  const fetchStaffCasesForCurrentUser = async () => {
+    if (!user || user.role !== "staff") return;
+
     setLoading(true);
     try {
-      console.log("담당자 관리 페이지 - 사건 정보 로딩 중...");
+      // 현재 사용자가 담당하는 사건 ID 목록 가져오기
+      const { data: handlerData, error: handlerError } = await supabase
+        .from("test_case_handlers")
+        .select("case_id")
+        .eq("user_id", user.id);
 
-      // 모든 사건 가져오기 - deleted_at 컬럼이 없으므로 해당 조건 제거
-      const { data: casesData, error: casesError } = await supabase
-        .from("test_cases")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (casesError) {
-        console.error("사건 데이터 가져오기 실패:", casesError);
-        throw casesError;
+      if (handlerError) {
+        console.error("담당 사건 조회 실패:", handlerError);
+        toast.error("담당 사건 조회에 실패했습니다");
+        setLoading(false);
+        return;
       }
 
-      if (!casesData) {
-        console.error("사건 데이터가 없습니다.");
-        throw new Error("사건 데이터가 없습니다.");
+      if (!handlerData || handlerData.length === 0) {
+        console.log("담당하는 사건이 없습니다");
+        setCases([]);
+        setFilteredCases([]);
+        setLoading(false);
+        toast.info("담당하는 사건이 없습니다. 관리자에게 문의하세요.");
+        return;
       }
 
-      console.log(`${casesData.length}개의 사건 데이터를 가져왔습니다.`);
+      // 담당 사건 ID 목록 추출
+      const caseIds = handlerData.map((item) => item.case_id);
+      console.log(`${caseIds.length}개의 담당 사건 ID를 찾았습니다`);
 
-      if (casesData.length === 0) {
+      // 담당 사건 정보 가져오기
+      fetchStaffCases(caseIds);
+
+      // 직원 탭이 아닌 사건 탭을 기본으로 선택
+      setActiveTab("cases");
+    } catch (error) {
+      console.error("담당 사건 조회 중 오류 발생:", error);
+      toast.error("담당 사건 조회 중 오류가 발생했습니다");
+      setLoading(false);
+    }
+  };
+
+  // 사건 목록 가져오기 - 검색 시에만 호출, 검색어로 필터링하여 가져오기
+  const fetchCases = async () => {
+    if (!searchTerm.trim() || searchTerm.trim().length < 2) {
+      toast.error("검색어는 2글자 이상 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log(`검색어 "${searchTerm}"로 사건 정보 검색 중...`);
+
+      // 검색어로 당사자(채권자, 채무자) 정보 검색
+      const { data: partiesData, error: partiesError } = await supabase
+        .from("test_case_parties")
+        .select("case_id")
+        .or(`name.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`);
+
+      if (partiesError) {
+        console.error("당사자 정보 검색 실패:", partiesError);
+        throw partiesError;
+      }
+
+      // 검색된 사건 ID 추출
+      let caseIds = [];
+      if (partiesData && partiesData.length > 0) {
+        caseIds = [...new Set(partiesData.map((p) => p.case_id))]; // 중복 제거
+        console.log(`당사자 정보에서 ${caseIds.length}개의 사건 ID를 찾았습니다.`);
+      } else {
+        console.log("당사자 정보에서 일치하는 사건이 없습니다.");
+      }
+
+      // 소송 정보에서도 검색 (case_number로 검색)
+      const { data: lawsuitsData, error: lawsuitsError } = await supabase
+        .from("test_case_lawsuits")
+        .select("case_id")
+        .ilike("case_number", `%${searchTerm}%`);
+
+      if (lawsuitsError) {
+        console.error("소송 정보 검색 실패:", lawsuitsError.message || lawsuitsError);
+        console.log("소송 정보 검색 결과 없이 계속 진행합니다.");
+      } else if (lawsuitsData && lawsuitsData.length > 0) {
+        // 소송 정보에서 찾은 사건 ID 추가 (중복 제거)
+        const lawsuitCaseIds = lawsuitsData.map((l) => l.case_id);
+        caseIds = [...new Set([...caseIds, ...lawsuitCaseIds])];
+        console.log(`소송 정보에서 ${lawsuitsData.length}개의 사건 ID를 추가로 찾았습니다.`);
+      }
+
+      // 검색 결과가 없는 경우 처리
+      if (caseIds.length === 0) {
+        console.log("검색 결과가 없습니다.");
         setCases([]);
         setFilteredCases([]);
         setTotalItems(0);
         setTotalPages(0);
         setLoading(false);
+        toast.info(`"${searchTerm}" 검색 결과가 없습니다.`);
         return;
       }
+
+      // 찾은 사건 ID로 사건 정보 가져오기 (배치 처리)
+      console.log(`총 ${caseIds.length}개의 사건 ID로 상세 정보를 조회합니다.`);
+      const batchSize = 50;
+      let allCases = [];
+
+      for (let i = 0; i < caseIds.length; i += batchSize) {
+        const batchIds = caseIds.slice(i, i + batchSize);
+        console.log(`배치 ${Math.floor(i / batchSize) + 1}: ${batchIds.length}개 ID 처리 중`);
+
+        const { data: casesData, error: casesError } = await supabase
+          .from("test_cases")
+          .select("*")
+          .in("id", batchIds)
+          .order("created_at", { ascending: false });
+
+        if (casesError) {
+          console.error(
+            `배치 ${Math.floor(i / batchSize) + 1} 사건 정보 가져오기 실패:`,
+            casesError
+          );
+          console.log("해당 배치는 건너뛰고 계속 진행합니다.");
+        } else if (casesData && casesData.length > 0) {
+          allCases = [...allCases, ...casesData];
+          console.log(
+            `배치 ${Math.floor(i / batchSize) + 1}에서 ${
+              casesData.length
+            }개의 사건 정보를 가져왔습니다.`
+          );
+        }
+      }
+
+      if (allCases.length === 0) {
+        console.log("사건 정보를 가져오지 못했습니다.");
+        setCases([]);
+        setFilteredCases([]);
+        setTotalItems(0);
+        setTotalPages(0);
+        setLoading(false);
+        toast.info(`"${searchTerm}" 검색 결과가 없습니다.`);
+        return;
+      }
+
+      console.log(`총 ${allCases.length}개의 사건 정보를 가져왔습니다.`);
 
       // 담당자 정보 가져오기
       const { data: handlersData, error: handlersError } = await supabase
@@ -157,57 +277,68 @@ export default function CaseHandlersPage() {
 
       if (handlersError) {
         console.error("담당자 데이터 가져오기 실패:", handlersError);
-        throw handlersError;
+        console.log("담당자 정보 없이 계속 진행합니다.");
       }
 
-      if (!handlersData) {
-        console.warn("담당자 데이터가 없습니다.");
-      } else {
-        console.log(`${handlersData.length}개의 담당자 데이터를 가져왔습니다.`);
-      }
+      // handlersData가 없어도 빈 배열로 처리
+      const handlersList = handlersData || [];
+      console.log(`${handlersList.length}개의 담당자 데이터를 가져왔습니다.`);
 
       // 각 사건의 당사자 정보를 가져와서 사건 정보 보강
-      const enrichedCases = await enrichCasesWithPartyInfo(casesData || []);
+      const enrichedCases = await enrichCasesWithPartyInfo(allCases);
       console.log("당사자 정보 보강 완료");
 
-      // 사건번호 정보 가져오기 (test_case_lawsuits 테이블에서)
-      const caseIds = casesData.map((c) => c.id);
-      const { data: lawsuitsData, error: lawsuitsError } = await supabase
-        .from("test_case_lawsuits")
-        .select("case_id, case_number, id")
-        .in("case_id", caseIds);
-
-      if (lawsuitsError) {
-        console.error("소송 정보 가져오기 실패:", lawsuitsError);
-      } else {
-        console.log(`${lawsuitsData?.length || 0}개의 소송 정보를 가져왔습니다.`);
-      }
-
-      // 사건 정보에 소송 정보 매핑 (사건번호)
+      // 소송 정보 가져오기 (이미 검색했던 소송 정보 재활용)
       const caseNumberMap = {};
-      if (lawsuitsData && lawsuitsData.length > 0) {
-        lawsuitsData.forEach((lawsuit) => {
-          if (lawsuit.case_id && lawsuit.case_number) {
-            if (!caseNumberMap[lawsuit.case_id]) {
-              caseNumberMap[lawsuit.case_id] = lawsuit.case_number;
-            }
+
+      // 소송 정보 가져오기 (배치 처리)
+      for (let i = 0; i < caseIds.length; i += batchSize) {
+        const batchIds = caseIds.slice(i, i + batchSize);
+
+        try {
+          const { data: batchLawsuitsData, error: batchLawsuitsError } = await supabase
+            .from("test_case_lawsuits")
+            .select("case_id, case_number")
+            .in("case_id", batchIds);
+
+          if (batchLawsuitsError) {
+            console.error(
+              `배치 ${Math.floor(i / batchSize) + 1} 소송 정보 가져오기 실패:`,
+              batchLawsuitsError.message || batchLawsuitsError
+            );
+            console.log("해당 배치 소송 정보 없이 계속 진행합니다.");
+          } else if (batchLawsuitsData && batchLawsuitsData.length > 0) {
+            console.log(
+              `배치 ${Math.floor(i / batchSize) + 1}에서 ${
+                batchLawsuitsData.length
+              }개의 소송 정보를 가져왔습니다.`
+            );
+            batchLawsuitsData.forEach((lawsuit) => {
+              if (lawsuit.case_id && lawsuit.case_number) {
+                caseNumberMap[lawsuit.case_id] = lawsuit.case_number;
+              }
+            });
           }
-        });
+        } catch (err) {
+          console.error(
+            `배치 ${Math.floor(i / batchSize) + 1} 소송 정보 가져오기 중 예외 발생:`,
+            err
+          );
+          console.log("해당 배치 소송 정보 없이 계속 진행합니다.");
+        }
       }
 
       // 모든 사건 정보에 담당자 정보와 소송번호 추가하기
       const casesWithHandlers = enrichedCases.map((caseItem) => {
         try {
           // 담당자 정보 추가
-          const handlers = handlersData
-            ? handlersData.filter((h) => h.case_id === caseItem.id) || []
-            : [];
+          const handlers = handlersList.filter((h) => h.case_id === caseItem.id) || [];
 
           // status_id로 상태 정보 가져오기
           let statusInfo = { name: "알 수 없음", color: "#999999" };
           try {
             if (caseItem.status_id) {
-              statusInfo = getStatusById(caseItem.status_id);
+              statusInfo = getStatusById(caseItem.status_id) || statusInfo;
             }
           } catch (statusErr) {
             console.error("상태 정보 가져오기 실패:", statusErr, caseItem.status_id);
@@ -222,15 +353,12 @@ export default function CaseHandlersPage() {
             status_info: statusInfo,
             // 검색어와 일치하는지 확인 - 하이라이트 표시용
             search_matched_creditor:
-              searchTerm.trim() &&
               caseItem.creditor_name &&
               caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase()),
             search_matched_debtor:
-              searchTerm.trim() &&
               caseItem.debtor_name &&
               caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()),
             search_matched_case_number:
-              searchTerm.trim() &&
               caseNumberMap[caseItem.id] &&
               caseNumberMap[caseItem.id].toLowerCase().includes(searchTerm.toLowerCase()),
           };
@@ -249,22 +377,11 @@ export default function CaseHandlersPage() {
       });
 
       setCases(casesWithHandlers);
+      setFilteredCases(casesWithHandlers);
+      setTotalItems(casesWithHandlers.length);
+      setTotalPages(Math.ceil(casesWithHandlers.length / itemsPerPage));
 
-      // 검색어로 필터링
-      let filtered = [...casesWithHandlers];
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(
-          (c) =>
-            (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
-            (c.debtor_name && c.debtor_name.toLowerCase().includes(term)) ||
-            (c.case_number && c.case_number.toLowerCase().includes(term))
-        );
-      }
-
-      setFilteredCases(filtered);
-      setTotalItems(filtered.length);
-      setTotalPages(Math.ceil(filtered.length / itemsPerPage));
+      toast.success(`"${searchTerm}" 검색 결과: ${casesWithHandlers.length}건`);
     } catch (error) {
       console.error("사건 정보 로딩 실패:", error);
       console.error(
@@ -380,16 +497,24 @@ export default function CaseHandlersPage() {
     if (caseStatusFilter !== "all") {
       filtered = filtered.filter((c) => {
         if (caseStatusFilter === "active") {
-          return c.status === "active" || c.status === "in_progress" || c.status === "pending";
+          return c.status_id === 2 || c.status_id === 3 || c.status_id === 4;
         } else if (caseStatusFilter === "completed") {
-          return c.status === "closed" || c.status === "completed";
+          return c.status_id === 5 || c.status_id === 6;
         }
         return true;
       });
     }
 
     setFilteredCases(filtered);
-  }, [cases, searchTerm, caseStatusFilter]);
+    setTotalItems(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / itemsPerPage));
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+  }, [cases, searchTerm, caseStatusFilter, itemsPerPage]);
+
+  // 검색어 입력 핸들러 - 타임아웃을 사용하여 매 타이핑마다 검색하지 않도록 함
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
   // 직원 검색 필터링
   useEffect(() => {
@@ -415,6 +540,89 @@ export default function CaseHandlersPage() {
     setFilteredStaff(filtered);
     setStaffCurrentPage(1); // 필터링 결과가 변경되면 첫 페이지로 이동
   }, [staffUsers, handlerSearchTerm, staffTypeFilter]);
+
+  // 검색 버튼 클릭 핸들러
+  const handleSearch = () => {
+    if (searchTerm.trim().length < 2) {
+      toast.error("검색어는 2글자 이상 입력해주세요.");
+      return;
+    }
+
+    // 기존 검색 결과 초기화
+    setCases([]);
+    setFilteredCases([]);
+    setTotalItems(0);
+    setTotalPages(0);
+
+    // 사건 검색 실행
+    fetchCases();
+
+    // 검색 완료 후 사건 탭으로 전환
+    setActiveTab("cases");
+  };
+
+  // 빠른 담당자 할당 처리 (바로 선택한 직원 할당)
+  const handleQuickAssign = async (caseItem) => {
+    if (!caseItem || !selectedStaff) {
+      toast.error("사건과 담당자 정보가 필요합니다");
+      return;
+    }
+
+    try {
+      // 이미 담당자로 등록되어 있는지 확인
+      const existingHandlers = handlers.filter(
+        (h) => h.case_id === caseItem.id && h.user_id === selectedStaff.id
+      );
+
+      if (existingHandlers.length > 0) {
+        toast.error("이미 해당 사건의 담당자로 등록되어 있습니다");
+        return;
+      }
+
+      // 로딩 상태 표시
+      toast.loading("담당자를 등록 중입니다...");
+
+      // 새 담당자 등록
+      const { data, error } = await supabase
+        .from("test_case_handlers")
+        .insert({
+          case_id: caseItem.id,
+          user_id: selectedStaff.id,
+          role: "담당자",
+        })
+        .select();
+
+      if (error) throw error;
+
+      toast.dismiss();
+      toast.success("담당자가 성공적으로 등록되었습니다");
+
+      // 담당자 목록 갱신
+      await fetchHandlers();
+
+      // 담당자가 성공적으로 추가된 경우 알림
+      if (data && data.length > 0) {
+        console.log("추가된 담당자 정보:", data[0]);
+
+        // 담당자 추가 후 사건 목록도 갱신
+        if (selectedStaff) {
+          const { data: handlerData } = await supabase
+            .from("test_case_handlers")
+            .select("case_id")
+            .eq("user_id", selectedStaff.id);
+
+          if (handlerData && handlerData.length > 0) {
+            const caseIds = handlerData.map((item) => item.case_id);
+            fetchStaffCases(caseIds);
+          }
+        }
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error("담당자 등록 실패:", error);
+      toast.error(`담당자 등록에 실패했습니다: ${error.message || "알 수 없는 오류"}`);
+    }
+  };
 
   // 상태에 따른 배지 색상
   const getCaseStatusBadge = (status, statusInfo) => {
@@ -511,52 +719,18 @@ export default function CaseHandlersPage() {
         return;
       }
 
-      // 새 담당자 등록
-      const { error } = await supabase.from("test_case_handlers").insert({
-        case_id: selectedCase.id,
-        user_id: selectedHandler,
-        role: "담당자",
-      });
-
-      if (error) throw error;
-
-      toast.success("담당자가 성공적으로 등록되었습니다");
-      fetchHandlers(); // 담당자 목록 갱신
-      setShowAddHandlerModal(false);
-      setSelectedHandler(null);
-    } catch (error) {
-      console.error("담당자 등록 실패:", error);
-      toast.error("담당자 등록에 실패했습니다");
-    }
-  };
-
-  // 빠른 담당자 할당 처리 (바로 선택한 직원 할당)
-  const handleQuickAssign = async (caseItem, userId) => {
-    if (!caseItem || !userId) {
-      toast.error("사건과 담당자 정보가 필요합니다");
-      return;
-    }
-
-    try {
-      // 이미 담당자로 등록되어 있는지 확인
-      const existingHandlers = handlers.filter(
-        (h) => h.case_id === caseItem.id && h.user_id === userId
-      );
-
-      if (existingHandlers.length > 0) {
-        toast.error("이미 해당 사건의 담당자로 등록되어 있습니다");
-        return;
-      }
-
-      // 로딩 상태 표시
+      // 할당 중인 상태 표시
       toast.loading("담당자를 등록 중입니다...");
 
       // 새 담당자 등록
-      const { error } = await supabase.from("test_case_handlers").insert({
-        case_id: caseItem.id,
-        user_id: userId,
-        role: "담당자",
-      });
+      const { data, error } = await supabase
+        .from("test_case_handlers")
+        .insert({
+          case_id: selectedCase.id,
+          user_id: selectedHandler,
+          role: "담당자",
+        })
+        .select();
 
       if (error) throw error;
 
@@ -564,11 +738,21 @@ export default function CaseHandlersPage() {
       toast.success("담당자가 성공적으로 등록되었습니다");
 
       // 담당자 목록 갱신
-      fetchHandlers();
+      await fetchHandlers();
+
+      // 성공 후 모달 닫기
+      setShowAddHandlerModal(false);
+      setSelectedHandler(null);
+
+      // 성공적으로 추가되었음을 알리기 위해 간단한 피드백
+      if (data && data.length > 0) {
+        const addedHandler = data[0];
+        console.log("추가된 담당자 정보:", addedHandler);
+      }
     } catch (error) {
       toast.dismiss();
       console.error("담당자 등록 실패:", error);
-      toast.error("담당자 등록에 실패했습니다");
+      toast.error(`담당자 등록에 실패했습니다: ${error.message || "알 수 없는 오류"}`);
     }
   };
 
@@ -580,6 +764,8 @@ export default function CaseHandlersPage() {
     }
 
     try {
+      toast.loading("담당자를 제거하는 중입니다...");
+
       const { error } = await supabase
         .from("test_case_handlers")
         .delete()
@@ -587,13 +773,38 @@ export default function CaseHandlersPage() {
 
       if (error) throw error;
 
+      toast.dismiss();
       toast.success("담당자가 성공적으로 제거되었습니다");
-      fetchHandlers(); // 담당자 목록 갱신
+
+      // 담당자 목록 갱신
+      await fetchHandlers();
+
+      // 성공 후 모달 닫기
       setShowRemoveHandlerModal(false);
       setHandlerToRemove(null);
+
+      // 선택된 직원이 있는 경우 그 직원의 담당 사건 목록 갱신
+      if (selectedStaff) {
+        const { data: handlerData } = await supabase
+          .from("test_case_handlers")
+          .select("case_id")
+          .eq("user_id", selectedStaff.id);
+
+        if (handlerData && handlerData.length > 0) {
+          const caseIds = handlerData.map((item) => item.case_id);
+          fetchStaffCases(caseIds);
+        } else {
+          // 담당 사건이 없는 경우 목록 비우기
+          setCases([]);
+          setFilteredCases([]);
+          setTotalItems(0);
+          setTotalPages(0);
+        }
+      }
     } catch (error) {
+      toast.dismiss();
       console.error("담당자 제거 실패:", error);
-      toast.error("담당자 제거에 실패했습니다");
+      toast.error(`담당자 제거에 실패했습니다: ${error.message || "알 수 없는 오류"}`);
     }
   };
 
@@ -624,86 +835,192 @@ export default function CaseHandlersPage() {
     if (!caseIds || caseIds.length === 0) {
       setCases([]);
       setFilteredCases([]);
+      setTotalItems(0);
+      setTotalPages(0);
       return;
     }
 
     setIsFetchingCases(true);
+    setLoading(true); // 로딩 상태 활성화
+
     try {
       console.log(`${caseIds.length}개 담당 사건 정보 가져오기 시작...`);
 
-      // 사건 정보 가져오기 - status_id:status_id(*) 대신 status_id만 가져옵니다
-      const { data: casesData, error: casesError } = await supabase
-        .from("test_cases")
-        .select("*")
-        .in("id", caseIds)
-        .order("created_at", { ascending: false });
+      // 배치 크기 정의
+      const batchSize = 50;
+      let allCases = [];
 
-      if (casesError) {
-        console.error("담당 사건 정보 가져오기 실패:", casesError);
-        throw casesError;
+      // 케이스 ID를 배치로 나누어 쿼리
+      for (let i = 0; i < caseIds.length; i += batchSize) {
+        const batchIds = caseIds.slice(i, i + batchSize);
+        console.log(`배치 ${Math.floor(i / batchSize) + 1}: ${batchIds.length}개 ID 처리 중`);
+
+        // 사건 정보 가져오기
+        const { data: casesData, error: casesError } = await supabase
+          .from("test_cases")
+          .select("*")
+          .in("id", batchIds)
+          .order("created_at", { ascending: false });
+
+        if (casesError) {
+          console.error(
+            `배치 ${Math.floor(i / batchSize) + 1} 사건 정보 가져오기 실패:`,
+            casesError
+          );
+          console.log("해당 배치는 건너뛰고 계속 진행합니다.");
+        } else if (casesData && casesData.length > 0) {
+          allCases = [...allCases, ...casesData];
+          console.log(
+            `배치 ${Math.floor(i / batchSize) + 1}에서 ${
+              casesData.length
+            }개의 사건 정보를 가져왔습니다.`
+          );
+        }
       }
 
-      if (!casesData || casesData.length === 0) {
+      if (allCases.length === 0) {
         console.warn("담당 사건이 없습니다.");
         setCases([]);
         setFilteredCases([]);
+        setTotalItems(0);
+        setTotalPages(0);
         setIsFetchingCases(false);
+        setLoading(false);
         return;
       }
 
-      console.log(`${casesData.length}개의 담당 사건 정보를 가져왔습니다.`);
+      console.log(`총 ${allCases.length}개의 담당 사건을 가져왔습니다.`);
 
-      // 소송 정보 가져오기 (사건번호)
-      const { data: lawsuitsData, error: lawsuitsError } = await supabase
-        .from("test_case_lawsuits")
-        .select("case_id, case_number")
-        .in("case_id", caseIds);
+      // 담당자 정보 가져오기
+      const { data: handlersData, error: handlersError } = await supabase
+        .from("test_case_handlers")
+        .select("case_id, user_id, user:user_id(id, name, profile_image)");
 
-      if (lawsuitsError) {
-        console.error("소송 정보 가져오기 실패:", lawsuitsError);
-      } else {
-        console.log(`${lawsuitsData?.length || 0}개의 소송 정보를 가져왔습니다.`);
+      if (handlersError) {
+        console.error("담당자 정보 가져오기 실패:", handlersError);
+        console.log("담당자 정보 없이 계속 진행합니다.");
       }
 
-      // 사건 정보에 소송 정보 매핑 (사건번호)
-      const caseNumberMap = {};
-      if (lawsuitsData && lawsuitsData.length > 0) {
-        lawsuitsData.forEach((lawsuit) => {
-          if (lawsuit.case_id && lawsuit.case_number) {
-            if (!caseNumberMap[lawsuit.case_id]) {
-              caseNumberMap[lawsuit.case_id] = lawsuit.case_number;
+      // 담당자 데이터가 없어도 빈 배열로 처리
+      const handlersList = handlersData || [];
+
+      // 당사자 정보로 사건 정보 보강
+      const enrichedCases = await enrichCasesWithPartyInfo(allCases);
+
+      // 소송 정보는 검색어가 있을 때만 가져옴
+      let caseNumberMap = {};
+
+      // 검색어가 있는 경우에만 소송 정보를 가져옴
+      if (searchTerm.trim()) {
+        console.log(`검색어 "${searchTerm}"를 포함하는 소송 정보 가져오기`);
+        // 배치 처리
+        for (let i = 0; i < caseIds.length; i += batchSize) {
+          const batchIds = caseIds.slice(i, i + batchSize);
+
+          try {
+            const { data: batchLawsuitsData, error: batchLawsuitsError } = await supabase
+              .from("test_case_lawsuits")
+              .select("case_id, case_number")
+              .in("case_id", batchIds);
+
+            if (batchLawsuitsError) {
+              console.error(
+                `배치 ${Math.floor(i / batchSize) + 1} 소송 정보 가져오기 실패:`,
+                batchLawsuitsError.message || batchLawsuitsError
+              );
+              console.log("해당 배치 소송 정보 없이 계속 진행합니다.");
+            } else if (batchLawsuitsData && batchLawsuitsData.length > 0) {
+              console.log(
+                `배치 ${Math.floor(i / batchSize) + 1}에서 ${
+                  batchLawsuitsData.length
+                }개의 소송 정보를 가져왔습니다.`
+              );
+              // 소송 번호 매핑
+              batchLawsuitsData.forEach((lawsuit) => {
+                if (lawsuit.case_id && lawsuit.case_number) {
+                  caseNumberMap[lawsuit.case_id] = lawsuit.case_number;
+                }
+              });
             }
+          } catch (err) {
+            console.error(
+              `배치 ${Math.floor(i / batchSize) + 1} 소송 정보 가져오기 중 예외 발생:`,
+              err
+            );
+            console.log("해당 배치 소송 정보 없이 계속 진행합니다.");
           }
-        });
+        }
       }
 
-      // 각 사건의 당사자 정보 가져오기
-      const enrichedCases = await enrichCasesWithPartyInfo(casesData || []);
-
-      // 사건번호 정보 추가
+      // 모든 정보 조합
       const finalCases = enrichedCases.map((caseItem) => {
-        // status_id로 상태 정보 가져오기
-        let statusInfo = { name: "알 수 없음", color: "#999999" };
         try {
-          if (caseItem.status_id) {
-            statusInfo = getStatusById(caseItem.status_id);
-          }
-        } catch (statusErr) {
-          console.error("상태 정보 가져오기 실패:", statusErr, caseItem.status_id);
-        }
+          // 담당자 정보 추가
+          const handlers = handlersList.filter((h) => h.case_id === caseItem.id) || [];
 
-        return {
-          ...caseItem,
-          case_number: caseNumberMap[caseItem.id] || null,
-          status_info: statusInfo,
-          search_matched_creditor: false,
-          search_matched_debtor: false,
-          search_matched_case_number: false,
-        };
+          // 상태 정보 가져오기
+          let statusInfo = { name: "알 수 없음", color: "#999999" };
+          try {
+            if (caseItem.status_id) {
+              statusInfo = getStatusById(caseItem.status_id) || statusInfo;
+            }
+          } catch (statusErr) {
+            console.error("상태 정보 가져오기 실패:", statusErr);
+          }
+
+          return {
+            ...caseItem,
+            handlers: handlers.map((h) => h.user),
+            case_number: caseNumberMap[caseItem.id] || null,
+            status_info: statusInfo,
+            // 검색어 일치 여부
+            search_matched_creditor:
+              searchTerm.trim() &&
+              caseItem.creditor_name &&
+              caseItem.creditor_name.toLowerCase().includes(searchTerm.toLowerCase()),
+            search_matched_debtor:
+              searchTerm.trim() &&
+              caseItem.debtor_name &&
+              caseItem.debtor_name.toLowerCase().includes(searchTerm.toLowerCase()),
+            search_matched_case_number:
+              searchTerm.trim() &&
+              caseNumberMap[caseItem.id] &&
+              caseNumberMap[caseItem.id].toLowerCase().includes(searchTerm.toLowerCase()),
+          };
+        } catch (err) {
+          console.error("사건 정보 처리 중 오류:", err);
+          return {
+            ...caseItem,
+            handlers: [],
+            case_number: caseNumberMap[caseItem.id] || null,
+            status_info: { name: "알 수 없음", color: "#999999" },
+            search_matched_creditor: false,
+            search_matched_debtor: false,
+            search_matched_case_number: false,
+          };
+        }
       });
 
+      // 모든 사건 설정
       setCases(finalCases);
-      setFilteredCases(finalCases);
+
+      // 검색어로 필터링
+      let filtered = [...finalCases];
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(
+          (c) =>
+            (c.creditor_name && c.creditor_name.toLowerCase().includes(term)) ||
+            (c.debtor_name && c.debtor_name.toLowerCase().includes(term)) ||
+            (c.case_number && c.case_number.toLowerCase().includes(term))
+        );
+        console.log(`검색어 "${searchTerm}"로 필터링된 결과: ${filtered.length}건`);
+      }
+
+      setFilteredCases(filtered);
+      setTotalItems(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / itemsPerPage));
+      setCurrentPage(1); // 결과를 처음 페이지부터 보여주기
     } catch (error) {
       console.error("담당 사건 정보 가져오기 실패:", error);
       console.error(
@@ -718,8 +1035,11 @@ export default function CaseHandlersPage() {
       // 빈 배열로 상태 설정하여 UI가 정상적으로 표시되도록 함
       setCases([]);
       setFilteredCases([]);
+      setTotalItems(0);
+      setTotalPages(0);
     } finally {
       setIsFetchingCases(false);
+      setLoading(false);
     }
   };
 
@@ -731,114 +1051,138 @@ export default function CaseHandlersPage() {
     console.log(`총 ${caseIds.length}개 사건의 당사자 정보 가져오기 시작`);
 
     try {
-      // 각 사건의 당사자 정보 가져오기
-      const { data: partiesData, error: partiesError } = await supabase
-        .from("test_case_parties")
-        .select("*")
-        .in("case_id", caseIds);
+      // 배치 크기 정의 (Supabase in 쿼리에는 한계가 있을 수 있음)
+      const batchSize = 50;
+      let allParties = [];
+      let allInterests = [];
 
-      if (partiesError) {
-        console.error("당사자 정보 가져오기 실패:", partiesError);
-        throw partiesError;
+      // 케이스 ID를 배치로 나누어 쿼리
+      for (let i = 0; i < caseIds.length; i += batchSize) {
+        const batchIds = caseIds.slice(i, i + batchSize);
+        console.log(`배치 ${Math.floor(i / batchSize) + 1}: ${batchIds.length}개 ID 처리 중`);
+
+        // 각 사건의 당사자 정보 가져오기
+        const { data: partiesData, error: partiesError } = await supabase
+          .from("test_case_parties")
+          .select("*")
+          .in("case_id", batchIds);
+
+        if (partiesError) {
+          console.error(
+            `배치 ${Math.floor(i / batchSize) + 1} 당사자 정보 가져오기 실패:`,
+            partiesError
+          );
+          console.log("해당 배치는 건너뛰고 계속 진행합니다.");
+        } else if (partiesData) {
+          allParties = [...allParties, ...partiesData];
+          console.log(
+            `배치 ${Math.floor(i / batchSize) + 1}에서 ${
+              partiesData.length
+            }개의 당사자 정보를 가져왔습니다.`
+          );
+        }
+
+        // 이자 정보 가져오기
+        const { data: interestsData, error: interestsError } = await supabase
+          .from("test_case_interests")
+          .select("*")
+          .in("case_id", batchIds);
+
+        if (interestsError) {
+          console.error(
+            `배치 ${Math.floor(i / batchSize) + 1} 이자 정보 가져오기 실패:`,
+            interestsError
+          );
+          console.log("해당 배치의 이자 정보는 건너뛰고 계속 진행합니다.");
+        } else if (interestsData) {
+          allInterests = [...allInterests, ...interestsData];
+          console.log(
+            `배치 ${Math.floor(i / batchSize) + 1}에서 ${
+              interestsData.length
+            }개의 이자 정보를 가져왔습니다.`
+          );
+        }
       }
 
-      if (!partiesData) {
-        console.warn("당사자 정보가 없습니다.");
-      } else {
-        console.log(`${partiesData.length}개의 당사자 정보를 가져왔습니다.`);
-      }
-
-      // 이자 정보 가져오기
-      const { data: interestsData, error: interestsError } = await supabase
-        .from("test_case_interests")
-        .select("*")
-        .in("case_id", caseIds);
-
-      if (interestsError) {
-        console.error("이자 정보 가져오기 실패:", interestsError);
-        throw interestsError;
-      }
+      console.log(`총 ${allParties.length}개의 당사자 정보를 가져왔습니다.`);
+      console.log(`총 ${allInterests.length}개의 이자 정보를 가져왔습니다.`);
 
       // 당사자 정보와 원리금 정보로 사건 정보 보강
       const enrichedCases = cases.map((caseItem) => {
-        // 당사자 정보 필터링
-        const caseParties = partiesData
-          ? partiesData.filter((p) => p.case_id === caseItem.id) || []
-          : [];
+        try {
+          // 당사자 정보 필터링
+          const caseParties = allParties.filter((p) => p.case_id === caseItem.id) || [];
 
-        // 이자 정보 필터링
-        const caseInterests = interestsData
-          ? interestsData.filter((i) => i.case_id === caseItem.id) || []
-          : [];
+          // 이자 정보 필터링
+          const caseInterests = allInterests.filter((i) => i.case_id === caseItem.id) || [];
 
-        // 채권자(원고, 신청인) 찾기
-        const creditor = caseParties.find((p) =>
-          ["creditor", "plaintiff", "applicant"].includes(p.party_type)
-        );
+          // 채권자(원고, 신청인) 찾기
+          const creditor = caseParties.find((p) =>
+            ["creditor", "plaintiff", "applicant"].includes(p.party_type)
+          );
 
-        // 채무자(피고, 피신청인) 찾기
-        const debtor = caseParties.find((p) =>
-          ["debtor", "defendant", "respondent"].includes(p.party_type)
-        );
+          // 채무자(피고, 피신청인) 찾기
+          const debtor = caseParties.find((p) =>
+            ["debtor", "defendant", "respondent"].includes(p.party_type)
+          );
 
-        // 채권자 이름 결정 (개인 또는 법인)
-        let creditorName = null;
-        if (creditor) {
-          try {
+          // 채권자 이름 결정 (개인 또는 법인)
+          let creditorName = null;
+          if (creditor) {
             if (creditor.entity_type === "individual") {
               creditorName = creditor.name || "이름 없음";
             } else {
               creditorName = creditor.company_name || "회사명 없음";
             }
-          } catch (err) {
-            console.error("채권자 정보 처리 중 오류:", err, creditor);
-            creditorName = "정보 오류";
           }
-        }
 
-        // 채무자 이름 결정 (개인 또는 법인)
-        let debtorName = null;
-        if (debtor) {
-          try {
+          // 채무자 이름 결정 (개인 또는 법인)
+          let debtorName = null;
+          if (debtor) {
             if (debtor.entity_type === "individual") {
               debtorName = debtor.name || "이름 없음";
             } else {
               debtorName = debtor.company_name || "회사명 없음";
             }
-          } catch (err) {
-            console.error("채무자 정보 처리 중 오류:", err, debtor);
-            debtorName = "정보 오류";
           }
-        }
 
-        // 원금 (principal_amount가 있으면 사용, 없으면 0)
-        const principal = parseFloat(caseItem.principal_amount || 0);
+          // 원금 (principal_amount가 있으면 사용, 없으면 0)
+          const principal = parseFloat(caseItem.principal_amount || 0);
 
-        // 이자 계산
-        let totalInterest = 0;
+          // 이자 계산
+          let totalInterest = 0;
 
-        // 이자 계산 로직
-        if (caseInterests && caseInterests.length > 0) {
-          try {
+          // 이자 계산 로직
+          if (caseInterests && caseInterests.length > 0) {
             caseInterests.forEach((interest) => {
-              const rate = parseFloat(interest.rate || 0) / 100; // 비율로 변환
-              // 원금에 이자율을 곱한 값을 이자로 간주
-              totalInterest += principal * rate;
+              try {
+                const rate = parseFloat(interest.rate || 0) / 100; // 비율로 변환
+                // 원금에 이자율을 곱한 값을 이자로 간주
+                totalInterest += principal * rate;
+              } catch (err) {
+                console.error("이자 계산 중 오류:", err);
+              }
             });
-          } catch (err) {
-            console.error("이자 계산 중 오류:", err);
           }
+
+          // 총 원리금 계산
+          const totalDebt = principal + totalInterest;
+
+          return {
+            ...caseItem,
+            creditor_name: creditorName,
+            debtor_name: debtorName,
+            total_debt: totalDebt,
+          };
+        } catch (err) {
+          console.error("사건 정보 처리 중 오류:", err, caseItem);
+          return {
+            ...caseItem,
+            creditor_name: null,
+            debtor_name: null,
+            total_debt: parseFloat(caseItem.principal_amount || 0),
+          };
         }
-
-        // 총 원리금 계산
-        const totalDebt = principal + totalInterest;
-
-        return {
-          ...caseItem,
-          creditor_name: creditorName,
-          debtor_name: debtorName,
-          total_debt: totalDebt,
-        };
       });
 
       console.log(`${enrichedCases.length}개 사건의 당사자 정보 보강 완료`);
@@ -867,16 +1211,32 @@ export default function CaseHandlersPage() {
 
   // 페이지네이션을 위한 현재 페이지 데이터 계산
   const getCurrentPageData = () => {
+    if (filteredCases.length === 0) return [];
+
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, filteredCases.length);
     return filteredCases.slice(startIndex, endIndex);
   };
 
   // 직원 목록의 페이지네이션을 위한 현재 페이지 데이터 계산
   const getCurrentStaffPageData = () => {
+    if (filteredStaff.length === 0) return [];
+
     const startIndex = (staffCurrentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, filteredStaff.length);
     return filteredStaff.slice(startIndex, endIndex);
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  // 직원 페이지 변경 핸들러
+  const handleStaffPageChange = (page) => {
+    if (page < 1 || page > Math.ceil(filteredStaff.length / itemsPerPage)) return;
+    setStaffCurrentPage(page);
   };
 
   if (loading) {
@@ -1101,86 +1461,81 @@ export default function CaseHandlersPage() {
                         <PaginationContent>
                           <PaginationItem>
                             <PaginationPrevious
-                              onClick={() =>
-                                staffCurrentPage > 1 && setStaffCurrentPage(staffCurrentPage - 1)
+                              onClick={() => handleStaffPageChange(staffCurrentPage - 1)}
+                              disabled={staffCurrentPage === 1}
+                              className={
+                                staffCurrentPage === 1
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
                               }
-                              className={cn(
-                                staffCurrentPage <= 1 && "pointer-events-none opacity-50"
-                              )}
                             />
                           </PaginationItem>
 
-                          {Array.from(
-                            { length: Math.min(5, Math.ceil(filteredStaff.length / itemsPerPage)) },
-                            (_, i) => {
-                              const pageNumber = i + 1;
-                              const totalPages = Math.ceil(filteredStaff.length / itemsPerPage);
+                          {Array.from({
+                            length: Math.min(5, Math.ceil(filteredStaff.length / itemsPerPage)),
+                          }).map((_, index) => {
+                            let pageNumber;
+                            const totalStaffPages = Math.ceil(filteredStaff.length / itemsPerPage);
 
-                              // 페이지 번호 조정
-                              let showNumber = pageNumber;
+                            // 현재 페이지를 중심으로 페이지 번호 계산
+                            if (totalStaffPages <= 5) {
+                              pageNumber = index + 1;
+                            } else if (staffCurrentPage <= 3) {
+                              pageNumber = index + 1;
+                            } else if (staffCurrentPage >= totalStaffPages - 2) {
+                              pageNumber = totalStaffPages - 4 + index;
+                            } else {
+                              pageNumber = staffCurrentPage - 2 + index;
+                            }
 
-                              if (totalPages > 5) {
-                                if (staffCurrentPage <= 3) {
-                                  showNumber = pageNumber;
-                                } else if (staffCurrentPage >= totalPages - 2) {
-                                  showNumber = totalPages - 5 + pageNumber;
-                                } else {
-                                  showNumber = staffCurrentPage - 3 + pageNumber;
-                                }
-
-                                if (showNumber <= 0 || showNumber > totalPages) {
-                                  return null;
-                                }
-                              }
-
+                            // 페이지 번호가 유효한 범위인지 확인
+                            if (pageNumber > 0 && pageNumber <= totalStaffPages) {
                               return (
-                                <PaginationItem key={showNumber}>
+                                <PaginationItem key={pageNumber}>
                                   <PaginationLink
-                                    onClick={() => setStaffCurrentPage(showNumber)}
-                                    isActive={staffCurrentPage === showNumber}
+                                    isActive={staffCurrentPage === pageNumber}
+                                    onClick={() => handleStaffPageChange(pageNumber)}
                                   >
-                                    {showNumber}
+                                    {pageNumber}
                                   </PaginationLink>
                                 </PaginationItem>
                               );
                             }
-                          )}
+                            return null;
+                          })}
 
                           {Math.ceil(filteredStaff.length / itemsPerPage) > 5 &&
                             staffCurrentPage <
                               Math.ceil(filteredStaff.length / itemsPerPage) - 2 && (
-                              <PaginationItem>
-                                <PaginationEllipsis />
-                              </PaginationItem>
-                            )}
-
-                          {Math.ceil(filteredStaff.length / itemsPerPage) > 5 &&
-                            staffCurrentPage <
-                              Math.ceil(filteredStaff.length / itemsPerPage) - 2 && (
-                              <PaginationItem>
-                                <PaginationLink
-                                  onClick={() =>
-                                    setStaffCurrentPage(
-                                      Math.ceil(filteredStaff.length / itemsPerPage)
-                                    )
-                                  }
-                                >
-                                  {Math.ceil(filteredStaff.length / itemsPerPage)}
-                                </PaginationLink>
-                              </PaginationItem>
+                              <>
+                                <PaginationItem>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                                <PaginationItem>
+                                  <PaginationLink
+                                    onClick={() =>
+                                      handleStaffPageChange(
+                                        Math.ceil(filteredStaff.length / itemsPerPage)
+                                      )
+                                    }
+                                  >
+                                    {Math.ceil(filteredStaff.length / itemsPerPage)}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              </>
                             )}
 
                           <PaginationItem>
                             <PaginationNext
-                              onClick={() =>
-                                staffCurrentPage < Math.ceil(filteredStaff.length / itemsPerPage) &&
-                                setStaffCurrentPage(staffCurrentPage + 1)
+                              onClick={() => handleStaffPageChange(staffCurrentPage + 1)}
+                              disabled={
+                                staffCurrentPage === Math.ceil(filteredStaff.length / itemsPerPage)
                               }
-                              className={cn(
-                                staffCurrentPage >=
-                                  Math.ceil(filteredStaff.length / itemsPerPage) &&
-                                  "pointer-events-none opacity-50"
-                              )}
+                              className={
+                                staffCurrentPage === Math.ceil(filteredStaff.length / itemsPerPage)
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
+                              }
                             />
                           </PaginationItem>
                         </PaginationContent>
@@ -1227,22 +1582,20 @@ export default function CaseHandlersPage() {
                           <Input
                             placeholder="의뢰인 또는 당사자 이름으로 검색"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={handleSearchChange}
                             className="pl-9"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleSearch();
+                              }
+                            }}
                           />
                         </div>
                         <Button
-                          onClick={() => {
-                            if (searchTerm.trim().length >= 2) {
-                              fetchCases();
-                              setActiveTab("cases");
-                            } else {
-                              toast.error("검색어는 2글자 이상 입력해주세요.");
-                            }
-                          }}
-                          disabled={isFetchingCases || searchTerm.trim().length < 2}
+                          onClick={handleSearch}
+                          disabled={loading || isFetchingCases || searchTerm.trim().length < 2}
                         >
-                          {isFetchingCases ? (
+                          {loading ? (
                             <>
                               <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
                               검색 중...
@@ -1283,219 +1636,205 @@ export default function CaseHandlersPage() {
                   )}
                 </div>
 
-                <div className="border rounded-md">
+                <div className="overflow-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-                        <TableHead className="w-[15%]">사건 ID</TableHead>
-                        <TableHead className="w-[25%]">채권자</TableHead>
-                        <TableHead className="w-[25%]">채무자</TableHead>
-                        <TableHead className="w-[20%]">원리금</TableHead>
-                        <TableHead className="w-[15%] text-right">담당자 설정</TableHead>
+                      <TableRow>
+                        <TableHead>사건 번호</TableHead>
+                        <TableHead>채권자/원고</TableHead>
+                        <TableHead>채무자/피고</TableHead>
+                        <TableHead>담당자</TableHead>
+                        <TableHead>상태</TableHead>
+                        <TableHead className="text-right">작업</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCases.length === 0 ? (
+                      {loading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                          <TableRow key={`skeleton-${i}`}>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[120px]" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[150px]" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[150px]" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[100px]" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[80px]" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[100px]" />
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : filteredCases.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                            <div className="flex flex-col items-center">
-                              <Briefcase className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
-                              <p>검색 결과가 없습니다.</p>
-                            </div>
+                          <TableCell colSpan={6} className="text-center py-4">
+                            {searchTerm.trim() ? "검색 결과가 없습니다" : "사건 정보가 없습니다"}
                           </TableCell>
                         </TableRow>
                       ) : (
-                        getCurrentPageData().map((caseItem) => {
-                          const caseHandlers = getCaseHandlers(caseItem.id);
-                          const isAlreadyAssigned =
-                            selectedStaff &&
-                            caseHandlers.some((h) => h.user_id === selectedStaff.id);
-
-                          return (
-                            <TableRow
-                              key={caseItem.id}
-                              className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-default"
-                            >
-                              <TableCell>
-                                <div className="flex items-center font-medium">
-                                  <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                                  {caseItem.id ? caseItem.id.substring(0, 8) + "..." : "ID 미지정"}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {caseItem.case_number ? (
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "text-xs",
-                                        caseItem.search_matched_case_number &&
-                                          "bg-yellow-100 dark:bg-yellow-900/20 border-yellow-200"
-                                      )}
-                                    >
-                                      {caseItem.case_number}
-                                    </Badge>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">사건번호 없음</span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {getCaseStatusBadge(caseItem.status, caseItem.status_info)}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div
-                                  className={cn(
-                                    "font-medium text-blue-600 dark:text-blue-400",
-                                    caseItem.search_matched_creditor &&
-                                      "bg-yellow-100 dark:bg-yellow-900/20 px-1 py-0.5 rounded"
-                                  )}
-                                >
-                                  {caseItem.creditor_name || "-"}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">채권자</div>
-                              </TableCell>
-                              <TableCell>
-                                <div
-                                  className={cn(
-                                    "font-medium text-red-600 dark:text-red-400",
-                                    caseItem.search_matched_debtor &&
-                                      "bg-yellow-100 dark:bg-yellow-900/20 px-1 py-0.5 rounded"
-                                  )}
-                                >
-                                  {caseItem.debtor_name || "-"}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">채무자</div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium text-lg">
-                                  {formatCurrency(caseItem.total_debt)}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  원금: {formatCurrency(caseItem.principal_amount || 0)}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {selectedStaff ? (
-                                  isAlreadyAssigned ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-xs h-8 bg-gray-100"
-                                      disabled
-                                    >
-                                      <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-500" />
-                                      담당 중
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-xs h-8"
-                                      onClick={() => handleQuickAssign(caseItem, selectedStaff.id)}
-                                    >
-                                      <UserPlus className="h-3.5 w-3.5 mr-1" />
-                                      담당 추가
-                                    </Button>
-                                  )
-                                ) : (
-                                  <Button
+                        getCurrentPageData().map((caseItem) => (
+                          <TableRow key={caseItem.id}>
+                            <TableCell>
+                              <div className="flex items-center font-medium">
+                                <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                                {caseItem.id ? caseItem.id.substring(0, 8) + "..." : "ID 미지정"}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {caseItem.case_number ? (
+                                  <Badge
                                     variant="outline"
-                                    size="sm"
-                                    className="text-xs h-8"
-                                    onClick={() => handleOpenAddHandlerModal(caseItem)}
+                                    className={cn(
+                                      "text-xs",
+                                      caseItem.search_matched_case_number &&
+                                        "bg-yellow-100 dark:bg-yellow-900/20 border-yellow-200"
+                                    )}
                                   >
-                                    <UserPlus className="h-3.5 w-3.5 mr-1" />
-                                    담당자 추가
-                                  </Button>
+                                    {caseItem.case_number}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-gray-400">사건번호 없음</span>
                                 )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {getCaseStatusBadge(caseItem.status, caseItem.status_info)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div
+                                className={cn(
+                                  "font-medium text-blue-600 dark:text-blue-400",
+                                  caseItem.search_matched_creditor &&
+                                    "bg-yellow-100 dark:bg-yellow-900/20 px-1 py-0.5 rounded"
+                                )}
+                              >
+                                {caseItem.creditor_name || "-"}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">채권자</div>
+                            </TableCell>
+                            <TableCell>
+                              <div
+                                className={cn(
+                                  "font-medium text-red-600 dark:text-red-400",
+                                  caseItem.search_matched_debtor &&
+                                    "bg-yellow-100 dark:bg-yellow-900/20 px-1 py-0.5 rounded"
+                                )}
+                              >
+                                {caseItem.debtor_name || "-"}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">채무자</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-lg">
+                                {formatCurrency(caseItem.total_debt)}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                원금: {formatCurrency(caseItem.principal_amount || 0)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {selectedStaff ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-8"
+                                  onClick={() => handleQuickAssign(caseItem)}
+                                >
+                                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                                  담당 추가
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-8"
+                                  onClick={() => handleOpenAddHandlerModal(caseItem)}
+                                >
+                                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                                  담당자 추가
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
                       )}
                     </TableBody>
                   </Table>
                 </div>
 
+                {/* 페이지네이션 컴포넌트 */}
                 {filteredCases.length > 0 && (
-                  <div className="flex justify-center mt-4">
+                  <div className="mt-4 flex justify-center">
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious
-                            onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                            className={cn(currentPage <= 1 && "pointer-events-none opacity-50")}
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className={
+                              currentPage === 1 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                            }
                           />
                         </PaginationItem>
 
-                        {Array.from(
-                          { length: Math.min(5, Math.ceil(filteredCases.length / itemsPerPage)) },
-                          (_, i) => {
-                            const pageNumber = i + 1;
-                            const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
+                        {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
+                          let pageNumber;
 
-                            // 페이지 번호 조정 (1, 2, ..., 현재, ..., 마지막-1, 마지막)
-                            let showNumber = pageNumber;
+                          // 현재 페이지를 중심으로 페이지 번호 계산
+                          if (totalPages <= 5) {
+                            pageNumber = index + 1;
+                          } else if (currentPage <= 3) {
+                            pageNumber = index + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + index;
+                          } else {
+                            pageNumber = currentPage - 2 + index;
+                          }
 
-                            if (totalPages > 5) {
-                              if (currentPage <= 3) {
-                                // 처음 5페이지 보이기
-                                showNumber = pageNumber;
-                              } else if (currentPage >= totalPages - 2) {
-                                // 마지막 5페이지 보이기
-                                showNumber = totalPages - 5 + pageNumber;
-                              } else {
-                                // 현재 페이지 중심으로 앞뒤로 2페이지씩 보이기
-                                showNumber = currentPage - 3 + pageNumber;
-                              }
-
-                              if (showNumber <= 0 || showNumber > totalPages) {
-                                return null;
-                              }
-                            }
-
+                          // 페이지 번호가 유효한 범위인지 확인
+                          if (pageNumber > 0 && pageNumber <= totalPages) {
                             return (
-                              <PaginationItem key={showNumber}>
+                              <PaginationItem key={pageNumber}>
                                 <PaginationLink
-                                  onClick={() => setCurrentPage(showNumber)}
-                                  isActive={currentPage === showNumber}
+                                  isActive={pageNumber === currentPage}
+                                  onClick={() => handlePageChange(pageNumber)}
                                 >
-                                  {showNumber}
+                                  {pageNumber}
                                 </PaginationLink>
                               </PaginationItem>
                             );
                           }
-                        )}
+                          return null;
+                        })}
 
-                        {Math.ceil(filteredCases.length / itemsPerPage) > 5 &&
-                          currentPage < Math.ceil(filteredCases.length / itemsPerPage) - 2 && (
+                        {totalPages > 5 && currentPage < totalPages - 2 && (
+                          <>
                             <PaginationItem>
                               <PaginationEllipsis />
                             </PaginationItem>
-                          )}
-
-                        {Math.ceil(filteredCases.length / itemsPerPage) > 5 &&
-                          currentPage < Math.ceil(filteredCases.length / itemsPerPage) - 2 && (
                             <PaginationItem>
-                              <PaginationLink
-                                onClick={() =>
-                                  setCurrentPage(Math.ceil(filteredCases.length / itemsPerPage))
-                                }
-                              >
-                                {Math.ceil(filteredCases.length / itemsPerPage)}
+                              <PaginationLink onClick={() => handlePageChange(totalPages)}>
+                                {totalPages}
                               </PaginationLink>
                             </PaginationItem>
-                          )}
+                          </>
+                        )}
 
                         <PaginationItem>
                           <PaginationNext
-                            onClick={() =>
-                              currentPage < Math.ceil(filteredCases.length / itemsPerPage) &&
-                              setCurrentPage(currentPage + 1)
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className={
+                              currentPage === totalPages
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer"
                             }
-                            className={cn(
-                              currentPage >= Math.ceil(filteredCases.length / itemsPerPage) &&
-                                "pointer-events-none opacity-50"
-                            )}
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -1514,22 +1853,30 @@ export default function CaseHandlersPage() {
                       <Input
                         placeholder="다른 당사자 이름으로 검색"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={handleSearchChange}
                         className="pl-9"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleSearch();
+                          }
+                        }}
                       />
                     </div>
                     <Button
-                      onClick={() => {
-                        if (searchTerm.trim().length >= 2) {
-                          fetchCases();
-                        } else {
-                          toast.error("검색어는 2글자 이상 입력해주세요.");
-                        }
-                      }}
-                      disabled={isFetchingCases || searchTerm.trim().length < 2}
+                      onClick={handleSearch}
+                      disabled={loading || isFetchingCases || searchTerm.trim().length < 2}
                     >
-                      <Search className="h-4 w-4 mr-2" />
-                      검색
+                      {loading ? (
+                        <>
+                          <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          검색 중...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          검색
+                        </>
+                      )}
                     </Button>
                   </div>
                   <div>

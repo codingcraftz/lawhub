@@ -194,19 +194,20 @@
 
 ## 소송 테이블 (test_case_lawsuits)
 
-| 컬럼         | 데이터 타입              | 설명                                             |
-| ------------ | ------------------------ | ------------------------------------------------ |
-| id           | uuid                     | 소송 고유 식별자                                 |
-| case_id      | uuid                     | 사건 ID (외래키)                                 |
-| lawsuit_type | text                     | 소송 유형 (civil, payment_order, execution 등)   |
-| court_name   | text                     | 법원명                                           |
-| case_number  | text                     | 사건번호                                         |
-| filing_date  | timestamp with time zone | 접수일                                           |
-| description  | text                     | 설명                                             |
-| status       | text                     | 상태 (pending, filed, in_progress, completed 등) |
-| created_by   | uuid                     | 생성자 ID (외래키, auth.users 테이블)            |
-| created_at   | timestamp with time zone | 생성 시간                                        |
-| updated_at   | timestamp with time zone | 수정 시간                                        |
+| 컬럼         | 데이터 타입              | 설명                                                               |
+| ------------ | ------------------------ | ------------------------------------------------------------------ |
+| id           | uuid                     | 소송 고유 식별자                                                   |
+| case_id      | uuid                     | 사건 ID (외래키)                                                   |
+| lawsuit_type | text                     | 소송 유형 (civil, payment_order,property_disclosure, execution 등) |
+| court_name   | text                     | 법원명                                                             |
+| case_number  | text                     | 사건번호                                                           |
+| type         | text                     | 구분 (손해배상(기), 대여금, 약정금 등)                             |
+| filing_date  | timestamp with time zone | 접수일                                                             |
+| description  | text                     | 설명                                                               |
+| status       | text                     | 상태 (pending, filed, in_progress, completed 등)                   |
+| created_by   | uuid                     | 생성자 ID (외래키, auth.users 테이블)                              |
+| created_at   | timestamp with time zone | 생성 시간                                                          |
+| updated_at   | timestamp with time zone | 수정 시간                                                          |
 
 ## 소송 당사자 연결 테이블 (test_lawsuit_parties)
 
@@ -314,6 +315,5 @@
 - **test_cases** ↔ **test_case_progress**: 1:N (한 사건은 여러 진행 상태를 가질 수 있음)
 - **test_cases** ↔ **test_recovery_activities**: 1:N (한 사건은 여러 회수 활동을 가질 수 있음)
 - **test_cases** ↔ **test_case_notifications**: 1:N (한 사건은 여러 알림을 생성할 수 있음)
-- **test_case_parties** ↔ **test_debt_claims**: 1:N (한 당사자는 여러 채권/채무 관계를 가질 수 있음)
 - **test_legal_process_stages** ↔ **test_case_progress**: 1:N (한 법적 프로세스 단계는 여러 사건의 진행 상태에 연결될 수 있음)
 - **test_document_types** ↔ **test_case_documents**: 1:N (한 문서 유형은 여러 문서에 적용될 수 있음)

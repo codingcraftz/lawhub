@@ -54,6 +54,20 @@ export const CASE_TYPES = {
     className:
       "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800/50",
   },
+  bankruptcy: {
+    id: "bankruptcy",
+    name: "회생파산",
+    color: "amber",
+    className:
+      "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50",
+  },
+  execution: {
+    id: "execution",
+    name: "민사집행",
+    color: "emerald",
+    className:
+      "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/50",
+  },
   debt: {
     id: "debt",
     name: "채권",
@@ -67,9 +81,9 @@ export const CASE_TYPES = {
 export const STATUS_TYPES = {
   pending: {
     name: "대기중",
-    color: "#F59E0B", // 주황색
+    color: "#6B7280", // 회색으로 변경
     className:
-      "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
+      "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800/50 dark:text-gray-300 dark:border-gray-700",
     icon: "Hourglass", // 아이콘 이름
   },
   in_progress: {

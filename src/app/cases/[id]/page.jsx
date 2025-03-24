@@ -1241,31 +1241,49 @@ export default function CasePage() {
                         등록된 당사자가 없습니다
                       </p>
                     ) : (
-                      parties.slice(0, 3).map((party, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={cn("text-xs", getPartyTypeColor(party.party_type))}
-                          >
-                            {party.party_type === "plaintiff"
-                              ? "원고"
-                              : party.party_type === "defendant"
-                              ? "피고"
-                              : party.party_type === "creditor"
-                              ? "채권자"
-                              : party.party_type === "debtor"
-                              ? "채무자"
-                              : party.party_type === "applicant"
-                              ? "신청인"
-                              : party.party_type === "respondent"
-                              ? "피신청인"
-                              : party.party_type}
-                          </Badge>
-                          <span className="font-medium truncate">
-                            {party.name || party.company_name}
-                          </span>
-                        </div>
-                      ))
+                      // 당사자 정렬: 원고/채권자/신청인 유형이 먼저 오도록 정렬
+                      [...parties]
+                        .sort((a, b) => {
+                          // 원고/채권자/신청인 유형 우선순위 부여
+                          const isMainPartyA = ["plaintiff", "creditor", "applicant"].includes(
+                            a.party_type
+                          );
+                          const isMainPartyB = ["plaintiff", "creditor", "applicant"].includes(
+                            b.party_type
+                          );
+
+                          if (isMainPartyA && !isMainPartyB) return -1;
+                          if (!isMainPartyA && isMainPartyB) return 1;
+                          return 0;
+                        })
+                        .slice(0, 3)
+                        .map((party, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs", getPartyTypeColor(party.party_type))}
+                            >
+                              {party.party_type === "plaintiff"
+                                ? "원고"
+                                : party.party_type === "defendant"
+                                ? "피고"
+                                : party.party_type === "creditor"
+                                ? "채권자"
+                                : party.party_type === "debtor"
+                                ? "채무자"
+                                : party.party_type === "applicant"
+                                ? "신청인"
+                                : party.party_type === "respondent"
+                                ? "피신청인"
+                                : party.party_type}
+                            </Badge>
+                            <span className="font-medium truncate">
+                              {party.entity_type === "corporation"
+                                ? party.company_name
+                                : party.name}
+                            </span>
+                          </div>
+                        ))
                     )}
 
                     {parties.length > 3 && (

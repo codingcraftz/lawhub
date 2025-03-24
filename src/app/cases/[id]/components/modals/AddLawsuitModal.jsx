@@ -34,10 +34,10 @@ import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from "uuid";
 
 const LAWSUIT_TYPES = [
-  { value: "civil", label: "민사소송" },
+  { value: "civil", label: "민사" },
+  { value: "bankruptcy", label: "회생파산" },
   { value: "payment_order", label: "지급명령" },
-  { value: "property_disclosure", label: "재산명시" },
-  { value: "execution", label: "강제집행" },
+  { value: "execution", label: "민사집행" },
 ];
 
 const LAWSUIT_STATUS = [
@@ -99,7 +99,8 @@ export default function AddLawsuitModal({
     case_number: "",
     filing_date: new Date(),
     description: "",
-    status: "pending",
+    status: "in_progress",
+    type: "",
   });
 
   // 수정 모드일 때 폼 데이터 초기화
@@ -112,7 +113,8 @@ export default function AddLawsuitModal({
         case_number: editingLawsuit.case_number || "",
         filing_date: editingLawsuit.filing_date ? new Date(editingLawsuit.filing_date) : new Date(),
         description: editingLawsuit.description || "",
-        status: editingLawsuit.status || "pending",
+        status: editingLawsuit.status || "in_progress",
+        type: editingLawsuit.type || "",
       });
     } else {
       console.log("소송 정보 폼 초기화: 추가 모드");
@@ -122,7 +124,8 @@ export default function AddLawsuitModal({
         case_number: "",
         filing_date: new Date(),
         description: "",
-        status: "pending",
+        status: "in_progress",
+        type: "",
       });
     }
   }, [editingLawsuit, isEditMode]);
@@ -187,11 +190,23 @@ export default function AddLawsuitModal({
 
         loadPartyDetails();
       } else {
-        setSelectedParties([]);
+        // 새 소송 등록 시 모든 당사자를 기본으로 선택
+        // 소송 유형에 따라 적절한 당사자 유형 자동 설정
+        const initialSelectedParties = parties.map((party) => {
+          // 기본 당사자 유형 결정 (party.party_type를 기반으로)
+          let defaultPartyType = mapPartyTypeToLawsuitType(party.party_type, "civil");
+
+          return {
+            ...party,
+            lawsuit_party_type: defaultPartyType,
+          };
+        });
+
+        setSelectedParties(initialSelectedParties);
       }
 
-      // 당사자 목록 초기화
-      setFilteredParties(parties);
+      // 당사자 목록 초기화 - 이제 선택되지 않은 당사자만 표시
+      updateFilteredParties();
       setSearchTerm("");
 
       // 에러 초기화
@@ -208,7 +223,69 @@ export default function AddLawsuitModal({
     }
   }, [open, isEditMode, editingLawsuit, parties, caseDetails]);
 
-  // 사건 정보 불러오기
+  // 소송 유형이 변경될 때 당사자 유형 자동 업데이트
+  useEffect(() => {
+    if (formData.lawsuit_type && selectedParties.length > 0) {
+      // 소송 유형에 따라 당사자 유형 자동 업데이트
+      const updatedParties = selectedParties.map((party) => {
+        const newPartyType = mapPartyTypeToLawsuitType(party.party_type, formData.lawsuit_type);
+        return {
+          ...party,
+          lawsuit_party_type: newPartyType,
+        };
+      });
+
+      setSelectedParties(updatedParties);
+    }
+  }, [formData.lawsuit_type]);
+
+  // 당사자 유형을 소송 유형에 맞게 매핑하는 함수
+  const mapPartyTypeToLawsuitType = (partyType, lawsuitType) => {
+    // 기본 타입 매핑
+    if (lawsuitType === "civil") {
+      if (partyType === "creditor" || partyType === "applicant" || partyType === "plaintiff") {
+        return "plaintiff"; // 원고
+      } else {
+        return "defendant"; // 피고
+      }
+    } else if (lawsuitType === "bankruptcy") {
+      if (partyType === "plaintiff" || partyType === "creditor" || partyType === "applicant") {
+        return "applicant"; // 신청인
+      } else {
+        return "debtor"; // 채무자
+      }
+    } else if (lawsuitType === "payment_order" || lawsuitType === "execution") {
+      if (partyType === "plaintiff" || partyType === "applicant" || partyType === "creditor") {
+        return "creditor"; // 채권자
+      } else {
+        return "debtor"; // 채무자
+      }
+    } else {
+      // 기본값 반환
+      if (partyType === "creditor" || partyType === "applicant" || partyType === "plaintiff") {
+        return "plaintiff"; // 원고
+      } else {
+        return "defendant"; // 피고
+      }
+    }
+  };
+
+  // 필터링된 당사자 목록 업데이트 (선택되지 않은 당사자만 표시)
+  const updateFilteredParties = () => {
+    if (searchTerm) {
+      const filtered = parties.filter((party) => {
+        const name = party.entity_type === "individual" ? party.name : party.company_name;
+        // 검색어로 필터링하고, 이미 선택된 당사자는 제외
+        return name.toLowerCase().includes(searchTerm.toLowerCase());
+      });
+      setFilteredParties(filtered);
+    } else {
+      // 검색어가 없으면 모든 당사자 표시
+      setFilteredParties(parties);
+    }
+  };
+
+  // 사건 정보 불러오기 함수
   const fetchCaseDetails = async () => {
     try {
       const { data, error } = await supabase
@@ -234,16 +311,8 @@ export default function AddLawsuitModal({
 
   // 검색어에 따라 당사자 필터링
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = parties.filter((party) => {
-        const name = party.entity_type === "individual" ? party.name : party.company_name;
-        return name.toLowerCase().includes(searchTerm.toLowerCase());
-      });
-      setFilteredParties(filtered);
-    } else {
-      setFilteredParties(parties);
-    }
-  }, [searchTerm, parties]);
+    updateFilteredParties();
+  }, [searchTerm, parties, selectedParties]);
 
   const handleInputChange = (field, value) => {
     setFormData({
@@ -269,14 +338,7 @@ export default function AddLawsuitModal({
     }
 
     // 소송 유형에 따라 기본 당사자 유형 지정
-    let defaultPartyType;
-    if (formData.lawsuit_type === "civil" || formData.lawsuit_type === "payment_order") {
-      defaultPartyType = party.party_type === "creditor" ? "plaintiff" : "defendant";
-    } else if (formData.lawsuit_type === "property_disclosure") {
-      defaultPartyType = party.party_type === "creditor" ? "applicant" : "respondent";
-    } else {
-      defaultPartyType = party.party_type;
-    }
+    let defaultPartyType = mapPartyTypeToLawsuitType(party.party_type, formData.lawsuit_type);
 
     // 당사자 추가
     setSelectedParties([
@@ -484,7 +546,7 @@ export default function AddLawsuitModal({
       // 알림 제목과 내용 설정
       // 소송 타입 가져오기
       const lawsuitTypeText = getLawsuitTypeText(lawsuitData.lawsuit_type);
-      const title = `${lawsuitTypeText}이(가) ${isEditMode ? "수정" : "등록"}되었습니다.`;
+      const title = `${lawsuitTypeText}소송이(가) ${isEditMode ? "수정" : "등록"}되었습니다.`;
 
       // 채권자와 채무자 찾기
       let creditorName = "미지정";
@@ -501,9 +563,9 @@ export default function AddLawsuitModal({
       ) {
         creditorType = "creditor"; // 채권자
         debtorType = "debtor"; // 채무자
-      } else if (lawsuitData.lawsuit_type === "property_disclosure") {
+      } else if (lawsuitData.lawsuit_type === "bankruptcy") {
         creditorType = "applicant"; // 신청인
-        debtorType = "respondent"; // 피신청인
+        debtorType = "debtor"; // 채무자
       } else {
         creditorType = "plaintiff"; // 기본값
         debtorType = "defendant"; // 기본값
@@ -669,6 +731,7 @@ export default function AddLawsuitModal({
         filing_date: formData.filing_date.toISOString().split("T")[0],
         description: formData.description.trim() || null,
         status: formData.status,
+        type: formData.type.trim() || null,
         created_by: user.id,
       };
 
@@ -778,16 +841,16 @@ export default function AddLawsuitModal({
         { value: "plaintiff", label: "원고" },
         { value: "defendant", label: "피고" },
       ];
+    } else if (formData.lawsuit_type === "bankruptcy") {
+      return [
+        { value: "applicant", label: "신청인" },
+        { value: "debtor", label: "채무자" },
+      ];
     } else if (formData.lawsuit_type === "payment_order" || formData.lawsuit_type === "execution") {
       // 지급명령과 강제집행은 채권자 / 채무자
       return [
         { value: "creditor", label: "채권자" },
         { value: "debtor", label: "채무자" },
-      ];
-    } else if (formData.lawsuit_type === "property_disclosure") {
-      return [
-        { value: "applicant", label: "신청인" },
-        { value: "respondent", label: "피신청인" },
       ];
     } else {
       return [
@@ -839,6 +902,25 @@ export default function AddLawsuitModal({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="status">상태</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleInputChange("status", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="상태 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LAWSUIT_STATUS.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="court_name">법원명</Label>
               <Input
                 id="court_name"
@@ -852,18 +934,30 @@ export default function AddLawsuitModal({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="case_number">사건번호</Label>
-              <Input
-                id="case_number"
-                value={formData.case_number}
-                onChange={(e) => handleInputChange("case_number", e.target.value)}
-                placeholder="사건번호를 입력하세요 (예: 2023가단12345)"
-                className={formErrors.case_number ? "border-red-500" : ""}
-              />
-              {formErrors.case_number && (
-                <p className="text-xs text-red-500">{formErrors.case_number}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="case_number">사건번호</Label>
+                <Input
+                  id="case_number"
+                  value={formData.case_number}
+                  onChange={(e) => handleInputChange("case_number", e.target.value)}
+                  placeholder="예: 2023가단12345"
+                  className={formErrors.case_number ? "border-red-500" : ""}
+                />
+                {formErrors.case_number && (
+                  <p className="text-xs text-red-500">{formErrors.case_number}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="type">사건구분</Label>
+                <Input
+                  id="type"
+                  value={formData.type}
+                  onChange={(e) => handleInputChange("type", e.target.value)}
+                  placeholder="손해배상(기), 약정금 등"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -899,25 +993,6 @@ export default function AddLawsuitModal({
               {formErrors.filing_date && (
                 <p className="text-xs text-red-500">{formErrors.filing_date}</p>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">상태</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => handleInputChange("status", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="상태 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {LAWSUIT_STATUS.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">
@@ -1044,50 +1119,133 @@ export default function AddLawsuitModal({
                   <p className="text-sm text-muted-foreground">검색 결과가 없습니다</p>
                 </div>
               ) : (
-                filteredParties.map((party) => {
-                  const isSelected = selectedParties.some((p) => p.id === party.id);
-                  return (
-                    <Card
-                      key={party.id}
-                      className={cn(
-                        "cursor-pointer hover:bg-accent/50 transition-colors",
-                        isSelected && "opacity-50"
-                      )}
-                      onClick={() => {
-                        if (!isSelected) addParty(party);
-                      }}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {party.entity_type === "individual" ? (
-                              <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
-                            ) : (
-                              <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
-                            )}
-                            <div>
-                              <div className="flex items-center space-x-2">
-                                <Badge variant="outline" className="text-xs font-normal">
-                                  {getPartyTypeText(party.party_type)}
-                                </Badge>
-                                <span className="font-medium">
-                                  {party.entity_type === "individual"
-                                    ? party.name
-                                    : party.company_name}
-                                </span>
+                <>
+                  {/* 이미 선택된 당사자 먼저 표시 */}
+                  {selectedParties.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-medium mb-2 text-muted-foreground">
+                        선택된 당사자
+                      </h3>
+                      <div className="space-y-2">
+                        {selectedParties.map((party) => (
+                          <Card key={party.id} className="bg-primary/5 border-primary/20">
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  {party.entity_type === "individual" ? (
+                                    <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
+                                  ) : (
+                                    <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
+                                  )}
+                                  <div>
+                                    <div className="flex items-center space-x-2">
+                                      <Select
+                                        value={party.lawsuit_party_type}
+                                        onValueChange={(value) => updatePartyType(party.id, value)}
+                                      >
+                                        <SelectTrigger className="h-7 w-[90px] text-xs">
+                                          <SelectValue placeholder="유형" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {getPartyTypeOptions().map((type) => (
+                                            <SelectItem key={type.value} value={type.value}>
+                                              {type.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <span className="font-medium">
+                                        {party.entity_type === "individual"
+                                          ? party.name
+                                          : party.company_name}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {party.phone ? party.phone : "연락처 없음"}
+                                      {party.email ? ` · ${party.email}` : ""}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  onClick={() => removeParty(party.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {party.phone ? party.phone : "연락처 없음"}
-                                {party.email ? ` · ${party.email}` : ""}
-                              </p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 추가 가능한 당사자 표시 */}
+                  <h3 className="text-sm font-medium mb-2 text-muted-foreground">
+                    추가 가능한 당사자
+                  </h3>
+                  {filteredParties.filter(
+                    (party) => !selectedParties.some((p) => p.id === party.id)
+                  ).length > 0 ? (
+                    filteredParties.map((party) => {
+                      const isSelected = selectedParties.some((p) => p.id === party.id);
+                      if (isSelected) return null; // 이미 선택된 당사자는 제외
+
+                      return (
+                        <Card
+                          key={party.id}
+                          className={cn("cursor-pointer hover:bg-accent/50 transition-colors")}
+                          onClick={() => addParty(party)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                {party.entity_type === "individual" ? (
+                                  <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
+                                ) : (
+                                  <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
+                                )}
+                                <div>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                      {getPartyTypeText(party.party_type)}
+                                    </Badge>
+                                    <span className="font-medium">
+                                      {party.entity_type === "individual"
+                                        ? party.name
+                                        : party.company_name}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {party.phone ? party.phone : "연락처 없음"}
+                                    {party.email ? ` · ${party.email}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-green-500 hover:text-green-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addParty(party);
+                                }}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </div>
-                          {isSelected && <Badge variant="secondary">선택됨</Badge>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">추가할 당사자가 없습니다</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

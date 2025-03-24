@@ -21,27 +21,56 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, RefreshCw, Trash2, Edit, Download, Calendar, File } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Edit, Download, Calendar, File, Link, Link2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { CASE_TYPES, STATUS_TYPES, getCaseTypeByValue, getStatusByValue } from "@/utils/constants";
 
 // 모달 컴포넌트 가져오기
 import AddSubmissionModal from "./modals/AddSubmissionModal";
 import AddLawsuitModal from "./modals/AddLawsuitModal";
 import ScheduleFormModal from "./modals/ScheduleFormModal";
+import AddRelatedLawsuitModal from "./modals/AddRelatedLawsuitModal";
 // CaseTimeline 컴포넌트 가져오기
 import CaseTimeline from "./LawsuitSubmissions";
 
-const LAWSUIT_TYPES = {
-  civil: { label: "민사소송", variant: "default" },
-  payment_order: { label: "지급명령", variant: "secondary" },
-  property_disclosure: { label: "재산명시", variant: "outline" },
-  execution: { label: "강제집행", variant: "destructive" },
+// 기본 클래스명 정의
+const defaultClassName =
+  "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+
+// STATUS_TYPES를 소송 상태 매핑에 활용
+const LAWSUIT_STATUS = {
+  pending: {
+    label: STATUS_TYPES.pending.name,
+    className: STATUS_TYPES.pending.className,
+  },
+  in_progress: {
+    label: STATUS_TYPES.in_progress.name,
+    className: STATUS_TYPES.in_progress.className,
+  },
+  completed: {
+    label: STATUS_TYPES.completed.name,
+    className: STATUS_TYPES.completed.className,
+  },
 };
 
-const LAWSUIT_STATUS = {
-  pending: { label: "대기중", variant: "outline" },
-  in_progress: { label: "진행", variant: "default" },
-  completed: { label: "완료", variant: "destructive" },
+// CASE_TYPES를 소송 유형 매핑에 활용
+const LAWSUIT_TYPES = {
+  civil: {
+    label: CASE_TYPES.civil.name,
+    className: CASE_TYPES.civil.className,
+  },
+  bankruptcy: {
+    label: CASE_TYPES.bankruptcy.name,
+    className: CASE_TYPES.bankruptcy.className,
+  },
+  payment_order: {
+    label: CASE_TYPES.payment_order.name,
+    className: CASE_TYPES.payment_order.className,
+  },
+  execution: {
+    label: CASE_TYPES.execution.name,
+    className: CASE_TYPES.execution.className,
+  },
 };
 
 const PARTY_ORDER = {
@@ -61,6 +90,8 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
   const [activeTab, setActiveTab] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [localParties, setLocalParties] = useState(parties || []);
+  const [relatedLawsuits, setRelatedLawsuits] = useState([]);
+  const [loadingRelatedLawsuits, setLoadingRelatedLawsuits] = useState(false);
 
   // 모달 상태
   const [showAddSubmissionModal, setShowAddSubmissionModal] = useState(false);
@@ -70,6 +101,9 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
   // 기일 모달 관련 상태 추가
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  // 관련 소송 모달 관련 상태 추가
+  const [showAddRelatedLawsuitModal, setShowAddRelatedLawsuitModal] = useState(false);
+  const [editingRelatedLawsuit, setEditingRelatedLawsuit] = useState(null);
 
   // 스토리지 버킷 이름 정의
   const BUCKET_NAME = "case-files";
@@ -96,6 +130,7 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
   useEffect(() => {
     if (activeTab) {
       fetchSubmissions(activeTab);
+      fetchRelatedLawsuits(activeTab);
     }
   }, [activeTab]);
 
@@ -121,7 +156,7 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
         `
         )
         .eq("case_id", caseId)
-        .order("filing_date", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
 
@@ -192,6 +227,33 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
       setSubmissions([]);
     } finally {
       setLoadingSubmissions(false);
+    }
+  };
+
+  const fetchRelatedLawsuits = async (lawsuitId) => {
+    setLoadingRelatedLawsuits(true);
+    try {
+      const { data, error } = await supabase
+        .from("test_related_lawsuits")
+        .select("*")
+        .eq("lawsuit_id", lawsuitId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("관련 소송 조회 실패:", error);
+        toast.error("관련 소송 목록을 불러오는데 실패했습니다");
+        setRelatedLawsuits([]);
+        return;
+      }
+
+      console.log("관련 소송 조회 결과:", data);
+      setRelatedLawsuits(data || []);
+    } catch (error) {
+      console.error("관련 소송 조회 중 예외 발생:", error);
+      toast.error("관련 소송 목록을 불러오는데 실패했습니다");
+      setRelatedLawsuits([]);
+    } finally {
+      setLoadingRelatedLawsuits(false);
     }
   };
 
@@ -421,17 +483,69 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
     if (onDataChange) onDataChange();
   };
 
+  // 관련 소송 추가 핸들러
+  const handleAddRelatedLawsuit = () => {
+    if (!activeTab) {
+      toast.error("관련 소송 추가 실패", {
+        description: "소송이 선택되지 않았습니다. 먼저 소송을 선택해주세요.",
+      });
+      return;
+    }
+
+    setEditingRelatedLawsuit(null);
+    setShowAddRelatedLawsuitModal(true);
+  };
+
+  // 관련 소송 편집 핸들러
+  const handleEditRelatedLawsuit = (relatedLawsuit) => {
+    setEditingRelatedLawsuit(relatedLawsuit);
+    setShowAddRelatedLawsuitModal(true);
+  };
+
+  // 관련 소송 삭제 핸들러
+  const handleDeleteRelatedLawsuit = async (relatedLawsuitId) => {
+    try {
+      const { error } = await supabase
+        .from("test_related_lawsuits")
+        .delete()
+        .eq("id", relatedLawsuitId);
+
+      if (error) {
+        console.error("관련 소송 삭제 실패:", error);
+        toast.error("관련 소송 삭제에 실패했습니다");
+        return;
+      }
+
+      toast.success("관련 소송이 삭제되었습니다");
+      fetchRelatedLawsuits(activeTab);
+    } catch (error) {
+      console.error("관련 소송 삭제 중 오류 발생:", error);
+      toast.error("관련 소송 삭제에 실패했습니다");
+    }
+  };
+
+  // 관련 소송 성공 핸들러
+  const handleRelatedLawsuitSuccess = (data) => {
+    setEditingRelatedLawsuit(null);
+    setShowAddRelatedLawsuitModal(false);
+    toast.success("관련 소송 정보가 저장되었습니다");
+    // 관련 소송 정보 다시 불러오기
+    fetchRelatedLawsuits(activeTab);
+    // 데이터 변경 알림
+    if (onDataChange) onDataChange();
+  };
+
   const renderLawsuitInfo = (lawsuit) => {
     if (!lawsuit) return null;
 
     const getLawsuitType = (type) => {
-      return LAWSUIT_TYPES[type] || { label: type, variant: "default" };
+      return LAWSUIT_TYPES[type] || { label: type, className: defaultClassName };
     };
 
     const getStatusBadge = (status) => {
-      const statusInfo = LAWSUIT_STATUS[status] || { label: status, variant: "default" };
+      const statusInfo = LAWSUIT_STATUS[status] || { label: status, className: defaultClassName };
       return (
-        <Badge variant={statusInfo.variant} className="ml-2">
+        <Badge className={`ml-2 ${statusInfo.className || defaultClassName}`}>
           {statusInfo.label}
         </Badge>
       );
@@ -448,9 +562,9 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            {lawsuit.description && (
-              <p className="whitespace-pre-line text-gray-400">{lawsuit.description}</p>
-            )}
+            <p className="whitespace-pre-line text-gray-400">{`${lawsuit.court_name} ${
+              lawsuit.case_number
+            } ${lawsuit.type || ""}`}</p>
             {lawsuit.test_lawsuit_parties && lawsuit.test_lawsuit_parties.length > 0 ? (
               (() => {
                 // lawsuit 내부에서 실시간으로 데이터 그룹화
@@ -473,14 +587,37 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
                   return acc;
                 }, {});
 
-                // 정렬된 키 리스트
-                const sortedPartyTypes = Object.keys(groupedParties).sort(
-                  (a, b) => (PARTY_ORDER[a] || 99) - (PARTY_ORDER[b] || 99)
-                );
+                // 원고(원고/신청인/채권자)가 항상 위에 오도록 정렬
+                const orderedPartyTypes = Object.keys(groupedParties).sort((a, b) => {
+                  // 원고/신청인/채권자 관련 유형
+                  const creditorTypes = ["원고", "신청인", "채권자"];
+                  // 피고/채무자 관련 유형
+                  const debtorTypes = ["피고", "피신청인", "채무자"];
+
+                  // 원고 유형은 항상 위로
+                  if (creditorTypes.includes(a) && !creditorTypes.includes(b)) {
+                    return -1;
+                  }
+                  // 피고 유형은 항상 아래로
+                  if (!creditorTypes.includes(a) && creditorTypes.includes(b)) {
+                    return 1;
+                  }
+                  // 원고 유형 내에서는 원고, 신청인, 채권자 순으로
+                  if (creditorTypes.includes(a) && creditorTypes.includes(b)) {
+                    return creditorTypes.indexOf(a) - creditorTypes.indexOf(b);
+                  }
+                  // 피고 유형 내에서는 피고, 피신청인, 채무자 순으로
+                  if (debtorTypes.includes(a) && debtorTypes.includes(b)) {
+                    return debtorTypes.indexOf(a) - debtorTypes.indexOf(b);
+                  }
+
+                  // 그 외 경우는 기존 PARTY_ORDER 사용
+                  return (PARTY_ORDER[a] || 99) - (PARTY_ORDER[b] || 99);
+                });
 
                 return (
                   <div className="space-y-2">
-                    {sortedPartyTypes.map((partyType) => (
+                    {orderedPartyTypes.map((partyType) => (
                       <p key={partyType} className="text-sm">
                         <span className="font-medium">{partyType}:</span>{" "}
                         {groupedParties[partyType].join(", ")}
@@ -526,6 +663,105 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            </div>
+          )}
+        </div>
+
+        {/* 관련 소송 섹션 */}
+        <div className="border-t pt-3">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-medium">관련 소송</h3>
+            {user && (user.role === "admin" || user.role === "staff") && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddRelatedLawsuit}
+                disabled={!activeTab}
+              >
+                <Link2 className="h-4 w-4 mr-1" />
+                추가
+              </Button>
+            )}
+          </div>
+
+          {loadingRelatedLawsuits ? (
+            <div className="space-y-1">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : relatedLawsuits.length === 0 ? (
+            <div className="text-center py-2 border rounded-lg bg-gray-50 dark:bg-gray-800 text-muted-foreground">
+              등록된 관련 소송이 없습니다
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {relatedLawsuits.map((relatedLawsuit) => (
+                <div
+                  key={relatedLawsuit.id}
+                  className="flex justify-between items-center py-1 text-sm"
+                >
+                  <div className="flex-1 truncate">
+                    <div className="flex items-center gap-1">
+                      <Badge
+                        className={`px-2 py-0.5 ${
+                          LAWSUIT_TYPES[relatedLawsuit.lawsuit_type]?.className || defaultClassName
+                        }`}
+                      >
+                        {LAWSUIT_TYPES[relatedLawsuit.lawsuit_type]?.label ||
+                          relatedLawsuit.lawsuit_type ||
+                          "기타"}
+                      </Badge>
+                      <span className="font-medium truncate">
+                        {relatedLawsuit.court_name} {relatedLawsuit.case_number}{" "}
+                        {relatedLawsuit.type}
+                      </span>
+                    </div>
+                    {relatedLawsuit.description && (
+                      <p className="text-muted-foreground truncate">{relatedLawsuit.description}</p>
+                    )}
+                  </div>
+                  {user && (user.role === "admin" || user.role === "staff") && (
+                    <div className="flex space-x-1 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleEditRelatedLawsuit(relatedLawsuit)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>관련 소송 삭제</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              이 관련 소송을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>취소</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteRelatedLawsuit(relatedLawsuit.id)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
+                              삭제
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -650,12 +886,12 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
             ) : (
               lawsuits.map((lawsuit) => {
                 const type = LAWSUIT_TYPES[lawsuit.lawsuit_type] || {
-                  label: lawsuits.lawsuit_type,
-                  variant: "default",
+                  label: lawsuit.lawsuit_type || "기타",
+                  className: defaultClassName,
                 };
                 const status = LAWSUIT_STATUS[lawsuit.status] || {
-                  label: lawsuits.status,
-                  variant: "default",
+                  label: lawsuit.status || "상태미정",
+                  className: defaultClassName,
                 };
 
                 return (
@@ -664,15 +900,17 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
                     value={lawsuit.id}
                     className="flex-none h-auto py-2 px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 border-b-2 border-transparent data-[state=active]:border-blue-500"
                   >
-                    <div className="flex flex-col items-start space-y-1">
-                      <div className="flex items-center">
-                        <span>{type.label}</span>
-                        <span className="mx-1">-</span>
-                        <span className="font-mono">{lawsuit.case_number}</span>
+                    <div className="flex flex-col items-start space-y-1 w-full">
+                      <div className="flex flex-wrap gap-1 w-full">
+                        <Badge className={`text-xs ${status.className || ""}`}>
+                          {status.label}
+                        </Badge>
+                        <Badge className={`text-xs ${type.className || ""}`}>{type.label}</Badge>
                       </div>
-                      <Badge variant={status.variant} className="text-xs">
-                        {status.label}
-                      </Badge>
+                      <div className="text-xs text-left">
+                        <span>{lawsuit.court_name}</span> <span>{lawsuit.case_number}</span>
+                        {lawsuit.type && <span> {lawsuit.type}</span>}
+                      </div>
                     </div>
                   </TabsTrigger>
                 );
@@ -751,6 +989,18 @@ export default function LawsuitManager({ caseId, onDataChange, caseData, parties
           editingSchedule={editingSchedule}
           caseDetails={caseData}
           clients={clients}
+        />
+      )}
+
+      {/* 관련 소송 추가/수정 모달 */}
+      {showAddRelatedLawsuitModal && activeTab && (
+        <AddRelatedLawsuitModal
+          open={showAddRelatedLawsuitModal}
+          onOpenChange={setShowAddRelatedLawsuitModal}
+          onSuccess={handleRelatedLawsuitSuccess}
+          lawsuitId={activeTab}
+          editingRelatedLawsuit={editingRelatedLawsuit}
+          caseId={caseId}
         />
       )}
     </Card>
