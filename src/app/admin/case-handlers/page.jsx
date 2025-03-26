@@ -82,7 +82,7 @@ export default function CaseHandlersPage() {
         const { data, error } = await supabase
           .from("users")
           .select("*")
-          // .eq("role", "staff")
+          .eq("role", "staff")
           .order("name");
 
         if (error) throw error;
