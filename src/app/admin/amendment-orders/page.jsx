@@ -20,6 +20,7 @@ import { CheckCircle, Clock, AlertCircle, FileText, Eye, Info, Download } from "
 import { ko } from "date-fns/locale";
 import { toast } from "sonner";
 import Link from "next/link";
+import React from "react";
 
 export default function AmendmentOrdersPage() {
   const [loading, setLoading] = useState(true);
@@ -59,8 +60,7 @@ export default function AmendmentOrdersPage() {
         `
         )
         .eq("submission_type", "송달문서")
-        .eq("document_type", "보정명령")
-        .order("submission_date", { ascending: true });
+        .eq("document_type", "보정명령");
 
       if (selectedTab === "in_progress") {
         query = query.is("status", null);
@@ -90,7 +90,15 @@ export default function AmendmentOrdersPage() {
         };
       });
 
-      setOrders(ordersWithDeadline);
+      // 완료된 항목을 맨 뒤로 정렬
+      const sortedOrders = ordersWithDeadline.sort((a, b) => {
+        if (a.status === "completed" && b.status !== "completed") return 1;
+        if (a.status !== "completed" && b.status === "completed") return -1;
+        // 동일한 상태인 경우 기한이 임박한 순으로 정렬
+        return a.daysRemaining - b.daysRemaining;
+      });
+
+      setOrders(sortedOrders);
     } catch (error) {
       console.error("보정명령 조회 중 오류:", error);
       toast.error("보정명령 조회 중 오류가 발생했습니다");
@@ -272,7 +280,16 @@ export default function AmendmentOrdersPage() {
                     ? format(new Date(selectedOrder.deadline), "yyyy년 MM월 dd일", { locale: ko })
                     : "기한 없음"}
                 </p>
-                <DeadlineBadge daysRemaining={selectedOrder.daysRemaining} />
+                {selectedOrder.status === "completed" ? (
+                  <Badge
+                    variant="outline"
+                    className="bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
+                  >
+                    완료됨
+                  </Badge>
+                ) : (
+                  <DeadlineBadge daysRemaining={selectedOrder.daysRemaining} />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -348,6 +365,15 @@ export default function AmendmentOrdersPage() {
 }
 
 function AmendmentOrdersTable({ orders, loading, onComplete, onViewDetails, downloadFile }) {
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleRowExpand = (id) => {
+    setExpandedRows((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   if (loading) {
     return <div className="text-center py-4">데이터를 불러오는 중...</div>;
   }
@@ -370,82 +396,150 @@ function AmendmentOrdersTable({ orders, loading, onComplete, onViewDetails, down
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[150px]">법원</TableHead>
-            <TableHead className="w-[150px]">사건번호</TableHead>
-            <TableHead className="w-[120px]">송달일</TableHead>
-            <TableHead className="w-[120px]">보정기한</TableHead>
-            <TableHead className="w-[100px]">남은/초과 일수</TableHead>
-            <TableHead className="w-[200px]">내용</TableHead>
-            <TableHead className="w-[100px]">첨부파일</TableHead>
             <TableHead className="w-[100px]">상태</TableHead>
+            <TableHead className="w-[200px]">법원/사건번호</TableHead>
+            <TableHead className="w-[200px]">송달일/보정기한</TableHead>
+            <TableHead className="w-[100px]">남은/초과 일수</TableHead>
+            <TableHead className="w-[300px]">내용</TableHead>
+            <TableHead className="w-[100px]">첨부파일</TableHead>
             <TableHead className="text-right">관리</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
-            <TableRow key={order.id}>
-              <TableCell className="font-medium">
-                {order.lawsuits?.court_name || "법원명 없음"}
-              </TableCell>
-              <TableCell>{order.lawsuits?.case_number || "사건번호 없음"}</TableCell>
-              <TableCell>
-                {order.submission_date
-                  ? format(new Date(order.submission_date), "yy.MM.dd", { locale: ko })
-                  : "날짜 없음"}
-              </TableCell>
-              <TableCell>
-                {order.deadline
-                  ? format(new Date(order.deadline), "yy.MM.dd", { locale: ko })
-                  : "기한 없음"}
-              </TableCell>
-              <TableCell>
-                <DeadlineBadge daysRemaining={order.daysRemaining} />
-              </TableCell>
-              <TableCell className="max-w-[200px] truncate">
-                {order.description || "설명 없음"}
-              </TableCell>
-              <TableCell>
-                {order.file_url ? (
-                  <div className="flex gap-1">
-                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
-                      <a href={order.file_url} target="_blank" rel="noopener noreferrer">
-                        <Eye className="h-3 w-3 mr-1" />
-                        보기
-                      </a>
-                    </Button>
-                    <Button
+            <React.Fragment key={order.id}>
+              <TableRow>
+                <TableCell>
+                  <StatusBadge status={order.status} />
+                </TableCell>
+                <TableCell className="font-medium">
+                  {order.lawsuits?.court_name || "법원명 없음"}
+                  {order.lawsuits?.case_number && <>{order.lawsuits.case_number}</>}
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">송달일 :</span>
+                      <span>
+                        {order.submission_date
+                          ? format(new Date(order.submission_date), "yy.MM.dd", { locale: ko })
+                          : "없음"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">보정기한 :</span>
+                      <span>
+                        {order.deadline
+                          ? format(new Date(order.deadline), "yy.MM.dd", { locale: ko })
+                          : "없음"}
+                      </span>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {order.status === "completed" ? (
+                    <Badge
                       variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => {
-                        const fileName = `보정명령_${
-                          order.lawsuits?.case_number || "문서"
-                        }_${format(new Date(order.submission_date), "yyyyMMdd")}.pdf`;
-                        downloadFile(order.file_url, fileName);
-                      }}
+                      className="bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
                     >
-                      <Download className="h-3 w-3 mr-1" />
-                      다운로드
+                      완료됨
+                    </Badge>
+                  ) : (
+                    <DeadlineBadge daysRemaining={order.daysRemaining} />
+                  )}
+                </TableCell>
+                <TableCell
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleRowExpand(order.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="truncate max-w-[250px]">
+                      {order.description || "설명 없음"}
+                    </span>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
+                      {expandedRows[order.id] ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-chevron-up"
+                        >
+                          <path d="m18 15-6-6-6 6" />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="lucide lucide-chevron-down"
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      )}
                     </Button>
                   </div>
-                ) : (
-                  <span className="text-xs text-gray-500">없음</span>
-                )}
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={order.status} />
-              </TableCell>
-              <TableCell className="text-right space-x-1">
-                <Button variant="outline" size="sm" onClick={() => onViewDetails(order)}>
-                  상세
-                </Button>
-                {order.status === null && (
-                  <Button variant="default" size="sm" onClick={() => onComplete(order.id)}>
-                    완료
+                </TableCell>
+                <TableCell>
+                  {order.file_url ? (
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
+                        <a href={order.file_url} target="_blank" rel="noopener noreferrer">
+                          <Eye className="h-3 w-3 mr-1" />
+                          보기
+                        </a>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          const fileName = `보정명령_${
+                            order.lawsuits?.case_number || "문서"
+                          }_${format(new Date(order.submission_date), "yyyyMMdd")}.pdf`;
+                          downloadFile(order.file_url, fileName);
+                        }}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        다운로드
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-500">없음</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right space-x-1">
+                  <Button variant="outline" size="sm" onClick={() => onViewDetails(order)}>
+                    상세
                   </Button>
-                )}
-              </TableCell>
-            </TableRow>
+                  {order.status === null && (
+                    <Button variant="default" size="sm" onClick={() => onComplete(order.id)}>
+                      완료
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+              {expandedRows[order.id] && (
+                <TableRow key={`${order.id}-expanded`}>
+                  <TableCell colSpan={7} className="p-0">
+                    <div className="bg-muted/50 p-4 whitespace-pre-wrap">
+                      {order.description || "설명 내용이 없습니다."}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>

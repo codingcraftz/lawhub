@@ -40,20 +40,41 @@ import {
 export default function CertificatePage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    // 1페이지 필드
-    name1: "",
-    regNumber1: "",
-    address1: "",
-    relationship1: "채권자 대리인", // 기본값 설정
-    number1: "",
-    // 2페이지 필드
-    name2: "",
-    regNumber2: "",
-    address2: "",
+    // 1페이지 필드 (초본 신청인 정보)
+    applicant: {
+      name: "",
+      regNumber: "",
+      address: "",
+      relationship: "채권자 대리인", // 기본값 설정
+      phone: "",
+    },
+    // 2페이지 필드 (사건 당사자 정보)
+    parties: {
+      creditor: {
+        name: "",
+        regNumber: "",
+        address: "",
+        type: "individual", // individual 또는 corporation
+        companyName: "",
+        registrationNumber: "",
+        representativePosition: "",
+        representativeName: "",
+      },
+      debtor: {
+        name: "",
+        regNumber: "",
+        address: "",
+        type: "individual", // individual 또는 corporation
+        companyName: "",
+        registrationNumber: "",
+        representativePosition: "",
+        representativeName: "",
+      },
+    },
     // 추가 필드
-    goal1: "소송 사건", // 기본값 설정
-    file1: "소송 서류", // 기본값 설정
-    date1: formatDateToKorean(new Date()), // 현재 날짜를 한국어 형식으로
+    goal: "소송 사건", // 기본값 설정
+    file: "소송 서류", // 기본값 설정
+    date: formatDateToKorean(new Date()), // 현재 날짜를 한국어 형식으로
     courtName: "서울중앙지방법원", // 기본 법원 이름
   });
 
@@ -82,34 +103,47 @@ export default function CertificatePage() {
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(false);
 
-  // 채권자/채무자 유형 상태 추가
-  const [creditorType, setCreditorType] = useState("individual"); // individual 또는 corporation
-  const [debtorType, setDebtorType] = useState("individual"); // individual 또는 corporation
-
-  // 채권자/채무자 정보 상태 추가 (법인일 경우)
-  const [creditorInfo, setCreditorInfo] = useState({
-    companyName: "",
-    registrationNumber: "",
-    address: "",
-    representativePosition: "",
-    representativeName: "",
-  });
-
-  const [debtorInfo, setDebtorInfo] = useState({
-    companyName: "",
-    registrationNumber: "",
-    address: "",
-    representativePosition: "",
-    representativeName: "",
-  });
-
   // 폼 필드 변경 핸들러
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    // 필드 경로 파싱 (예: applicant.name, parties.creditor.name 등)
+    const path = name.split(".");
+
+    setFormData((prev) => {
+      // 깊은 복사본 생성
+      const updated = JSON.parse(JSON.stringify(prev));
+
+      // 주민등록번호 자동 하이픈 추가 처리
+      let newValue = value;
+      if (path[path.length - 1] === "regNumber") {
+        newValue = formatDisplayResidentNumber(value);
+      }
+
+      // 중첩 객체 내의 필드 업데이트
+      let current = updated;
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+      current[path[path.length - 1]] = newValue;
+
+      return updated;
+    });
+  };
+
+  // 주민등록번호 포맷팅 함수 추가
+  const formatDisplayResidentNumber = (number) => {
+    if (!number) return "-";
+
+    // 숫자만 추출
+    const numbers = number.replace(/\D/g, "");
+
+    // 주민등록번호 포맷팅 (000000-0000000)
+    if (numbers.length <= 6) {
+      return numbers;
+    } else {
+      return `${numbers.slice(0, 6)}-${numbers.slice(6, 13)}`;
+    }
   };
 
   // 사용자 검색 함수
@@ -123,7 +157,7 @@ export default function CertificatePage() {
     try {
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, email, phone_number, role")
+        .select("id, name, email, phone_number, role, resident_number, address")
         .ilike("name", `%${searchTerm}%`)
         .limit(10);
 
@@ -149,82 +183,115 @@ export default function CertificatePage() {
     }
 
     setIsCaseSearching(true);
+    setCaseSearchResults([]);
+
     try {
-      // 당사자 이름으로 사건 검색
+      console.log("검색 시작:", caseSearchTerm);
+
+      // 당사자 이름으로 사건 검색 - 필요한 필드만 정확하게 선택
       const { data: partyData, error: partyError } = await supabase
         .from("test_case_parties")
-        .select(
-          "id, case_id, party_type, name, entity_type, resident_number, address, address_detail"
-        )
+        .select("id, case_id, party_type, name, entity_type")
         .ilike("name", `%${caseSearchTerm}%`)
         .limit(20);
 
-      if (partyError) throw partyError;
+      if (partyError) {
+        console.error("당사자 검색 오류:", partyError);
+        throw new Error(`당사자 검색 오류: ${partyError.message}`);
+      }
 
-      if (partyData && partyData.length > 0) {
-        // 검색된 당사자들의 case_id를 추출
-        const caseIds = [...new Set(partyData.map((party) => party.case_id))];
+      console.log("당사자 검색 결과:", partyData);
 
-        // 각 사건의 정보를 가져옴
-        const { data: casesData, error: casesError } = await supabase
-          .from("test_cases")
-          .select("id, case_type, status, filing_date")
-          .in("id", caseIds);
-
-        if (casesError) throw casesError;
-
-        // 각 사건 ID별로 모든 당사자 정보를 가져옴 (검색된 당사자가 포함된 사건의 모든 당사자)
-        const { data: allParties, error: allPartiesError } = await supabase
-          .from("test_case_parties")
-          .select(
-            "id, case_id, party_type, name, entity_type, resident_number, address, address_detail"
-          )
-          .in("case_id", caseIds);
-
-        if (allPartiesError) throw allPartiesError;
-
-        // 각 사건별로 관련 당사자 정보를 결합
-        const results = [];
-
-        for (const caseItem of casesData) {
-          // 이 사건의 모든 당사자들
-          const caseParties = allParties.filter((party) => party.case_id === caseItem.id);
-
-          // 이 사건의 채권자들(여러 명 가능)
-          const creditors = caseParties.filter(
-            (p) => p.party_type === "creditor" || p.party_type === "plaintiff"
-          );
-
-          // 이 사건의 채무자들(여러 명 가능)
-          const debtors = caseParties.filter(
-            (p) => p.party_type === "debtor" || p.party_type === "defendant"
-          );
-
-          // 결과에 추가
-          results.push({
-            ...caseItem,
-            creditors: creditors,
-            debtors: debtors,
-            // 화면에 표시할 대표 채권자와 채무자
-            creditor: creditors.length > 0 ? creditors[0] : null,
-            debtor: debtors.length > 0 ? debtors[0] : null,
-            // 검색한 당사자가 채권자인지 채무자인지 표시
-            matchedParty: partyData.find((p) => p.case_id === caseItem.id)?.party_type,
-          });
-        }
-
-        setCaseSearchResults(results);
-
-        if (results.length === 0) {
-          toast.info("검색 결과가 없습니다");
-        }
-      } else {
-        setCaseSearchResults([]);
+      if (!partyData || partyData.length === 0) {
         toast.info("검색 결과가 없습니다");
+        setIsCaseSearching(false);
+        return;
+      }
+
+      // 검색된 당사자들의 case_id를 추출
+      const caseIds = [...new Set(partyData.map((party) => party.case_id))];
+
+      if (caseIds.length === 0) {
+        toast.info("연결된 사건 정보가 없습니다");
+        setIsCaseSearching(false);
+        return;
+      }
+
+      // 각 사건의 정보를 가져옴
+      const { data: casesData, error: casesError } = await supabase
+        .from("test_cases")
+        .select("id, case_type, status, filing_date")
+        .in("id", caseIds);
+
+      if (casesError) {
+        console.error("사건 정보 검색 오류:", casesError);
+        throw new Error(`사건 정보 검색 오류: ${casesError.message}`);
+      }
+
+      console.log("사건 검색 결과:", casesData);
+
+      if (!casesData || casesData.length === 0) {
+        toast.info("연결된 사건 정보가 없습니다");
+        setIsCaseSearching(false);
+        return;
+      }
+
+      // 실제 사건이 있는 경우에만 당사자 정보 검색
+      // 테이블 스키마에 맞게 필드 선택
+      const { data: allParties, error: allPartiesError } = await supabase
+        .from("test_case_parties")
+        .select(
+          "id, case_id, party_type, name, entity_type, address, resident_number, company_name, representative_name, representative_position, corporate_number"
+        )
+        .in("case_id", caseIds);
+
+      if (allPartiesError) {
+        console.error("사건 당사자 정보 검색 오류:", allPartiesError);
+        throw new Error(`사건 당사자 정보 검색 오류: ${allPartiesError.message}`);
+      }
+
+      console.log("모든 당사자 검색 결과:", allParties);
+
+      // 결과 배열 생성
+      const results = [];
+
+      // 각 사건별로 관련 당사자 정보를 결합
+      for (const caseItem of casesData) {
+        // 이 사건의 모든 당사자들
+        const caseParties = allParties.filter((party) => party.case_id === caseItem.id);
+
+        // 채권자와 채무자로 분류
+        const creditors = caseParties.filter(
+          (p) => p.party_type === "creditor" || p.party_type === "plaintiff"
+        );
+
+        const debtors = caseParties.filter(
+          (p) => p.party_type === "debtor" || p.party_type === "defendant"
+        );
+
+        // 결과에 추가
+        results.push({
+          ...caseItem,
+          creditors,
+          debtors,
+          creditor: creditors.length > 0 ? creditors[0] : null,
+          debtor: debtors.length > 0 ? debtors[0] : null,
+          matchedParty: partyData.find((p) => p.case_id === caseItem.id)?.party_type,
+        });
+      }
+
+      console.log("최종 결과:", results);
+
+      setCaseSearchResults(results);
+
+      if (results.length === 0) {
+        toast.info("처리 가능한 검색 결과가 없습니다");
       }
     } catch (err) {
       console.error("사건 검색 오류:", err);
-      toast.error("사건 검색 중 오류가 발생했습니다");
+
+      // 사용자에게 더 자세한 오류 메시지 표시
+      toast.error(`사건 검색 중 오류가 발생했습니다: ${err.message || "알 수 없는 오류"}`);
     } finally {
       setIsCaseSearching(false);
     }
@@ -260,8 +327,13 @@ export default function CertificatePage() {
     setSelectedUser(user);
     setFormData((prev) => ({
       ...prev,
-      name1: user.name || "",
-      number1: formatPhoneNumber(user.phone_number) || "",
+      applicant: {
+        ...prev.applicant,
+        name: user.name || "",
+        regNumber: user.resident_number || "",
+        address: user.address || "",
+        phone: formatPhoneNumber(user.phone_number) || "",
+      },
     }));
     setShowSearchDialog(false);
     toast.success(`${user.name} 님을 선택했습니다`);
@@ -272,8 +344,13 @@ export default function CertificatePage() {
     setSelectedUser(null);
     setFormData((prev) => ({
       ...prev,
-      name1: "",
-      number1: "",
+      applicant: {
+        ...prev.applicant,
+        name: "",
+        regNumber: "",
+        address: "",
+        phone: "",
+      },
     }));
     toast.info("선택한 사용자를 취소했습니다");
   };
@@ -283,67 +360,70 @@ export default function CertificatePage() {
     // 선택한 사건의 모든 정보를 저장
     setSelectedCase(caseData);
 
-    // 법원 이름 설정 (사건 데이터에서 가져옴)
+    // 법원 이름 설정
     setFormData((prev) => ({
       ...prev,
       courtName: caseData.court_name || "서울중앙지방법원",
     }));
 
-    // 채권자 유형 설정
-    if (caseData.creditor && caseData.creditor.entity_type === "corporation") {
-      setCreditorType("corporation");
-      setCreditorInfo({
-        companyName: caseData.creditor.company_name || "",
-        registrationNumber: caseData.creditor.business_number || "",
-        address:
-          caseData.creditor.address +
-            (caseData.creditor.address_detail ? ` ${caseData.creditor.address_detail}` : "") || "",
-        representativePosition: caseData.creditor.representative_position || "대표",
-        representativeName: caseData.creditor.representative_name || caseData.creditor.name || "",
-      });
-    } else {
-      setCreditorType("individual");
-      // 개인 채권자 정보가 있으면 폼에 입력
-      if (caseData.creditor) {
-        setFormData((prev) => ({
-          ...prev,
-          name1: caseData.creditor.name || "",
-          regNumber1: caseData.creditor.resident_number || "",
-          address1:
-            caseData.creditor.address +
-              (caseData.creditor.address_detail ? ` ${caseData.creditor.address_detail}` : "") ||
-            "",
-        }));
+    // 완전히 새로운 업데이트 로직으로 구현
+    const updatedFormData = { ...formData };
+
+    // 채권자 정보 설정
+    if (caseData.creditor) {
+      if (caseData.creditor.entity_type === "corporation") {
+        updatedFormData.parties.creditor = {
+          type: "corporation",
+          name: "",
+          regNumber: "",
+          address: caseData.creditor.address || "",
+          companyName: caseData.creditor.company_name || "",
+          registrationNumber: caseData.creditor.corporate_number || "",
+          representativePosition: caseData.creditor.representative_position || "대표",
+          representativeName: caseData.creditor.representative_name || caseData.creditor.name || "",
+        };
+      } else {
+        updatedFormData.parties.creditor = {
+          type: "individual",
+          name: caseData.creditor.name || "",
+          regNumber: caseData.creditor.resident_number || "",
+          address: caseData.creditor.address || "",
+          companyName: "",
+          registrationNumber: "",
+          representativePosition: "",
+          representativeName: "",
+        };
       }
     }
 
-    // 채무자 유형 설정
-    if (caseData.debtor && caseData.debtor.entity_type === "corporation") {
-      setDebtorType("corporation");
-      setDebtorInfo({
-        companyName: caseData.debtor.company_name || "",
-        registrationNumber: caseData.debtor.business_number || "",
-        address:
-          caseData.debtor.address +
-            (caseData.debtor.address_detail ? ` ${caseData.debtor.address_detail}` : "") || "",
-        representativePosition: caseData.debtor.representative_position || "대표",
-        representativeName: caseData.debtor.representative_name || caseData.debtor.name || "",
-      });
-    } else {
-      setDebtorType("individual");
-      // 채무자 정보가 있으면 폼에 입력
-      if (caseData.debtor) {
-        setFormData((prev) => ({
-          ...prev,
-          name2: caseData.debtor.name || "",
-          regNumber2: caseData.debtor.resident_number || "",
-          address2:
-            caseData.debtor.address +
-              (caseData.debtor.address_detail ? ` ${caseData.debtor.address_detail}` : "") || "",
-        }));
+    // 채무자 정보 설정
+    if (caseData.debtor) {
+      if (caseData.debtor.entity_type === "corporation") {
+        updatedFormData.parties.debtor = {
+          type: "corporation",
+          name: "",
+          regNumber: "",
+          address: caseData.debtor.address || "",
+          companyName: caseData.debtor.company_name || "",
+          registrationNumber: caseData.debtor.corporate_number || "",
+          representativePosition: caseData.debtor.representative_position || "대표",
+          representativeName: caseData.debtor.representative_name || caseData.debtor.name || "",
+        };
+      } else {
+        updatedFormData.parties.debtor = {
+          type: "individual",
+          name: caseData.debtor.name || "",
+          regNumber: caseData.debtor.resident_number || "",
+          address: caseData.debtor.address || "",
+          companyName: "",
+          registrationNumber: "",
+          representativePosition: "",
+          representativeName: "",
+        };
       }
     }
 
+    setFormData(updatedFormData);
     setShowCaseSearchDialog(false);
     toast.success("사건이 선택되었습니다");
   };
@@ -353,33 +433,36 @@ export default function CertificatePage() {
     setSelectedCase(null);
     setFormData((prev) => ({
       ...prev,
-      name2: "",
-      regNumber2: "",
-      address2: "",
+      parties: {
+        creditor: {
+          type: "individual",
+          name: "",
+          regNumber: "",
+          address: "",
+          companyName: "",
+          registrationNumber: "",
+          representativePosition: "",
+          representativeName: "",
+        },
+        debtor: {
+          type: "individual",
+          name: "",
+          regNumber: "",
+          address: "",
+          companyName: "",
+          registrationNumber: "",
+          representativePosition: "",
+          representativeName: "",
+        },
+      },
     }));
-    setCreditorType("individual");
-    setDebtorType("individual");
-    setCreditorInfo({
-      companyName: "",
-      registrationNumber: "",
-      address: "",
-      representativePosition: "",
-      representativeName: "",
-    });
-    setDebtorInfo({
-      companyName: "",
-      registrationNumber: "",
-      address: "",
-      representativePosition: "",
-      representativeName: "",
-    });
     toast.info("선택한 사건을 취소했습니다");
   };
 
   // Word 문서 생성 함수
   const handleFillAndPrint = async () => {
     // 필수 필드 검증
-    if (!formData.name1 || !formData.regNumber1 || !formData.address1) {
+    if (!formData.applicant.name || !formData.applicant.regNumber || !formData.applicant.address) {
       toast.error("필수 정보(이름, 주민등록번호, 주소)를 모두 입력해주세요");
       return;
     }
@@ -400,23 +483,20 @@ export default function CertificatePage() {
 
       // 데이터 채우기
       doc.render({
-        name1: formData.name1,
-        regNumber1: formData.regNumber1,
-        address1: formData.address1,
-        number1: formData.number1,
-        relationship1: formData.relationship1,
-        name2: formData.name2,
-        regNumber2: formData.regNumber2,
-        address2: formData.address2,
-        goal1: formData.goal1,
-        file1: formData.file1,
-        date1:
-          formData.date1 ||
-          new Date().toLocaleDateString("ko-KR", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
+        name1: formData.applicant.name,
+        regNumber1: formData.applicant.regNumber,
+        address1: formData.applicant.address,
+        number1: formData.applicant.phone,
+        relationship1: formData.applicant.relationship,
+        name2:
+          formData.parties.debtor.type === "individual"
+            ? formData.parties.debtor.name
+            : formData.parties.debtor.companyName,
+        regNumber2: formData.parties.debtor.regNumber,
+        address2: formData.parties.debtor.address,
+        goal1: formData.goal,
+        file1: formData.file,
+        date1: formData.date,
       });
 
       // 결과 문서 생성
@@ -461,16 +541,23 @@ export default function CertificatePage() {
     // 인쇄용 창 생성
     const printWindow = window.open("", "_blank");
 
-    // 인쇄할 HTML 내용 생성
-    const creditorName = selectedCase?.creditor
-      ? selectedCase.creditor.entity_type === "corporation"
-        ? `${selectedCase.creditor.company_name} ${
-            selectedCase.creditor.representative_position || "대표"
-          } ${selectedCase.creditor.representative_name || selectedCase.creditor.name}`
-        : selectedCase.creditor.name
-      : "";
+    // 법인 여부에 따른 표시
+    const isCreditorCorporation = formData.parties.creditor.type === "corporation";
+    const creditorCompanyName = formData.parties.creditor.companyName || "";
+    const creditorRepresentativeInfo = `${formData.parties.creditor.representativePosition || ""} ${
+      formData.parties.creditor.representativeName || ""
+    }`;
 
-    const debtorName = selectedCase?.debtor ? selectedCase.debtor.name : formData.name2;
+    // 채권자 이름 표시 (법인/개인에 따라 다름)
+    const displayCreditorName = isCreditorCorporation
+      ? creditorCompanyName
+      : formData.parties.creditor.name;
+
+    // 채무자 정보 - formData에서 가져오기
+    const debtorName =
+      formData.parties.debtor.type === "corporation"
+        ? formData.parties.debtor.companyName
+        : formData.parties.debtor.name;
 
     // 오늘 날짜 포맷
     const today = new Date();
@@ -478,15 +565,6 @@ export default function CertificatePage() {
     const month = today.getMonth() + 1;
     const day = today.getDate();
     const formattedDate = `${year}년 ${month}월 ${day}일`;
-
-    // 법인 여부에 따른 표시
-    const isCreditorCorporation = selectedCase?.creditor?.entity_type === "corporation";
-    const creditorCompanyName = isCreditorCorporation ? selectedCase?.creditor?.company_name : "";
-    const creditorRepresentativeInfo = isCreditorCorporation
-      ? `${selectedCase?.creditor?.representative_position || "대표"} ${
-          selectedCase?.creditor?.representative_name || selectedCase?.creditor?.name
-        }`
-      : "";
 
     // 법원 이름
     const courtName = formData.courtName || "서울중앙지방법원";
@@ -573,7 +651,7 @@ export default function CertificatePage() {
         
         <div class="party clearfix">
           <div class="party-label">채 권 자</div>
-          <div class="party-value">${creditorName || "이름"}</div>
+          <div class="party-value">${displayCreditorName || "이름"}</div>
         </div>
         
         <div class="party clearfix">
@@ -596,9 +674,7 @@ export default function CertificatePage() {
         <div class="date">${formattedDate}</div>
         
         <div class="signature">위 채권자</div>
-        <div class="signature">${
-          isCreditorCorporation ? creditorCompanyName : formData.name1 || "이름"
-        }</div>
+        <div class="signature">${displayCreditorName}</div>
         ${isCreditorCorporation ? `<div class="signature">${creditorRepresentativeInfo}</div>` : ""}
         
         <div class="court">${courtName} 귀중</div>
@@ -631,39 +707,50 @@ export default function CertificatePage() {
     // 위임인(채권자) 정보
     let mandatorInfo = "";
     let signatureInfo = "";
+    let attachmentList = "";
 
-    if (creditorType === "corporation") {
+    if (formData.parties.creditor.type === "corporation") {
       // 법인인 경우
       mandatorInfo = `
         <div class="party clearfix">
           <div class="party-label">위 임 인</div>
-          <div class="party-value">${creditorInfo.companyName || "회사명"} (${
-        creditorInfo.registrationNumber || "법인등록번호"
+          <div class="party-value">${formData.parties.creditor.companyName} (${
+        formData.parties.creditor.registrationNumber || "법인등록번호"
       })</div>
         </div>
-        <div class="party-address">${creditorInfo.address || "주소"}</div>
+        <div class="party-address">${formData.parties.creditor.address || "주소"}</div>
       `;
       signatureInfo = `
         <div class="signature">위 위임인</div>
-        <div class="signature">${creditorInfo.companyName || "회사명"}</div>
-        <div class="signature">${creditorInfo.representativePosition || "대표"} ${
-        creditorInfo.representativeName || "이름"
+        <div class="signature">${formData.parties.creditor.companyName}</div>
+        <div class="signature">${formData.parties.creditor.representativePosition || "대표"} ${
+        formData.parties.creditor.representativeName || "이름"
       }</div>
+      `;
+      attachmentList = `
+        <div class="attachment-list">
+          1. 법인등기부등본
+        </div>
       `;
     } else {
       // 개인인 경우
       mandatorInfo = `
         <div class="party clearfix">
           <div class="party-label">위 임 인</div>
-          <div class="party-value">${formData.name1 || "이름"} (${
-        formData.regNumber1 || "주민등록번호"
-      })</div>
+          <div class="party-value">${formData.parties.creditor.name} (${formatDisplayResidentNumber(
+        formData.parties.creditor.regNumber
+      )})</div>
         </div>
-        <div class="party-address">${formData.address1 || "주소"}</div>
+        <div class="party-address">${formData.parties.creditor.address || "주소"}</div>
       `;
       signatureInfo = `
         <div class="signature">위 위임인</div>
-        <div class="signature">${formData.name1 || "이름"}</div>
+        <div class="signature">${formData.parties.creditor.name}</div>
+      `;
+      attachmentList = `
+        <div class="attachment-list">
+          1. 위임인의 신분증 사본
+        </div>
       `;
     }
 
@@ -671,12 +758,12 @@ export default function CertificatePage() {
     const attorneyInfo = `
       <div class="party clearfix">
         <div class="party-label">수 임 인</div>
-        <div class="party-value">${formData.name1 || "이름"} (${
-      formData.regNumber1 || "주민등록번호"
-    })</div>
+        <div class="party-value">${formData.applicant.name} (${formatDisplayResidentNumber(
+      formData.applicant.regNumber
+    )})</div>
       </div>
-      <div class="party-address">${formData.address1 || "주소"}</div>
-      <div class="party-phone">${formData.number1 || "연락처"}</div>
+      <div class="party-address">${formData.applicant.address || "주소"}</div>
+      <div class="party-phone">${formData.applicant.phone || "연락처"}</div>
     `;
 
     // 인쇄용 HTML 생성
@@ -771,9 +858,7 @@ export default function CertificatePage() {
         
         <div class="attachment-title">첨 부 서 류</div>
         
-        <div class="attachment-list">
-          1. 위임인의 신분증 사본
-        </div>
+        ${attachmentList}
         
         <div class="date">${formattedDate}</div>
         
@@ -826,8 +911,8 @@ export default function CertificatePage() {
                       <div className="relative flex-1">
                         <Input
                           id="name1"
-                          name="name1"
-                          value={formData.name1}
+                          name="applicant.name"
+                          value={formData.applicant.name}
                           onChange={handleInputChange}
                           placeholder="신청인 이름을 입력하세요"
                           disabled={!!selectedUser}
@@ -874,8 +959,8 @@ export default function CertificatePage() {
                     </Label>
                     <Input
                       id="regNumber1"
-                      name="regNumber1"
-                      value={formData.regNumber1}
+                      name="applicant.regNumber"
+                      value={formData.applicant.regNumber}
                       onChange={handleInputChange}
                       placeholder="주민등록번호를 입력하세요 (000000-0000000)"
                     />
@@ -885,8 +970,8 @@ export default function CertificatePage() {
                     <Label htmlFor="number1">전화번호</Label>
                     <Input
                       id="number1"
-                      name="number1"
-                      value={formData.number1}
+                      name="applicant.phone"
+                      value={formData.applicant.phone}
                       onChange={handleInputChange}
                       placeholder="전화번호를 입력하세요"
                     />
@@ -898,8 +983,8 @@ export default function CertificatePage() {
                     </Label>
                     <Input
                       id="address1"
-                      name="address1"
-                      value={formData.address1}
+                      name="applicant.address"
+                      value={formData.applicant.address}
                       onChange={handleInputChange}
                       placeholder="주소를 입력하세요"
                     />
@@ -909,8 +994,8 @@ export default function CertificatePage() {
                     <Label htmlFor="relationship1">관계</Label>
                     <Input
                       id="relationship1"
-                      name="relationship1"
-                      value={formData.relationship1}
+                      name="applicant.relationship"
+                      value={formData.applicant.relationship}
                       onChange={handleInputChange}
                       placeholder="관계를 입력하세요"
                     />
@@ -1026,8 +1111,19 @@ export default function CertificatePage() {
                         <select
                           id="creditorType"
                           className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                          value={creditorType}
-                          onChange={(e) => setCreditorType(e.target.value)}
+                          value={formData.parties.creditor.type}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              parties: {
+                                ...prev.parties,
+                                creditor: {
+                                  ...prev.parties.creditor,
+                                  type: e.target.value,
+                                },
+                              },
+                            }))
+                          }
                         >
                           <option value="individual">개인</option>
                           <option value="corporation">법인</option>
@@ -1035,14 +1131,14 @@ export default function CertificatePage() {
                       </div>
                     </div>
 
-                    {creditorType === "individual" ? (
+                    {formData.parties.creditor.type === "individual" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name1">이름</Label>
                           <Input
                             id="name1"
-                            name="name1"
-                            value={formData.name1}
+                            name="parties.creditor.name"
+                            value={formData.parties.creditor.name}
                             onChange={handleInputChange}
                             placeholder="이름을 입력하세요"
                           />
@@ -1051,8 +1147,8 @@ export default function CertificatePage() {
                           <Label htmlFor="regNumber1">주민등록번호</Label>
                           <Input
                             id="regNumber1"
-                            name="regNumber1"
-                            value={formData.regNumber1}
+                            name="parties.creditor.regNumber"
+                            value={formData.parties.creditor.regNumber}
                             onChange={handleInputChange}
                             placeholder="주민등록번호를 입력하세요"
                           />
@@ -1061,8 +1157,8 @@ export default function CertificatePage() {
                           <Label htmlFor="address1">주소</Label>
                           <Input
                             id="address1"
-                            name="address1"
-                            value={formData.address1}
+                            name="parties.creditor.address"
+                            value={formData.parties.creditor.address}
                             onChange={handleInputChange}
                             placeholder="주소를 입력하세요"
                           />
@@ -1074,9 +1170,18 @@ export default function CertificatePage() {
                           <Label htmlFor="creditorCompanyName">회사명</Label>
                           <Input
                             id="creditorCompanyName"
-                            value={creditorInfo.companyName}
+                            value={formData.parties.creditor.companyName}
                             onChange={(e) =>
-                              setCreditorInfo({ ...creditorInfo, companyName: e.target.value })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  creditor: {
+                                    ...prev.parties.creditor,
+                                    companyName: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="회사명을 입력하세요"
                           />
@@ -1085,12 +1190,18 @@ export default function CertificatePage() {
                           <Label htmlFor="creditorRegistrationNumber">법인등록번호</Label>
                           <Input
                             id="creditorRegistrationNumber"
-                            value={creditorInfo.registrationNumber}
+                            value={formData.parties.creditor.registrationNumber}
                             onChange={(e) =>
-                              setCreditorInfo({
-                                ...creditorInfo,
-                                registrationNumber: e.target.value,
-                              })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  creditor: {
+                                    ...prev.parties.creditor,
+                                    registrationNumber: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="법인등록번호를 입력하세요"
                           />
@@ -1099,9 +1210,18 @@ export default function CertificatePage() {
                           <Label htmlFor="creditorAddress">주소</Label>
                           <Input
                             id="creditorAddress"
-                            value={creditorInfo.address}
+                            value={formData.parties.creditor.address}
                             onChange={(e) =>
-                              setCreditorInfo({ ...creditorInfo, address: e.target.value })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  creditor: {
+                                    ...prev.parties.creditor,
+                                    address: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="주소를 입력하세요"
                           />
@@ -1110,12 +1230,18 @@ export default function CertificatePage() {
                           <Label htmlFor="creditorRepresentativePosition">대표자 직위</Label>
                           <Input
                             id="creditorRepresentativePosition"
-                            value={creditorInfo.representativePosition}
+                            value={formData.parties.creditor.representativePosition}
                             onChange={(e) =>
-                              setCreditorInfo({
-                                ...creditorInfo,
-                                representativePosition: e.target.value,
-                              })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  creditor: {
+                                    ...prev.parties.creditor,
+                                    representativePosition: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="대표자 직위를 입력하세요"
                           />
@@ -1124,12 +1250,18 @@ export default function CertificatePage() {
                           <Label htmlFor="creditorRepresentativeName">대표자명</Label>
                           <Input
                             id="creditorRepresentativeName"
-                            value={creditorInfo.representativeName}
+                            value={formData.parties.creditor.representativeName}
                             onChange={(e) =>
-                              setCreditorInfo({
-                                ...creditorInfo,
-                                representativeName: e.target.value,
-                              })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  creditor: {
+                                    ...prev.parties.creditor,
+                                    representativeName: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="대표자명을 입력하세요"
                           />
@@ -1149,8 +1281,19 @@ export default function CertificatePage() {
                         <select
                           id="debtorType"
                           className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                          value={debtorType}
-                          onChange={(e) => setDebtorType(e.target.value)}
+                          value={formData.parties.debtor.type}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              parties: {
+                                ...prev.parties,
+                                debtor: {
+                                  ...prev.parties.debtor,
+                                  type: e.target.value,
+                                },
+                              },
+                            }))
+                          }
                         >
                           <option value="individual">개인</option>
                           <option value="corporation">법인</option>
@@ -1158,14 +1301,14 @@ export default function CertificatePage() {
                       </div>
                     </div>
 
-                    {debtorType === "individual" ? (
+                    {formData.parties.debtor.type === "individual" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name2">이름</Label>
                           <Input
                             id="name2"
-                            name="name2"
-                            value={formData.name2}
+                            name="parties.debtor.name"
+                            value={formData.parties.debtor.name}
                             onChange={handleInputChange}
                             placeholder="이름을 입력하세요"
                           />
@@ -1174,8 +1317,8 @@ export default function CertificatePage() {
                           <Label htmlFor="regNumber2">주민등록번호</Label>
                           <Input
                             id="regNumber2"
-                            name="regNumber2"
-                            value={formData.regNumber2}
+                            name="parties.debtor.regNumber"
+                            value={formData.parties.debtor.regNumber}
                             onChange={handleInputChange}
                             placeholder="주민등록번호를 입력하세요"
                           />
@@ -1184,8 +1327,8 @@ export default function CertificatePage() {
                           <Label htmlFor="address2">주소</Label>
                           <Input
                             id="address2"
-                            name="address2"
-                            value={formData.address2}
+                            name="parties.debtor.address"
+                            value={formData.parties.debtor.address}
                             onChange={handleInputChange}
                             placeholder="주소를 입력하세요"
                           />
@@ -1197,9 +1340,18 @@ export default function CertificatePage() {
                           <Label htmlFor="debtorCompanyName">회사명</Label>
                           <Input
                             id="debtorCompanyName"
-                            value={debtorInfo.companyName}
+                            value={formData.parties.debtor.companyName}
                             onChange={(e) =>
-                              setDebtorInfo({ ...debtorInfo, companyName: e.target.value })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  debtor: {
+                                    ...prev.parties.debtor,
+                                    companyName: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="회사명을 입력하세요"
                           />
@@ -1208,9 +1360,18 @@ export default function CertificatePage() {
                           <Label htmlFor="debtorRegistrationNumber">법인등록번호</Label>
                           <Input
                             id="debtorRegistrationNumber"
-                            value={debtorInfo.registrationNumber}
+                            value={formData.parties.debtor.registrationNumber}
                             onChange={(e) =>
-                              setDebtorInfo({ ...debtorInfo, registrationNumber: e.target.value })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  debtor: {
+                                    ...prev.parties.debtor,
+                                    registrationNumber: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="법인등록번호를 입력하세요"
                           />
@@ -1219,9 +1380,18 @@ export default function CertificatePage() {
                           <Label htmlFor="debtorAddress">주소</Label>
                           <Input
                             id="debtorAddress"
-                            value={debtorInfo.address}
+                            value={formData.parties.debtor.address}
                             onChange={(e) =>
-                              setDebtorInfo({ ...debtorInfo, address: e.target.value })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  debtor: {
+                                    ...prev.parties.debtor,
+                                    address: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="주소를 입력하세요"
                           />
@@ -1230,12 +1400,18 @@ export default function CertificatePage() {
                           <Label htmlFor="debtorRepresentativePosition">대표자 직위</Label>
                           <Input
                             id="debtorRepresentativePosition"
-                            value={debtorInfo.representativePosition}
+                            value={formData.parties.debtor.representativePosition}
                             onChange={(e) =>
-                              setDebtorInfo({
-                                ...debtorInfo,
-                                representativePosition: e.target.value,
-                              })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  debtor: {
+                                    ...prev.parties.debtor,
+                                    representativePosition: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="대표자 직위를 입력하세요"
                           />
@@ -1244,9 +1420,18 @@ export default function CertificatePage() {
                           <Label htmlFor="debtorRepresentativeName">대표자명</Label>
                           <Input
                             id="debtorRepresentativeName"
-                            value={debtorInfo.representativeName}
+                            value={formData.parties.debtor.representativeName}
                             onChange={(e) =>
-                              setDebtorInfo({ ...debtorInfo, representativeName: e.target.value })
+                              setFormData((prev) => ({
+                                ...prev,
+                                parties: {
+                                  ...prev.parties,
+                                  debtor: {
+                                    ...prev.parties.debtor,
+                                    representativeName: e.target.value,
+                                  },
+                                },
+                              }))
                             }
                             placeholder="대표자명을 입력하세요"
                           />
@@ -1277,8 +1462,8 @@ export default function CertificatePage() {
                     <Label htmlFor="goal1">목적</Label>
                     <Input
                       id="goal1"
-                      name="goal1"
-                      value={formData.goal1}
+                      name="goal"
+                      value={formData.goal}
                       onChange={handleInputChange}
                       placeholder="발급 목적을 입력하세요"
                     />
@@ -1288,8 +1473,8 @@ export default function CertificatePage() {
                     <Label htmlFor="file1">첨부파일</Label>
                     <Input
                       id="file1"
-                      name="file1"
-                      value={formData.file1}
+                      name="file"
+                      value={formData.file}
                       onChange={handleInputChange}
                       placeholder="첨부파일 정보를 입력하세요"
                     />
@@ -1299,8 +1484,8 @@ export default function CertificatePage() {
                     <Label htmlFor="date1">날짜</Label>
                     <Input
                       id="date1"
-                      name="date1"
-                      value={formData.date1}
+                      name="date"
+                      value={formData.date}
                       onChange={handleInputChange}
                       placeholder="날짜를 입력하세요 (YYYY년 MM월 DD일)"
                     />
@@ -1370,6 +1555,8 @@ export default function CertificatePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>이름</TableHead>
+                    <TableHead>주민등록번호</TableHead>
+                    <TableHead>주소</TableHead>
                     <TableHead>이메일</TableHead>
                     <TableHead>역할</TableHead>
                   </TableRow>
@@ -1382,6 +1569,10 @@ export default function CertificatePage() {
                       onClick={() => handleSelectUser(user)}
                     >
                       <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{formatDisplayResidentNumber(user.resident_number)}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {user.address || "-"}
+                      </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         {user.role === "staff"

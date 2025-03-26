@@ -76,7 +76,6 @@
 | position                      | character varying        | 직위 (법인의 경우 담당자 직책)                       |
 | phone                         | character varying        | 전화번호                                             |
 | address                       | text                     | 주소                                                 |
-| address_detail                | text                     | 상세 주소                                            |
 | email                         | character varying        | 이메일                                               |
 | created_at                    | timestamp with time zone | 생성일시                                             |
 | updated_at                    | timestamp with time zone | 수정일시                                             |

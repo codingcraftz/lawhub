@@ -15,6 +15,8 @@ import {
   PlusCircle,
   X,
   AlertCircle,
+  MessageSquarePlus,
+  Trash2,
 } from "lucide-react";
 import {
   Table,
@@ -63,6 +65,13 @@ export default function CaseHandlersPage() {
   const [showSearchCaseDialog, setShowSearchCaseDialog] = useState(false);
   const [addingCase, setAddingCase] = useState(false);
   const [removingCaseId, setRemovingCaseId] = useState(null);
+  const [showOpinionDialog, setShowOpinionDialog] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [opinionTitle, setOpinionTitle] = useState("");
+  const [opinionMessage, setOpinionMessage] = useState("");
+  const [creditorName, setCreditorName] = useState("");
+  const [debtorName, setDebtorName] = useState("");
+  const [sendingOpinion, setSendingOpinion] = useState(false);
 
   // 관리자 권한 확인
   useEffect(() => {
@@ -456,6 +465,62 @@ export default function CaseHandlersPage() {
     return party.name || "-";
   };
 
+  // 의견 보내기 핸들러
+  const handleSendOpinion = async () => {
+    if (
+      !opinionTitle.trim() ||
+      !opinionMessage.trim() ||
+      !selectedCase ||
+      !user ||
+      !creditorName.trim() ||
+      !debtorName.trim()
+    ) {
+      toast.error("모든 필드를 입력해주세요.");
+      return;
+    }
+
+    try {
+      setSendingOpinion(true);
+
+      const { error } = await supabase.from("test_case_opinions").insert({
+        case_id: selectedCase.id,
+        created_by: user.id,
+        receiver_id: selectedHandler.id,
+        title: opinionTitle.trim(),
+        message: opinionMessage.trim(),
+        creditor_name: creditorName.trim(),
+        debtor_name: debtorName.trim(),
+      });
+
+      if (error) throw error;
+
+      toast.success("의견이 전송되었습니다.");
+      setShowOpinionDialog(false);
+      setOpinionTitle("");
+      setOpinionMessage("");
+      setCreditorName("");
+      setDebtorName("");
+      setSelectedCase(null);
+    } catch (error) {
+      console.error("의견 전송 오류:", error);
+      toast.error("의견 전송에 실패했습니다.");
+    } finally {
+      setSendingOpinion(false);
+    }
+  };
+
+  // 의견 보내기 버튼 클릭 핸들러
+  const handleOpinionClick = (caseItem) => {
+    setSelectedCase(caseItem);
+    setOpinionTitle("");
+    // 채권자/채무자 정보 자동 설정
+    const creditorName = caseItem.creditors?.[0]?.name || "";
+    const debtorName = caseItem.debtors?.[0]?.name || "";
+    setCreditorName(creditorName);
+    setDebtorName(debtorName);
+    setShowOpinionDialog(true);
+  };
+
   return (
     <div className="container mx-auto py-6 px-4 lg:px-8">
       <div className="flex flex-col space-y-4">
@@ -680,21 +745,23 @@ export default function CaseHandlersPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeCaseFromHandler(caseItem.id)}
-                                disabled={removingCaseId === caseItem.id}
-                              >
-                                {removingCaseId === caseItem.id ? (
-                                  "제거 중..."
-                                ) : (
-                                  <>
-                                    <X className="h-4 w-4 mr-1" />
-                                    제거
-                                  </>
-                                )}
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpinionClick(caseItem)}
+                                >
+                                  <MessageSquarePlus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeCaseFromHandler(caseItem.id)}
+                                  disabled={removingCaseId === caseItem.id}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -835,6 +902,79 @@ export default function CaseHandlersPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSearchCaseDialog(false)}>
               닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 의견 보내기 다이얼로그 */}
+      <Dialog open={showOpinionDialog} onOpenChange={setShowOpinionDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>의견 보내기</DialogTitle>
+            <DialogDescription>
+              담당자: {selectedHandler?.name} / 사건번호: {selectedCase?.case_number}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="title" className="text-sm font-medium">
+                제목
+              </label>
+              <Input
+                id="title"
+                value={opinionTitle}
+                onChange={(e) => setOpinionTitle(e.target.value)}
+                placeholder="제목을 입력하세요"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="creditor" className="text-sm font-medium">
+                  채권자
+                </label>
+                <Input
+                  id="creditor"
+                  value={creditorName}
+                  onChange={(e) => setCreditorName(e.target.value)}
+                  placeholder="채권자명을 입력하세요"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="debtor" className="text-sm font-medium">
+                  채무자
+                </label>
+                <Input
+                  id="debtor"
+                  value={debtorName}
+                  onChange={(e) => setDebtorName(e.target.value)}
+                  placeholder="채무자명을 입력하세요"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="message" className="text-sm font-medium">
+                내용
+              </label>
+              <textarea
+                id="message"
+                value={opinionMessage}
+                onChange={(e) => setOpinionMessage(e.target.value)}
+                placeholder="내용을 입력하세요"
+                className="w-full min-h-[200px] px-3 py-2 border rounded-md"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowOpinionDialog(false)}
+              disabled={sendingOpinion}
+            >
+              취소
+            </Button>
+            <Button onClick={handleSendOpinion} disabled={sendingOpinion}>
+              {sendingOpinion ? "전송 중..." : "전송"}
             </Button>
           </DialogFooter>
         </DialogContent>
