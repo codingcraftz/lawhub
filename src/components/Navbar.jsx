@@ -200,6 +200,22 @@ export default function Navbar() {
                   보정명령 관리
                 </Button>
               </Link>
+
+              <Link href="/admin/opinions">
+                <Button
+                  variant={isActive("/admin/opinions") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/admin/amendment-orders")
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <Gavel className="mr-2 h-4 w-4" />
+                  의견보내기
+                </Button>
+              </Link>
             </>
           )}
 

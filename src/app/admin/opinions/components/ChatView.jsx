@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { MessageSquare, Send, Check, CheckCheck, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  MessageSquare,
+  Send,
+  Check,
+  CheckCheck,
+  Trash2,
+  MoreHorizontal,
+  RefreshCw,
+} from "lucide-react";
 
 export function ChatView({
   selectedOpinion,
@@ -20,6 +28,24 @@ export function ChatView({
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const [prevSelectedId, setPrevSelectedId] = useState(null);
   const [prevOpinionsLength, setPrevOpinionsLength] = useState(0);
+  const [lastSentTime, setLastSentTime] = useState(0);
+  const [cooldownActive, setCooldownActive] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  // 쿨다운 타이머
+  useEffect(() => {
+    let timer = null;
+    if (cooldownActive && cooldownSeconds > 0) {
+      timer = setTimeout(() => {
+        setCooldownSeconds((prev) => prev - 1);
+      }, 1000);
+    } else if (cooldownSeconds === 0) {
+      setCooldownActive(false);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [cooldownActive, cooldownSeconds]);
 
   // 사용자 스크롤 감지
   const handleScroll = () => {
@@ -76,13 +102,35 @@ export function ChatView({
     }
   }, [replyMessage]);
 
+  // 쓰로틀링된 메시지 전송 함수
+  const throttledSendReply = () => {
+    if (!replyMessage.trim() || sendingReply || cooldownActive) return;
+
+    const now = Date.now();
+    const timeSinceLastSent = now - lastSentTime;
+
+    // 메시지 전송 사이에 최소 1초 간격을 강제
+    if (timeSinceLastSent < 1000) {
+      // 쿨다운 시간 설정 (1초)
+      setCooldownActive(true);
+      setCooldownSeconds(1);
+      return;
+    }
+
+    // 메시지 전송
+    setLastSentTime(now);
+    handleSendReply();
+
+    // 전송 후 쿨다운 설정 (1초)
+    setCooldownActive(true);
+    setCooldownSeconds(1);
+  };
+
   // 키보드 이벤트 처리 - Enter 키로 메시지 전송 (Shift+Enter는 줄바꿈)
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (replyMessage.trim()) {
-        handleSendReply();
-      }
+      throttledSendReply();
     }
   };
 
@@ -148,6 +196,7 @@ export function ChatView({
 
   const conversationMessages = getConversationMessages();
   const messagesByDate = groupMessagesByDate(conversationMessages);
+  const isDisabled = !replyMessage.trim() || sendingReply || cooldownActive;
 
   return (
     <div className="md:col-span-2 flex flex-col h-[calc(100vh-180px)] bg-white border rounded-lg shadow overflow-hidden dark:bg-gray-800 dark:border-gray-700">
@@ -268,26 +317,40 @@ export function ChatView({
       {/* 메시지 입력 영역 */}
       <div className="p-4 border-t dark:border-gray-700">
         <div className="flex gap-2">
-          <textarea
-            value={replyMessage}
-            onChange={(e) => setReplyMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="메시지를 입력하세요..."
-            className="flex-1 min-h-[60px] p-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-            ref={replyInputRef}
-          />
+          <div className="flex-1 relative">
+            <textarea
+              value={replyMessage}
+              onChange={(e) => setReplyMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="메시지를 입력하세요..."
+              className="w-full min-h-[60px] p-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              ref={replyInputRef}
+              disabled={sendingReply}
+            />
+          </div>
           <button
-            onClick={handleSendReply}
-            disabled={!replyMessage.trim() || sendingReply}
-            className={`p-2 rounded-md ${
-              !replyMessage.trim() || sendingReply
+            onClick={throttledSendReply}
+            disabled={isDisabled}
+            className={`p-2 rounded-md flex items-center justify-center ${
+              isDisabled
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
                 : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
             }`}
           >
-            <Send className="h-5 w-5" />
+            {sendingReply ? (
+              <RefreshCw className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </button>
         </div>
+
+        {/* 쿨다운 상태 표시 */}
+        {cooldownActive && (
+          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400 text-right">
+            메시지를 너무 빠르게 보내고 있습니다. {cooldownSeconds}초 후에 다시 시도해주세요.
+          </div>
+        )}
       </div>
     </div>
   );
