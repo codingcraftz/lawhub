@@ -56,6 +56,27 @@ import ScheduleFormModal from "./components/modals/ScheduleFormModal";
 import RecoveryActivityModal from "./components/modals/RecoveryActivityModal";
 import AddSubmissionModal from "./components/modals/AddSubmissionModal";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 export default function CasePage() {
   const pathname = usePathname();
   const router = useRouter();
@@ -118,6 +139,10 @@ export default function CasePage() {
   // 알림 개수 관리
   const [notificationCount, setNotificationCount] = useState(0);
 
+  // 추가된 상태 변수
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // 케이스 정보 가져오기
   const fetchCaseDetails = async () => {
     setLoading(true);
@@ -161,7 +186,7 @@ export default function CasePage() {
         .select(
           `
           *,
-          individual_id(id, name, email, phone_number),
+          individual_id(id, name, email, phone_number, resident_number, address),
           organization_id(
             id, 
             name, 
@@ -208,7 +233,10 @@ export default function CasePage() {
           business_number: client.organization_id?.business_number,
           phone: client.individual_id?.phone_number || client.organization_id?.phone || "",
           email: client.individual_id?.email || client.organization_id?.email || "",
-          address: client.organization_id?.address || "",
+          address: client.individual_id
+            ? client.individual_id?.address || ""
+            : client.organization_id?.address || "",
+          resident_number: client.individual_id?.resident_number || "",
         };
       });
 
@@ -1005,6 +1033,243 @@ export default function CasePage() {
     setEditingSubmission(null);
   };
 
+  // 사건 삭제 함수 추가
+  const handleDeleteCase = async () => {
+    if (!caseId) return;
+
+    try {
+      setIsDeleting(true);
+
+      // 단계별 삭제 프로세스 시작
+      console.log(`사건 ID ${caseId} 삭제 프로세스 시작`);
+
+      // 1. 제출 문서 및 관련 파일 삭제
+      const { data: submissionData, error: submissionQueryError } = await supabase
+        .from("test_lawsuit_submissions")
+        .select("id, file_url")
+        .eq("lawsuit_id", caseId);
+
+      if (submissionQueryError) {
+        console.error("제출 문서 조회 오류:", submissionQueryError);
+      } else if (submissionData && submissionData.length > 0) {
+        console.log(`${submissionData.length}개의 제출 문서 삭제 중...`);
+
+        // 첨부 파일 삭제
+        for (const submission of submissionData) {
+          if (submission.file_url) {
+            try {
+              const filePathMatch = submission.file_url.match(/case-files\/(.+)/);
+              if (filePathMatch && filePathMatch[1]) {
+                const filePath = filePathMatch[1];
+                await supabase.storage.from("case-files").remove([filePath]);
+                console.log(`파일 삭제 완료: ${filePath}`);
+              }
+            } catch (fileError) {
+              console.error(`파일 삭제 오류: ${submission.file_url}`, fileError);
+            }
+          }
+        }
+
+        // 제출 문서 삭제
+        const { error: submissionDeleteError } = await supabase
+          .from("test_lawsuit_submissions")
+          .delete()
+          .in(
+            "id",
+            submissionData.map((s) => s.id)
+          );
+
+        if (submissionDeleteError) {
+          console.error("제출 문서 삭제 오류:", submissionDeleteError);
+        } else {
+          console.log("제출 문서 삭제 완료");
+        }
+      }
+
+      // 2. 소송 관련 데이터 삭제
+      const { error: lawsuitPartyDeleteError } = await supabase
+        .from("test_lawsuit_parties")
+        .delete()
+        .eq("lawsuit_id", caseId);
+
+      if (lawsuitPartyDeleteError) {
+        console.error("소송 당사자 관계 삭제 오류:", lawsuitPartyDeleteError);
+      } else {
+        console.log("소송 당사자 관계 삭제 완료");
+      }
+
+      const { error: lawsuitDeleteError } = await supabase
+        .from("test_case_lawsuits")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (lawsuitDeleteError) {
+        console.error("소송 삭제 오류:", lawsuitDeleteError);
+      } else {
+        console.log("소송 데이터 삭제 완료");
+      }
+
+      // 3. 회수 활동 및 관련 파일 삭제
+      const { data: recoveryData, error: recoveryQueryError } = await supabase
+        .from("test_recovery_activities")
+        .select("id, file_url")
+        .eq("case_id", caseId);
+
+      if (recoveryQueryError) {
+        console.error("회수 활동 조회 오류:", recoveryQueryError);
+      } else if (recoveryData && recoveryData.length > 0) {
+        console.log(`${recoveryData.length}개의 회수 활동 삭제 중...`);
+
+        // 첨부 파일 삭제
+        for (const activity of recoveryData) {
+          if (activity.file_url) {
+            try {
+              const filePathMatch = activity.file_url.match(/case-files\/(.+)/);
+              if (filePathMatch && filePathMatch[1]) {
+                const filePath = filePathMatch[1];
+                await supabase.storage.from("case-files").remove([filePath]);
+                console.log(`파일 삭제 완료: ${filePath}`);
+              }
+            } catch (fileError) {
+              console.error(`파일 삭제 오류: ${activity.file_url}`, fileError);
+            }
+          }
+        }
+
+        // 회수 활동 삭제
+        const { error: recoveryDeleteError } = await supabase
+          .from("test_recovery_activities")
+          .delete()
+          .in(
+            "id",
+            recoveryData.map((r) => r.id)
+          );
+
+        if (recoveryDeleteError) {
+          console.error("회수 활동 삭제 오류:", recoveryDeleteError);
+        } else {
+          console.log("회수 활동 삭제 완료");
+        }
+      }
+
+      // 4. 알림 삭제
+      const { error: caseNotificationDeleteError } = await supabase
+        .from("test_case_notifications")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (caseNotificationDeleteError) {
+        console.error("사건 알림 삭제 오류:", caseNotificationDeleteError);
+      } else {
+        console.log("사건 알림 삭제 완료");
+      }
+
+      const { error: individualNotificationDeleteError } = await supabase
+        .from("test_individual_notifications")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (individualNotificationDeleteError) {
+        console.error("개인 알림 삭제 오류:", individualNotificationDeleteError);
+      } else {
+        console.log("개인 알림 삭제 완료");
+      }
+
+      // 5. 기일 삭제
+      const { error: scheduleDeleteError } = await supabase
+        .from("test_schedules")
+        .delete()
+        .eq("lawsuit_id", caseId);
+
+      if (scheduleDeleteError) {
+        console.error("기일 삭제 오류:", scheduleDeleteError);
+      } else {
+        console.log("기일 데이터 삭제 완료");
+      }
+
+      // 6. 사건 관련 기타 데이터 삭제
+      const { error: handlerDeleteError } = await supabase
+        .from("test_case_handlers")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (handlerDeleteError) {
+        console.error("사건 담당자 삭제 오류:", handlerDeleteError);
+      } else {
+        console.log("사건 담당자 삭제 완료");
+      }
+
+      const { error: clientDeleteError } = await supabase
+        .from("test_case_clients")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (clientDeleteError) {
+        console.error("의뢰인 삭제 오류:", clientDeleteError);
+      } else {
+        console.log("의뢰인 삭제 완료");
+      }
+
+      const { error: partyDeleteError } = await supabase
+        .from("test_case_parties")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (partyDeleteError) {
+        console.error("당사자 삭제 오류:", partyDeleteError);
+      } else {
+        console.log("당사자 삭제 완료");
+      }
+
+      const { error: interestDeleteError } = await supabase
+        .from("test_case_interests")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (interestDeleteError) {
+        console.error("이자 정보 삭제 오류:", interestDeleteError);
+      } else {
+        console.log("이자 정보 삭제 완료");
+      }
+
+      const { error: expenseDeleteError } = await supabase
+        .from("test_case_expenses")
+        .delete()
+        .eq("case_id", caseId);
+
+      if (expenseDeleteError) {
+        console.error("비용 정보 삭제 오류:", expenseDeleteError);
+      } else {
+        console.log("비용 정보 삭제 완료");
+      }
+
+      // 7. 마지막으로 사건 자체 삭제
+      const { error: caseDeleteError } = await supabase
+        .from("test_cases")
+        .delete()
+        .eq("id", caseId);
+
+      if (caseDeleteError) {
+        console.error("사건 삭제 오류:", caseDeleteError);
+        throw caseDeleteError;
+      }
+
+      console.log("사건 삭제 완료");
+      toast.success("사건이 성공적으로 삭제되었습니다");
+
+      // 사건 목록 페이지로 이동
+      router.push("/cases");
+    } catch (error) {
+      console.error("사건 삭제 중 오류 발생:", error);
+      toast.error("사건 삭제 실패", {
+        description: error.message || "알 수 없는 오류가 발생했습니다",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-900">
       <div className="container p-6 mx-auto">
@@ -1304,6 +1569,47 @@ export default function CasePage() {
                 </div>
 
                 <Separator className="my-2 bg-gray-200 dark:bg-gray-700" />
+
+                <div className="mt-4">
+                  <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full"
+                        disabled={isDeleting || (user?.role !== "admin" && user?.role !== "staff")}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {isDeleting ? "삭제 중..." : "사건 삭제하기"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>사건 삭제</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          이 사건을 삭제하시겠습니까? 관련된 모든 데이터(소송, 회수 활동, 알림 등)가
+                          함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>취소</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteCase}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          {isDeleting ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              삭제 중...
+                            </>
+                          ) : (
+                            "삭제하기"
+                          )}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardContent>
             </Card>
           </div>

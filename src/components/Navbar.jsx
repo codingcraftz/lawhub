@@ -33,15 +33,20 @@ import {
   ClipboardList,
   Folders,
   UsersRound,
+  Gavel,
+  ChevronDown,
+  UserPlus,
+  FileType,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 
 export default function Navbar() {
-  const { user, loading, signOut, isAdmin, isStaff, isClient } = useUser();
+  const { user, loading, signOut, isAdmin, isStaff, isClient, isExternalStaff } = useUser();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState("");
 
   // 디버깅을 위한 코드
   useEffect(() => {
@@ -109,63 +114,8 @@ export default function Navbar() {
             </Button>
           </Link>
 
-          {/* 클라이언트 관리 - 관리자와 직원만 접근 가능 */}
-          {(isAdmin() || isStaff()) && (
-            <Link href="/clients">
-              <Button
-                variant={isActive("/clients") ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex items-center rounded-lg transition-all",
-                  isActive("/clients")
-                    ? "bg-purple-500 hover:bg-purple-600 text-white"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                의뢰 관리
-              </Button>
-            </Link>
-          )}
-
-          {/* 사건 관리 - 관리자와 직원만 접근 가능 */}
-          {(isAdmin() || isStaff()) && (
-            <Link href="/cases">
-              <Button
-                variant={isActive("/cases") ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex items-center rounded-lg transition-all",
-                  isActive("/cases")
-                    ? "bg-indigo-500 hover:bg-indigo-600 text-white"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                사건 관리
-              </Button>
-            </Link>
-          )}
-
-          {/* 채권 관리 - 모든 사용자 접근 가능
-          <Link href="/debts">
-            <Button
-              variant={isActive("/debts") ? "default" : "ghost"}
-              size="sm"
-              className={cn(
-                "flex items-center rounded-lg transition-all",
-                isActive("/debts")
-                  ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-            >
-              <Briefcase className="mr-2 h-4 w-4" />
-              채권 관리
-            </Button>
-          </Link> */}
-
-          {/* 나의 의뢰 - 클라이언트만 접근 가능 */}
-          {(isClient() || isAdmin()) && (
+          {/* 클라이언트 메뉴: 홈 / 나의 의뢰 */}
+          {isClient() && (
             <Link href="/my-cases">
               <Button
                 variant={isActive("/my-cases") ? "default" : "ghost"}
@@ -183,60 +133,200 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* 담당자 관리 - 관리자만 접근 가능 */}
-          {isAdmin() && (
-            <Link href="/admin/case-handlers">
+          {/* 외부직원 메뉴: 홈 / 담당 의뢰 */}
+          {isExternalStaff() && (
+            <Link href="/assigned-cases">
               <Button
-                variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
+                variant={isActive("/assigned-cases") ? "default" : "ghost"}
                 size="sm"
                 className={cn(
                   "flex items-center rounded-lg transition-all",
-                  isActive("/admin/case-handlers")
-                    ? "bg-teal-500 hover:bg-teal-600 text-white"
+                  isActive("/assigned-cases")
+                    ? "bg-indigo-500 hover:bg-indigo-600 text-white"
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
-                <UserCog className="mr-2 h-4 w-4" />
-                담당자 관리
+                <FileText className="mr-2 h-4 w-4" />
+                담당의뢰
               </Button>
             </Link>
           )}
 
-          {/* 조직 관리 - 관리자만 접근 가능 */}
-          {isAdmin() && (
-            <Link href="/organizations">
-              <Button
-                variant={isActive("/organizations") ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "flex items-center rounded-lg transition-all",
-                  isActive("/organizations")
-                    ? "bg-teal-500 hover:bg-teal-600 text-white"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                )}
-              >
-                <Building2 className="mr-2 h-4 w-4" />
-                조직 관리
-              </Button>
-            </Link>
+          {/* 내부직원 메뉴: 홈 / 의뢰관리 / 사건관리 / 보정명령 관리 */}
+          {isStaff() && !isExternalStaff() && !isAdmin() && (
+            <>
+              <Link href="/clients">
+                <Button
+                  variant={isActive("/clients") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/clients")
+                      ? "bg-purple-500 hover:bg-purple-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  의뢰 관리
+                </Button>
+              </Link>
+              <Link href="/cases">
+                <Button
+                  variant={isActive("/cases") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/cases")
+                      ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  사건 관리
+                </Button>
+              </Link>
+              <Link href="/admin/amendment-orders">
+                <Button
+                  variant={isActive("/admin/amendment-orders") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/admin/amendment-orders")
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <Gavel className="mr-2 h-4 w-4" />
+                  보정명령 관리
+                </Button>
+              </Link>
+            </>
           )}
 
-          {/* 일정 관리 - 모든 사용자 접근 가능
-          <Link href="/calendar">
-            <Button
-              variant={isActive("/calendar") ? "default" : "ghost"}
-              size="sm"
-              className={cn(
-                "flex items-center rounded-lg transition-all",
-                isActive("/calendar")
-                  ? "bg-amber-500 hover:bg-amber-600 text-white"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
-              )}
-            >
-              <CalendarRange className="mr-2 h-4 w-4" />
-              일정 관리
-            </Button>
-          </Link> */}
+          {/* 관리자 메뉴: 모든 메뉴 접근 가능 */}
+          {isAdmin() && (
+            <>
+              <Link href="/my-cases">
+                <Button
+                  variant={isActive("/my-cases") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/my-cases")
+                      ? "bg-blue-500 hover:bg-blue-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  나의 의뢰
+                </Button>
+              </Link>
+              <Link href="/assigned-cases">
+                <Button
+                  variant={isActive("/assigned-cases") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/assigned-cases")
+                      ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  담당의뢰
+                </Button>
+              </Link>
+              <Link href="/clients">
+                <Button
+                  variant={isActive("/clients") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/clients")
+                      ? "bg-purple-500 hover:bg-purple-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  의뢰 관리
+                </Button>
+              </Link>
+              <Link href="/cases">
+                <Button
+                  variant={isActive("/cases") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/cases")
+                      ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  사건 관리
+                </Button>
+              </Link>
+              <Link href="/admin/amendment-orders">
+                <Button
+                  variant={isActive("/admin/amendment-orders") ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "flex items-center rounded-lg transition-all",
+                    isActive("/admin/amendment-orders")
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <Gavel className="mr-2 h-4 w-4" />
+                  보정명령 관리
+                </Button>
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={isActive("/admin") ? "default" : "ghost"}
+                    size="sm"
+                    className={cn(
+                      "flex items-center rounded-lg transition-all",
+                      isActive("/admin")
+                        ? "bg-teal-500 hover:bg-teal-600 text-white"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    <Settings className="mr-1 h-4 w-4" />
+                    관리자
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/case-handlers" className="flex w-full items-center">
+                      <UserCog className="mr-2 h-4 w-4" />
+                      담당자 관리
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/clients" className="flex w-full items-center">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      의뢰인 관리
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/organizations" className="flex w-full items-center">
+                      <Building2 className="mr-2 h-4 w-4" />
+                      조직 관리
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/certificate" className="flex w-full items-center">
+                      <FileType className="mr-2 h-4 w-4" />
+                      초본 생성
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
 
         {/* 우측 기능 버튼들 */}
@@ -276,15 +366,6 @@ export default function Navbar() {
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {/* <DropdownMenuItem className="cursor-pointer flex items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  프로필
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer flex items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  설정
-                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer flex items-center text-red-500 dark:text-red-400"
@@ -354,56 +435,8 @@ export default function Navbar() {
                   </Button>
                 </Link>
 
-                {/* 사건 관리 - 관리자와 직원만 접근 가능 */}
-                {(isAdmin() || isStaff()) && (
-                  <Link href="/cases" onClick={closeMenu}>
-                    <Button
-                      variant={isActive("/cases") ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start",
-                        isActive("/cases") ? "bg-indigo-500 hover:bg-indigo-600 text-white" : ""
-                      )}
-                    >
-                      <FileText className="mr-2 h-5 w-5" />
-                      사건 관리
-                    </Button>
-                  </Link>
-                )}
-
-                {/* 의뢰 관리 - 관리자와 직원만 접근 가능 */}
-                {(isAdmin() || isStaff()) && (
-                  <Link href="/clients" onClick={closeMenu}>
-                    <Button
-                      variant={isActive("/clients") ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start",
-                        isActive("/clients") ? "bg-purple-500 hover:bg-purple-600 text-white" : ""
-                      )}
-                    >
-                      <Users className="mr-2 h-5 w-5" />
-                      의뢰 관리
-                    </Button>
-                  </Link>
-                )}
-
-                {/* 채권 관리는 주석 처리되어 있음 - 주석 유지 */}
-                {/* <Link href="/debts" onClick={closeMenu}>
-                  <Button
-                    variant={isActive("/debts") ? "default" : "ghost"}
-                    className={cn(
-                      "w-full justify-start",
-                      isActive("/debts")
-                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                    )}
-                  >
-                    <Briefcase className="mr-2 h-5 w-5" />
-                    채권 관리
-                  </Button>
-                </Link> */}
-
-                {/* 모바일 - 나의 의뢰 - 클라이언트 또는 관리자만 접근 가능 */}
-                {(isClient() || isAdmin()) && (
+                {/* 클라이언트 메뉴: 홈 / 나의 의뢰 */}
+                {isClient() && (
                   <Link href="/my-cases" onClick={closeMenu}>
                     <Button
                       variant={isActive("/my-cases") ? "default" : "ghost"}
@@ -418,95 +451,202 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                {/* 모바일 - 담당자 관리 - 관리자만 접근 가능 */}
-                {isAdmin() && (
-                  <Link href="/admin/case-handlers" onClick={closeMenu}>
+                {/* 외부직원 메뉴: 홈 / 담당의뢰 */}
+                {isExternalStaff() && (
+                  <Link href="/assigned-cases" onClick={closeMenu}>
                     <Button
-                      variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
+                      variant={isActive("/assigned-cases") ? "default" : "ghost"}
                       className={cn(
                         "w-full justify-start",
-                        isActive("/admin/case-handlers")
-                          ? "bg-teal-500 hover:bg-teal-600 text-white"
+                        isActive("/assigned-cases")
+                          ? "bg-indigo-500 hover:bg-indigo-600 text-white"
                           : ""
                       )}
                     >
-                      <UserCog className="mr-2 h-5 w-5" />
-                      담당자 관리
+                      <FileText className="mr-2 h-5 w-5" />
+                      담당의뢰
                     </Button>
                   </Link>
                 )}
 
-                {/* 모바일 - 조직 관리 - 관리자만 접근 가능 */}
-                {isAdmin() && (
-                  <Link href="/organizations" onClick={closeMenu}>
-                    <Button
-                      variant={isActive("/organizations") ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start",
-                        isActive("/organizations") ? "bg-teal-500 hover:bg-teal-600 text-white" : ""
-                      )}
-                    >
-                      <Building2 className="mr-2 h-5 w-5" />
-                      조직 관리
-                    </Button>
-                  </Link>
-                )}
-
-                {/* 일정 관리 - 주석 처리되어 있음 - 주석 유지 */}
-                {/* <Link href="/calendar" onClick={closeMenu}>
-                  <Button
-                    variant={isActive("/calendar") ? "default" : "ghost"}
-                    className={cn(
-                      "w-full justify-start",
-                      isActive("/calendar")
-                        ? "bg-amber-500 hover:bg-amber-600 text-white"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                    )}
-                  >
-                    <CalendarRange className="mr-2 h-5 w-5" />
-                    일정 관리
-                  </Button>
-                </Link> */}
-              </div>
-
-              {/* 관리자 메뉴 - 모바일 */}
-              {isAdmin() && (
-                <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4">
-                  <h3 className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                    관리자 메뉴
-                  </h3>
-                  <div className="space-y-1">
-                    <Link href="/admin/users" onClick={closeMenu}>
+                {/* 내부직원 메뉴: 홈 / 의뢰관리 / 사건관리 / 보정명령 관리 */}
+                {isStaff() && !isExternalStaff() && !isAdmin() && (
+                  <>
+                    <Link href="/clients" onClick={closeMenu}>
                       <Button
-                        variant={isActive("/admin/users") ? "default" : "ghost"}
+                        variant={isActive("/clients") ? "default" : "ghost"}
                         className={cn(
                           "w-full justify-start",
-                          isActive("/admin/users")
+                          isActive("/clients") ? "bg-purple-500 hover:bg-purple-600 text-white" : ""
+                        )}
+                      >
+                        <Users className="mr-2 h-5 w-5" />
+                        의뢰 관리
+                      </Button>
+                    </Link>
+                    <Link href="/cases" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/cases") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/cases") ? "bg-indigo-500 hover:bg-indigo-600 text-white" : ""
+                        )}
+                      >
+                        <FileText className="mr-2 h-5 w-5" />
+                        사건 관리
+                      </Button>
+                    </Link>
+                    <Link href="/admin/amendment-orders" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/admin/amendment-orders") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/admin/amendment-orders")
+                            ? "bg-amber-500 hover:bg-amber-600 text-white"
+                            : ""
+                        )}
+                      >
+                        <Gavel className="mr-2 h-5 w-5" />
+                        보정명령 관리
+                      </Button>
+                    </Link>
+                  </>
+                )}
+
+                {/* 어드민 메뉴: 모든 메뉴 접근 가능 */}
+                {isAdmin() && (
+                  <>
+                    <Link href="/my-cases" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/my-cases") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/my-cases") ? "bg-blue-500 hover:bg-blue-600 text-white" : ""
+                        )}
+                      >
+                        <ClipboardList className="mr-2 h-5 w-5" />
+                        나의 의뢰
+                      </Button>
+                    </Link>
+                    <Link href="/assigned-cases" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/assigned-cases") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/assigned-cases")
                             ? "bg-indigo-500 hover:bg-indigo-600 text-white"
                             : ""
                         )}
                       >
-                        <UsersRound className="mr-2 h-5 w-5" />
-                        사용자 관리
+                        <FileText className="mr-2 h-5 w-5" />
+                        담당의뢰
                       </Button>
                     </Link>
-                    <Link href="/admin/settings" onClick={closeMenu}>
+                    <Link href="/clients" onClick={closeMenu}>
                       <Button
-                        variant={isActive("/admin/settings") ? "default" : "ghost"}
+                        variant={isActive("/clients") ? "default" : "ghost"}
                         className={cn(
                           "w-full justify-start",
-                          isActive("/admin/settings")
-                            ? "bg-teal-500 hover:bg-teal-600 text-white"
+                          isActive("/clients") ? "bg-purple-500 hover:bg-purple-600 text-white" : ""
+                        )}
+                      >
+                        <Users className="mr-2 h-5 w-5" />
+                        의뢰 관리
+                      </Button>
+                    </Link>
+                    <Link href="/cases" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/cases") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/cases") ? "bg-indigo-500 hover:bg-indigo-600 text-white" : ""
+                        )}
+                      >
+                        <FileText className="mr-2 h-5 w-5" />
+                        사건 관리
+                      </Button>
+                    </Link>
+                    <Link href="/admin/amendment-orders" onClick={closeMenu}>
+                      <Button
+                        variant={isActive("/admin/amendment-orders") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start",
+                          isActive("/admin/amendment-orders")
+                            ? "bg-amber-500 hover:bg-amber-600 text-white"
                             : ""
                         )}
                       >
-                        <Settings className="mr-2 h-5 w-5" />
-                        시스템 설정
+                        <Gavel className="mr-2 h-5 w-5" />
+                        보정명령 관리
                       </Button>
                     </Link>
-                  </div>
-                </div>
-              )}
+
+                    <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4">
+                      <h3 className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                        관리자 메뉴
+                      </h3>
+                      <div className="space-y-1">
+                        <Link href="/admin/case-handlers" onClick={closeMenu}>
+                          <Button
+                            variant={isActive("/admin/case-handlers") ? "default" : "ghost"}
+                            className={cn(
+                              "w-full justify-start",
+                              isActive("/admin/case-handlers")
+                                ? "bg-teal-500 hover:bg-teal-600 text-white"
+                                : ""
+                            )}
+                          >
+                            <UserCog className="mr-2 h-5 w-5" />
+                            담당자 관리
+                          </Button>
+                        </Link>
+                        <Link href="/admin/clients" onClick={closeMenu}>
+                          <Button
+                            variant={isActive("/admin/clients") ? "default" : "ghost"}
+                            className={cn(
+                              "w-full justify-start",
+                              isActive("/admin/clients")
+                                ? "bg-indigo-500 hover:bg-indigo-600 text-white"
+                                : ""
+                            )}
+                          >
+                            <UserPlus className="mr-2 h-5 w-5" />
+                            의뢰인 관리
+                          </Button>
+                        </Link>
+                        <Link href="/organizations" onClick={closeMenu}>
+                          <Button
+                            variant={isActive("/organizations") ? "default" : "ghost"}
+                            className={cn(
+                              "w-full justify-start",
+                              isActive("/organizations")
+                                ? "bg-teal-500 hover:bg-teal-600 text-white"
+                                : ""
+                            )}
+                          >
+                            <Building2 className="mr-2 h-5 w-5" />
+                            조직 관리
+                          </Button>
+                        </Link>
+                        <Link href="/certificate" onClick={closeMenu}>
+                          <Button
+                            variant={isActive("/certificate") ? "default" : "ghost"}
+                            className={cn(
+                              "w-full justify-start",
+                              isActive("/certificate")
+                                ? "bg-amber-500 hover:bg-amber-600 text-white"
+                                : ""
+                            )}
+                          >
+                            <FileType className="mr-2 h-5 w-5" />
+                            초본 생성
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
               <div className="absolute bottom-4 w-full pr-6">
                 <div className="flex justify-between items-center">

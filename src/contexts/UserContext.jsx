@@ -190,6 +190,16 @@ export function UserProvider({ children }) {
     return user?.role === "client";
   };
 
+  // 외부직원 확인 함수
+  const isExternalStaff = () => {
+    return user?.role === "staff" && user?.employee_type === "external";
+  };
+
+  // 내부직원 확인 함수
+  const isInternalStaff = () => {
+    return user?.role === "staff" && user?.employee_type === "internal";
+  };
+
   // 로그아웃 함수
   const signOut = async () => {
     try {
@@ -246,6 +256,8 @@ export function UserProvider({ children }) {
         isAdmin,
         isStaff,
         isClient,
+        isExternalStaff,
+        isInternalStaff,
         updateUserProfile,
       }}
     >

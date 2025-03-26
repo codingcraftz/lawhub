@@ -121,3 +121,41 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 인쇄용 스타일 추가 */
+@media print {
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* 인쇄 시 화면에서만 보이는 요소 숨기기 */
+  button,
+  .no-print,
+  nav,
+  header {
+    display: none !important;
+  }
+
+  /* 인쇄 여백 설정 */
+  @page {
+    margin: 1.5cm;
+  }
+
+  /* 인쇄 시 색상 및 배경 최적화 */
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  /* 인쇄 시 링크 URL 표시하지 않기 */
+  a {
+    text-decoration: none !important;
+  }
+  a[href]:after {
+    content: "" !important;
+  }
+}

@@ -144,6 +144,46 @@ export default function RecoveryActivities({
     }
   };
 
+  const downloadFile = async (fileUrl, fileName) => {
+    try {
+      console.log("다운로드 시도:", fileUrl);
+      const response = await fetch(fileUrl);
+
+      if (!response.ok) {
+        console.error("파일 접근 오류:", response.status, response.statusText);
+        toast.error("파일 다운로드 실패", {
+          description: "파일에 접근할 수 없습니다. 관리자에게 문의하세요.",
+        });
+        return;
+      }
+
+      // 파일 blob 획득
+      const blob = await response.blob();
+
+      // 다운로드 링크 생성
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = fileName;
+
+      // 링크 클릭 이벤트 발생시켜 다운로드
+      document.body.appendChild(a);
+      a.click();
+
+      // 정리
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("파일 다운로드가 시작되었습니다");
+    } catch (error) {
+      console.error("파일 다운로드 중 오류 발생:", error);
+      toast.error("파일 다운로드 실패", {
+        description: "다운로드 중 오류가 발생했습니다. 관리자에게 문의하세요.",
+      });
+    }
+  };
+
   const handleDelete = async (activityId) => {
     if (!user || (user.role !== "admin" && user.role !== "staff")) {
       toast.error("권한이 없습니다", {
@@ -515,11 +555,20 @@ export default function RecoveryActivities({
                               보기
                             </a>
                           </Button>
-                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
-                            <a href={item.file_url} download>
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+                            <div
+                              onClick={() => {
+                                const fileName = `회수활동_${item.activity_type || "문서"}_${format(
+                                  new Date(item.date),
+                                  "yyyyMMdd"
+                                )}.pdf`;
+                                downloadFile(item.file_url, fileName);
+                              }}
+                              className="flex items-center cursor-pointer"
+                            >
                               <Download className="h-3 w-3 mr-1" />
                               다운로드
-                            </a>
+                            </div>
                           </Button>
                         </div>
                       )}

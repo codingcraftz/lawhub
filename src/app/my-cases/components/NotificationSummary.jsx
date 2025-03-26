@@ -157,14 +157,14 @@ export default function NotificationSummary({ notifications, loading }) {
 
   // 더 보기 핸들러
   const handleLoadMore = () => {
-    setDisplayCount((prev) => prev + 5);
+    setDisplayCount((prev) => prev + 3);
   };
 
   // 읽지 않은 알림 수 계산
   const unreadCount = allNotifications.filter((n) => !n.is_read).length;
 
   return (
-    <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md mb-8">
+    <Card className="border-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-md h-full">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg flex items-center">
@@ -206,10 +206,10 @@ export default function NotificationSummary({ notifications, loading }) {
           </Tabs>
         </div>
       </CardHeader>
-      <CardContent className="max-h-[400px] overflow-y-auto">
+      <CardContent className="max-h-[300px] overflow-y-auto">
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2].map((i) => (
               <div key={i} className="flex flex-col space-y-2">
                 <Skeleton className="h-6 w-1/4" />
                 <Skeleton className="h-12 w-full" />
@@ -217,17 +217,17 @@ export default function NotificationSummary({ notifications, loading }) {
             ))}
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="text-center py-6 text-gray-500">
+          <div className="text-center py-4 text-gray-500">
             <Bell className="h-10 w-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
             <p>{activeTab === "unread" ? "읽지 않은 알림이 없습니다." : "알림이 없습니다."}</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredNotifications.slice(0, displayCount).map((notification) => (
               <div
                 key={notification.id}
                 className={cn(
-                  "p-4 border rounded-md cursor-pointer transition-colors",
+                  "p-3 border rounded-md cursor-pointer transition-colors",
                   notification.is_read
                     ? "bg-background hover:bg-gray-50 dark:hover:bg-gray-800/50"
                     : "bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100/50 dark:hover:bg-blue-900/20"
@@ -252,7 +252,7 @@ export default function NotificationSummary({ notifications, loading }) {
                         <span className="h-2 w-2 rounded-full bg-blue-500 mt-1"></span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                    <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-1 mb-1">
                       {notification.message}
                     </p>
                     <div className="flex justify-between items-center">
@@ -267,22 +267,22 @@ export default function NotificationSummary({ notifications, loading }) {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs px-2"
+                            className="h-6 text-xs px-2"
                             onClick={(e) => markAsRead(e, notification.id)}
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> 읽음
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> 읽음
                           </Button>
                         )}
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs px-2"
+                          className="h-6 text-xs px-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/cases/${notification.case_id}`);
                           }}
                         >
-                          <ChevronRight className="h-3.5 w-3.5 mr-1" /> 보기
+                          <ChevronRight className="h-3 w-3 mr-1" /> 보기
                         </Button>
                       </div>
                     </div>
@@ -292,9 +292,9 @@ export default function NotificationSummary({ notifications, loading }) {
             ))}
 
             {displayCount < filteredNotifications.length && (
-              <div className="text-center pt-2">
+              <div className="text-center pt-1">
                 <Button variant="outline" size="sm" className="text-xs" onClick={handleLoadMore}>
-                  <ChevronDown className="h-3.5 w-3.5 mr-1" /> 더보기 (
+                  <ChevronDown className="h-3 w-3 mr-1" /> 더보기 (
                   {filteredNotifications.length - displayCount}개)
                 </Button>
               </div>

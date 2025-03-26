@@ -210,14 +210,54 @@ export default function CaseTimeline({
     const fileName = `${Date.now()}_${lawsuit.id}.${fileExt}`;
     const filePath = `cases/${lawsuit.case_id}/submissions/${fileName}`;
 
-    const { data, error } = await supabase.storage.from("case-documents").upload(filePath, file);
+    const { data, error } = await supabase.storage.from("case-files").upload(filePath, file);
 
     if (error) throw error;
 
     // 파일 URL 생성
-    const { data: urlData } = supabase.storage.from("case-documents").getPublicUrl(filePath);
+    const { data: urlData } = supabase.storage.from("case-files").getPublicUrl(filePath);
 
     return urlData.publicUrl;
+  };
+
+  const downloadFile = async (fileUrl, fileName) => {
+    try {
+      console.log("다운로드 시도:", fileUrl);
+      const response = await fetch(fileUrl);
+
+      if (!response.ok) {
+        console.error("파일 접근 오류:", response.status, response.statusText);
+        toast.error("파일 다운로드 실패", {
+          description: "파일에 접근할 수 없습니다. 관리자에게 문의하세요.",
+        });
+        return;
+      }
+
+      // 파일 blob 획득
+      const blob = await response.blob();
+
+      // 다운로드 링크 생성
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = fileName;
+
+      // 링크 클릭 이벤트 발생시켜 다운로드
+      document.body.appendChild(a);
+      a.click();
+
+      // 정리
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("파일 다운로드가 시작되었습니다");
+    } catch (error) {
+      console.error("파일 다운로드 중 오류 발생:", error);
+      toast.error("파일 다운로드 실패", {
+        description: "다운로드 중 오류가 발생했습니다. 관리자에게 문의하세요.",
+      });
+    }
   };
 
   const handleDeleteSubmission = async (submissionId) => {
@@ -426,11 +466,22 @@ export default function CaseTimeline({
                     보기
                   </a>
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
-                  <a href={item.file_url} download>
+                <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+                  <div
+                    onClick={() => {
+                      const fileName = `${
+                        isSchedule ? "기일문서" : item.document_type || "문서"
+                      }_${format(
+                        isSchedule ? new Date(item.event_date) : new Date(item.submission_date),
+                        "yyyyMMdd"
+                      )}.pdf`;
+                      downloadFile(item.file_url, fileName);
+                    }}
+                    className="flex items-center cursor-pointer"
+                  >
                     <Download className="h-3 w-3 mr-1" />
                     다운로드
-                  </a>
+                  </div>
                 </Button>
               </div>
             )}

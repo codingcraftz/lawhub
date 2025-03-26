@@ -2,20 +2,24 @@
 
 ## 사용자 테이블 (users)
 
-| 컬럼명        | 데이터 타입              | 설명                                       |
-| ------------- | ------------------------ | ------------------------------------------ |
-| id            | uuid                     | 사용자 고유 식별자                         |
-| email         | text                     | 사용자 이메일                              |
-| name          | text                     | 사용자 이름                                |
-| phone_number  | text                     | 전화번호                                   |
-| birth_date    | date                     | 생년월일                                   |
-| gender        | text                     | 성별                                       |
-| role          | text                     | 역할 (staff, client, admin)                |
-| created_at    | timestamp with time zone | 생성 시간                                  |
-| nickname      | text                     | 닉네임                                     |
-| profile_image | text                     | 프로필 이미지 경로                         |
-| position      | text                     | 직책 (개발자, 대표, 변호사, 사무직원, etc) |
-| employee_type | text                     | 고용 형태 (internal, external)             |
+| 컬럼명           | 데이터 타입              | 설명                                               |
+| ---------------- | ------------------------ | -------------------------------------------------- |
+| id               | uuid                     | 사용자 고유 식별자                                 |
+| email            | text                     | 사용자 이메일                                      |
+| name             | text                     | 사용자 이름                                        |
+| phone_number     | text                     | 전화번호                                           |
+| birth_date       | date                     | 생년월일                                           |
+| gender           | text                     | 성별                                               |
+| role             | text                     | 역할 (staff, client, admin)                        |
+| created_at       | timestamp with time zone | 생성 시간                                          |
+| nickname         | text                     | 닉네임                                             |
+| profile_image    | text                     | 프로필 이미지 경로                                 |
+| position         | text                     | 직책 (개발자, 대표, 변호사, 사무직원, etc)         |
+| employee_type    | text                     | 고용 형태 (internal: 내부직원, external: 외부직원) |
+| resident_number  | text                     | 주민등록번호                                       |
+| address          | text                     | 주소                                               |
+| id_card_url      | text                     | 신분증 이미지 URL                                  |
+| id_card_verified | boolean                  | 신분증 인증 여부                                   |
 
 ## 조직 테이블 (test_organizations)
 
@@ -171,7 +175,7 @@
 | submission_date | date                     | 송달/제출일                                           |
 | description     | text                     | 설명                                                  |
 | file_url        | text                     | 첨부파일 URL                                          |
-| related_docs    | ARRAY                    | 관련 문서 배열                                        |
+| status          | text                     | 관리자용 상태(in_progress, completed)                 |
 | created_by      | uuid                     | 생성자 ID (외래키, users 테이블)                      |
 | created_at      | timestamp with time zone | 생성 시간                                             |
 | updated_at      | timestamp with time zone | 수정 시간                                             |

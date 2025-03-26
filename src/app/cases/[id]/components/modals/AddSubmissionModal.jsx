@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@/contexts/UserContext";
 import FileUploadDropzone from "@/components/ui/file-upload-dropzone";
 import { v4 as uuidv4 } from "uuid";
+import { Switch } from "@/components/ui/switch";
 
 // 스토리지 버킷 이름을 정의합니다
 const BUCKET_NAME = "case-files";
@@ -62,6 +63,10 @@ export default function AddSubmissionModal({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [fileToUpload, setFileToUpload] = useState(null);
   const [lawsuitDetails, setLawsuitDetails] = useState(null);
+  const [isAmendmentOrder, setIsAmendmentOrder] = useState(
+    editingSubmission?.document_type === "보정명령" || false
+  );
+  const [partiesInfoText, setPartiesInfoText] = useState("");
 
   // 송달/제출 유형 상수
   const submissionTypes = [
@@ -110,6 +115,44 @@ export default function AddSubmissionModal({
       }
     }
   }, [open, isEditMode, editingSubmission, caseDetails, lawsuitId, lawsuitType]);
+
+  // isAmendmentOrder 상태 변경을 처리하는 별도의 useEffect 추가
+  useEffect(() => {
+    if (isAmendmentOrder) {
+      // 보정명령 스위치가 켜진 경우 문서 유형 강제 설정
+      setFormData((prev) => ({
+        ...prev,
+        submission_type: "송달문서",
+        document_type: "보정명령",
+      }));
+
+      // 당사자 정보 텍스트 생성
+      let partiesText = "";
+      if (parties && parties.length > 0) {
+        const creditor = parties.find((p) =>
+          ["plaintiff", "creditor", "applicant"].includes(p.party_type)
+        );
+        const debtor = parties.find((p) =>
+          ["defendant", "debtor", "respondent"].includes(p.party_type)
+        );
+
+        if (creditor) {
+          const creditorName =
+            creditor.entity_type === "individual"
+              ? creditor.name
+              : creditor.company_name || "미지정";
+          partiesText += `채권자: ${creditorName}`;
+        }
+
+        if (debtor) {
+          const debtorName =
+            debtor.entity_type === "individual" ? debtor.name : debtor.company_name || "미지정";
+          partiesText += partiesText ? `, 채무자: ${debtorName}` : `채무자: ${debtorName}`;
+        }
+      }
+      setPartiesInfoText(partiesText || "당사자 정보 없음");
+    }
+  }, [isAmendmentOrder, parties]);
 
   // 소송과 사건 정보를 불러오는 함수
   const fetchCaseAndLawsuitDetails = async () => {
@@ -634,13 +677,19 @@ export default function AddSubmissionModal({
       // 현재 사용자 ID 가져오기
       const currentUser = user?.id;
 
+      // 설명 필드에 당사자 정보 추가 (보정명령인 경우에만)
+      let descriptionText = formData.description;
+      if (isAmendmentOrder && partiesInfoText) {
+        descriptionText = `${partiesInfoText}\n${descriptionText}`;
+      }
+
       // 데이터 준비
       const submissionData = {
         lawsuit_id: lawsuitId,
         submission_type: formData.submission_type,
         document_type: formData.document_type,
         submission_date: formData.submission_date.toISOString().split("T")[0],
-        description: formData.description,
+        description: descriptionText,
         file_url: fileUrl,
       };
 
@@ -727,6 +776,40 @@ export default function AddSubmissionModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="amendment-switch" className="font-medium">
+                보정명령 문서 생성
+              </Label>
+              <Switch
+                id="amendment-switch"
+                checked={isAmendmentOrder}
+                onCheckedChange={(checked) => {
+                  setIsAmendmentOrder(checked);
+                  if (checked) {
+                    // 스위치를 켰을 때 즉시 폼 데이터 업데이트
+                    setFormData((prev) => ({
+                      ...prev,
+                      submission_type: "송달문서",
+                      document_type: "보정명령",
+                    }));
+                    setFormErrors((prev) => ({
+                      ...prev,
+                      submission_type: null,
+                      document_type: null,
+                    }));
+                  }
+                }}
+              />
+            </div>
+            {isAmendmentOrder && (
+              <p className="text-xs text-muted-foreground">
+                보정명령 문서가 선택되었습니다. 문서 유형은 '송달문서'와 '보정명령'으로 자동
+                설정됩니다.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label>문서 유형</Label>
             <div className="flex gap-2">
@@ -739,6 +822,7 @@ export default function AddSubmissionModal({
                     variant={formData.submission_type === type.value ? "default" : "outline"}
                     className={cn("flex items-center gap-1 flex-1")}
                     onClick={() => handleInputChange("submission_type", type.value)}
+                    disabled={isAmendmentOrder}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{type.label}</span>
@@ -759,11 +843,12 @@ export default function AddSubmissionModal({
               onChange={(e) => handleInputChange("document_type", e.target.value)}
               placeholder="문서 종류를 입력하세요"
               className={formErrors.document_type ? "border-red-500" : ""}
+              disabled={isAmendmentOrder}
             />
             {formErrors.document_type && (
               <p className="text-xs text-red-500">{formErrors.document_type}</p>
             )}
-            {getDocumentTypeExamples().length > 0 && (
+            {!isAmendmentOrder && getDocumentTypeExamples().length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {getDocumentTypeExamples().map((example) => (
                   <Button
@@ -780,6 +865,13 @@ export default function AddSubmissionModal({
               </div>
             )}
           </div>
+
+          {isAmendmentOrder && (
+            <div className="space-y-2">
+              <Label htmlFor="parties_info">당사자 정보</Label>
+              <Input id="parties_info" value={partiesInfoText} disabled className="bg-muted" />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="submission_date">송달/제출일</Label>

@@ -186,7 +186,7 @@ export default function PartyManageModal({
       setName(client.individual_name || "");
       setCompanyName("");
       setCorporateNumber("");
-      setResidentNumber(""); // 주민등록번호 초기화
+      setResidentNumber(client.resident_number || ""); // 주민등록번호 복사
       setPosition("");
     } else {
       // 법인/단체 의뢰인 정보
