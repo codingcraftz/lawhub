@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Printer, FileCheck, Search, X, User, Check } from "lucide-react";
-import { PDFDocument } from "pdf-lib";
-import fontkit from "@pdf-lib/fontkit";
 import { supabase } from "@/utils/supabase";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";

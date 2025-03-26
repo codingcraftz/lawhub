@@ -27,7 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, User, Building } from "lucide-react";
+import { Plus, Trash2, User, Building, Search } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -275,7 +275,7 @@ export default function AddLawsuitModal({
     if (searchTerm) {
       const filtered = parties.filter((party) => {
         const name = party.entity_type === "individual" ? party.name : party.company_name;
-        // 검색어로 필터링하고, 이미 선택된 당사자는 제외
+        // 검색어로 필터링
         return name.toLowerCase().includes(searchTerm.toLowerCase());
       });
       setFilteredParties(filtered);
@@ -328,29 +328,61 @@ export default function AddLawsuitModal({
     }
   };
 
-  const addParty = (party) => {
-    // 이미 선택된 당사자인지 확인
-    const isAlreadySelected = selectedParties.some((p) => p.id === party.id);
+  // 당사자 추가 시 역할 선택 상태
+  const [newParty, setNewParty] = useState({
+    name: "",
+    role: "",
+    entity_type: "individual", // 개인 또는 법인
+    company_name: "",
+    phone: "",
+    email: "",
+  });
 
-    if (isAlreadySelected) {
-      toast.error("이미 선택된 당사자입니다");
+  const resetNewParty = () => {
+    setNewParty({
+      name: "",
+      role: "",
+      entity_type: "individual",
+      company_name: "",
+      phone: "",
+      email: "",
+    });
+  };
+
+  // 직접 당사자 추가 함수
+  const addManualParty = () => {
+    if (!newParty.role) {
+      toast.error("당사자 역할을 선택해주세요");
       return;
     }
 
-    // 소송 유형에 따라 기본 당사자 유형 지정
-    let defaultPartyType = mapPartyTypeToLawsuitType(party.party_type, formData.lawsuit_type);
+    if (newParty.entity_type === "individual" && !newParty.name) {
+      toast.error("당사자 이름을 입력해주세요");
+      return;
+    }
+
+    if (newParty.entity_type === "corporation" && !newParty.company_name) {
+      toast.error("회사명을 입력해주세요");
+      return;
+    }
+
+    // 고유 ID 생성
+    const uniqueId = uuidv4();
 
     // 당사자 추가
-    setSelectedParties([
-      ...selectedParties,
-      {
-        ...party,
-        lawsuit_party_type: defaultPartyType,
-      },
-    ]);
+    const partyToAdd = {
+      id: uniqueId,
+      uniqueId: uniqueId,
+      name: newParty.entity_type === "individual" ? newParty.name : "",
+      company_name: newParty.entity_type === "corporation" ? newParty.company_name : "",
+      entity_type: newParty.entity_type,
+      phone: newParty.phone,
+      email: newParty.email,
+      lawsuit_party_type: newParty.role,
+    };
 
-    // 당사자 선택기 닫기
-    setShowPartySelector(false);
+    setSelectedParties([...selectedParties, partyToAdd]);
+    resetNewParty();
 
     if (formErrors.selected_parties) {
       setFormErrors({
@@ -360,13 +392,15 @@ export default function AddLawsuitModal({
     }
   };
 
-  const removeParty = (partyId) => {
-    setSelectedParties(selectedParties.filter((p) => p.id !== partyId));
+  const removeParty = (uniqueId) => {
+    setSelectedParties(selectedParties.filter((p) => p.uniqueId !== uniqueId));
   };
 
-  const updatePartyType = (partyId, newType) => {
+  const updatePartyType = (uniqueId, newType) => {
     setSelectedParties(
-      selectedParties.map((p) => (p.id === partyId ? { ...p, lawsuit_party_type: newType } : p))
+      selectedParties.map((p) =>
+        p.uniqueId === uniqueId ? { ...p, lawsuit_party_type: newType } : p
+      )
     );
   };
 
@@ -834,31 +868,15 @@ export default function AddLawsuitModal({
     }
   };
 
-  // 소송 유형에 따른 당사자 유형 옵션
-  const getPartyTypeOptions = () => {
-    if (formData.lawsuit_type === "civil") {
-      return [
-        { value: "plaintiff", label: "원고" },
-        { value: "defendant", label: "피고" },
-      ];
-    } else if (formData.lawsuit_type === "bankruptcy") {
-      return [
-        { value: "applicant", label: "신청인" },
-        { value: "debtor", label: "채무자" },
-      ];
-    } else if (formData.lawsuit_type === "payment_order" || formData.lawsuit_type === "execution") {
-      // 지급명령과 강제집행은 채권자 / 채무자
-      return [
-        { value: "creditor", label: "채권자" },
-        { value: "debtor", label: "채무자" },
-      ];
-    } else {
-      return [
-        { value: "plaintiff", label: "원고" },
-        { value: "defendant", label: "피고" },
-      ];
-    }
-  };
+  // 모든 가능한 당사자 유형
+  const getAllPartyTypes = () => [
+    { value: "plaintiff", label: "원고" },
+    { value: "defendant", label: "피고" },
+    { value: "creditor", label: "채권자" },
+    { value: "debtor", label: "채무자" },
+    { value: "applicant", label: "신청인" },
+    { value: "respondent", label: "피신청인" },
+  ];
 
   // 모달이 닫힐 때 상태 초기화 처리
   const handleDialogOpenChange = (isOpen) => {
@@ -1006,24 +1024,123 @@ export default function AddLawsuitModal({
               />
             </div>
 
-            <div className="space-y-2">
+            {/* 당사자 섹션 */}
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label>당사자 선택</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPartySelector(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  당사자 추가
-                </Button>
+                <Label>당사자 정보</Label>
               </div>
 
               {formErrors.selected_parties && (
                 <p className="text-xs text-red-500">{formErrors.selected_parties}</p>
               )}
 
+              {/* 당사자 추가 폼 */}
+              <Card className="border-dashed border-2 border-gray-300">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium mb-3">당사자 직접 추가</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="party-role">역할</Label>
+                      <Select
+                        value={newParty.role}
+                        onValueChange={(value) => setNewParty({ ...newParty, role: value })}
+                      >
+                        <SelectTrigger id="party-role">
+                          <SelectValue placeholder="역할 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAllPartyTypes().map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="party-type">유형</Label>
+                      <Select
+                        value={newParty.entity_type}
+                        onValueChange={(value) => setNewParty({ ...newParty, entity_type: value })}
+                      >
+                        <SelectTrigger id="party-type">
+                          <SelectValue placeholder="유형 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="individual">개인</SelectItem>
+                          <SelectItem value="corporation">법인</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {newParty.entity_type === "individual" ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="party-name">이름</Label>
+                        <Input
+                          id="party-name"
+                          value={newParty.name}
+                          onChange={(e) => setNewParty({ ...newParty, name: e.target.value })}
+                          placeholder="당사자 이름"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="party-company">회사명</Label>
+                        <Input
+                          id="party-company"
+                          value={newParty.company_name}
+                          onChange={(e) =>
+                            setNewParty({ ...newParty, company_name: e.target.value })
+                          }
+                          placeholder="회사명"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="party-phone">연락처</Label>
+                      <Input
+                        id="party-phone"
+                        value={newParty.phone}
+                        onChange={(e) => setNewParty({ ...newParty, phone: e.target.value })}
+                        placeholder="연락처"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="party-email">이메일</Label>
+                      <Input
+                        id="party-email"
+                        value={newParty.email}
+                        onChange={(e) => setNewParty({ ...newParty, email: e.target.value })}
+                        placeholder="이메일"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <Button variant="outline" size="sm" onClick={addManualParty}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      당사자 추가
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 기존 당사자 목록 버튼 */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPartySelector(true)}
+                className="w-full"
+              >
+                <Search className="mr-2 h-4 w-4" />
+                기존 당사자 목록에서 선택
+              </Button>
+
+              {/* 선택된 당사자 목록 */}
               {selectedParties.length === 0 ? (
                 <div className="text-center py-4 border rounded-md bg-muted/20">
                   <p className="text-sm text-muted-foreground">
@@ -1033,7 +1150,7 @@ export default function AddLawsuitModal({
               ) : (
                 <div className="space-y-2">
                   {selectedParties.map((party) => (
-                    <Card key={party.id} className="overflow-hidden">
+                    <Card key={party.uniqueId} className="overflow-hidden">
                       <CardContent className="p-3">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center space-x-3">
@@ -1046,13 +1163,13 @@ export default function AddLawsuitModal({
                               <div className="flex items-center space-x-2">
                                 <Select
                                   value={party.lawsuit_party_type}
-                                  onValueChange={(value) => updatePartyType(party.id, value)}
+                                  onValueChange={(value) => updatePartyType(party.uniqueId, value)}
                                 >
                                   <SelectTrigger className="h-7 w-[90px] text-xs">
                                     <SelectValue placeholder="유형" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {getPartyTypeOptions().map((type) => (
+                                    {getAllPartyTypes().map((type) => (
                                       <SelectItem key={type.value} value={type.value}>
                                         {type.label}
                                       </SelectItem>
@@ -1075,7 +1192,7 @@ export default function AddLawsuitModal({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                            onClick={() => removeParty(party.id)}
+                            onClick={() => removeParty(party.uniqueId)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1103,7 +1220,7 @@ export default function AddLawsuitModal({
       <Dialog open={showPartySelector} onOpenChange={setShowPartySelector}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>당사자 선택</DialogTitle>
+            <DialogTitle>기존 당사자 선택</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Input
@@ -1119,133 +1236,80 @@ export default function AddLawsuitModal({
                   <p className="text-sm text-muted-foreground">검색 결과가 없습니다</p>
                 </div>
               ) : (
-                <>
-                  {/* 이미 선택된 당사자 먼저 표시 */}
-                  {selectedParties.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-medium mb-2 text-muted-foreground">
-                        선택된 당사자
-                      </h3>
-                      <div className="space-y-2">
-                        {selectedParties.map((party) => (
-                          <Card key={party.id} className="bg-primary/5 border-primary/20">
-                            <CardContent className="p-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                  {party.entity_type === "individual" ? (
-                                    <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
-                                  ) : (
-                                    <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
-                                  )}
-                                  <div>
-                                    <div className="flex items-center space-x-2">
-                                      <Select
-                                        value={party.lawsuit_party_type}
-                                        onValueChange={(value) => updatePartyType(party.id, value)}
-                                      >
-                                        <SelectTrigger className="h-7 w-[90px] text-xs">
-                                          <SelectValue placeholder="유형" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {getPartyTypeOptions().map((type) => (
-                                            <SelectItem key={type.value} value={type.value}>
-                                              {type.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <span className="font-medium">
-                                        {party.entity_type === "individual"
-                                          ? party.name
-                                          : party.company_name}
-                                      </span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                      {party.phone ? party.phone : "연락처 없음"}
-                                      {party.email ? ` · ${party.email}` : ""}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                  onClick={() => removeParty(party.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 추가 가능한 당사자 표시 */}
-                  <h3 className="text-sm font-medium mb-2 text-muted-foreground">
-                    추가 가능한 당사자
-                  </h3>
-                  {filteredParties.filter(
-                    (party) => !selectedParties.some((p) => p.id === party.id)
-                  ).length > 0 ? (
-                    filteredParties.map((party) => {
-                      const isSelected = selectedParties.some((p) => p.id === party.id);
-                      if (isSelected) return null; // 이미 선택된 당사자는 제외
-
-                      return (
-                        <Card
-                          key={party.id}
-                          className={cn("cursor-pointer hover:bg-accent/50 transition-colors")}
-                          onClick={() => addParty(party)}
-                        >
-                          <CardContent className="p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                {party.entity_type === "individual" ? (
-                                  <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
-                                ) : (
-                                  <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
-                                )}
-                                <div>
-                                  <div className="flex items-center space-x-2">
-                                    <Badge variant="outline" className="text-xs font-normal">
-                                      {getPartyTypeText(party.party_type)}
-                                    </Badge>
-                                    <span className="font-medium">
-                                      {party.entity_type === "individual"
-                                        ? party.name
-                                        : party.company_name}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {party.phone ? party.phone : "연락처 없음"}
-                                    {party.email ? ` · ${party.email}` : ""}
-                                  </p>
-                                </div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-green-500 hover:text-green-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addParty(party);
-                                }}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
+                filteredParties.map((party) => (
+                  <Card key={party.id} className="transition-colors">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {party.entity_type === "individual" ? (
+                            <User className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
+                          ) : (
+                            <Building className="h-8 w-8 p-1.5 bg-primary/10 text-primary rounded-full" />
+                          )}
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs font-normal">
+                                {getPartyTypeText(party.party_type)}
+                              </Badge>
+                              <span className="font-medium">
+                                {party.entity_type === "individual"
+                                  ? party.name
+                                  : party.company_name}
+                              </span>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-muted-foreground">추가할 당사자가 없습니다</p>
-                    </div>
-                  )}
-                </>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {party.phone ? party.phone : "연락처 없음"}
+                              {party.email ? ` · ${party.email}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Select
+                            value={newParty.role}
+                            onValueChange={(value) => setNewParty({ ...newParty, role: value })}
+                          >
+                            <SelectTrigger className="h-7 w-[90px] text-xs">
+                              <SelectValue placeholder="역할 선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAllPartyTypes().map((type) => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs text-green-600"
+                            onClick={() => {
+                              if (!newParty.role) {
+                                toast.error("역할을 선택해주세요");
+                                return;
+                              }
+
+                              // 고유 ID 생성
+                              const uniqueId = uuidv4();
+
+                              // 기존 당사자 추가
+                              const partyToAdd = {
+                                ...party,
+                                uniqueId: uniqueId,
+                                lawsuit_party_type: newParty.role,
+                              };
+
+                              setSelectedParties([...selectedParties, partyToAdd]);
+                              setNewParty({ ...newParty, role: "" });
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" /> 추가
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
               )}
             </div>
           </div>
