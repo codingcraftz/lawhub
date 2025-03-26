@@ -1,15 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import {
-  MessageSquare,
-  Send,
-  Check,
-  CheckCheck,
-  Trash2,
-  MoreHorizontal,
-  RefreshCw,
-} from "lucide-react";
+import { MessageSquare, Send, Check, CheckCheck, Trash2, MoreHorizontal } from "lucide-react";
 
 export function ChatView({
   selectedOpinion,
@@ -25,112 +17,31 @@ export function ChatView({
 }) {
   const scrollEndRef = useRef(null);
   const chatContainerRef = useRef(null);
-  const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const [prevSelectedId, setPrevSelectedId] = useState(null);
-  const [prevOpinionsLength, setPrevOpinionsLength] = useState(0);
-  const [lastSentTime, setLastSentTime] = useState(0);
-  const [cooldownActive, setCooldownActive] = useState(false);
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
-  // 쿨다운 타이머
+  // 메시지 선택 시 스크롤 위치 조정
   useEffect(() => {
-    let timer = null;
-    if (cooldownActive && cooldownSeconds > 0) {
-      timer = setTimeout(() => {
-        setCooldownSeconds((prev) => prev - 1);
-      }, 1000);
-    } else if (cooldownSeconds === 0) {
-      setCooldownActive(false);
+    if (scrollEndRef.current) {
+      scrollEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [cooldownActive, cooldownSeconds]);
+  }, [selectedOpinion, opinions]);
 
-  // 사용자 스크롤 감지
-  const handleScroll = () => {
-    if (!chatContainerRef.current) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-    // 스크롤이 맨 아래에서 100px 이상 올라갔을 때 사용자가 스크롤 중이라고 판단
-    setIsUserScrolling(scrollHeight - scrollTop - clientHeight > 100);
-  };
-
-  // 처음 메시지 선택 시 또는 대화가 변경되었을 때만 스크롤 아래로 이동
+  // 메시지 전송 후 스크롤 위치 조정
   useEffect(() => {
-    // 대화방이 변경된 경우에만 스크롤 초기화
-    if (selectedOpinion && selectedOpinion.id !== prevSelectedId) {
-      setPrevSelectedId(selectedOpinion.id);
-      // 약간의 지연 후 스크롤 이동 (렌더링 완료 후)
-      setTimeout(() => {
-        if (scrollEndRef.current) {
-          scrollEndRef.current.scrollIntoView({ behavior: "auto" });
-        }
-        setIsUserScrolling(false);
-      }, 100);
-    }
-  }, [selectedOpinion, prevSelectedId]);
-
-  // 새 메시지가 추가된 경우만 스크롤 아래로 이동
-  useEffect(() => {
-    if (!opinions || !selectedOpinion) return;
-
-    const currentMessages = getConversationMessages();
-
-    // 새 메시지가 추가되었고, 사용자가 스크롤을 올리지 않은 상태일 때만 스크롤 이동
-    if (currentMessages.length > prevOpinionsLength && !isUserScrolling) {
-      setTimeout(() => {
-        if (scrollEndRef.current) {
-          scrollEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-      }, 100);
-    }
-
-    setPrevOpinionsLength(currentMessages.length);
-  }, [opinions, isUserScrolling]);
-
-  // 메시지 전송 후 스크롤 아래로 이동
-  useEffect(() => {
-    if (replyMessage === "") {
-      // 메시지가 전송된 후 (입력창이 비워진 후)
-      setTimeout(() => {
-        if (scrollEndRef.current) {
-          scrollEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-        setIsUserScrolling(false);
-      }, 100);
-    }
+    const timer = setTimeout(() => {
+      if (scrollEndRef.current) {
+        scrollEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
   }, [replyMessage]);
-
-  // 쓰로틀링된 메시지 전송 함수
-  const throttledSendReply = () => {
-    if (!replyMessage.trim() || sendingReply || cooldownActive) return;
-
-    const now = Date.now();
-    const timeSinceLastSent = now - lastSentTime;
-
-    // 메시지 전송 사이에 최소 1초 간격을 강제
-    if (timeSinceLastSent < 1000) {
-      // 쿨다운 시간 설정 (1초)
-      setCooldownActive(true);
-      setCooldownSeconds(1);
-      return;
-    }
-
-    // 메시지 전송
-    setLastSentTime(now);
-    handleSendReply();
-
-    // 전송 후 쿨다운 설정 (1초)
-    setCooldownActive(true);
-    setCooldownSeconds(1);
-  };
 
   // 키보드 이벤트 처리 - Enter 키로 메시지 전송 (Shift+Enter는 줄바꿈)
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      throttledSendReply();
+      if (replyMessage.trim()) {
+        handleSendReply();
+      }
     }
   };
 
@@ -196,7 +107,6 @@ export function ChatView({
 
   const conversationMessages = getConversationMessages();
   const messagesByDate = groupMessagesByDate(conversationMessages);
-  const isDisabled = !replyMessage.trim() || sendingReply || cooldownActive;
 
   return (
     <div className="md:col-span-2 flex flex-col h-[calc(100vh-180px)] bg-white border rounded-lg shadow overflow-hidden dark:bg-gray-800 dark:border-gray-700">
@@ -237,7 +147,6 @@ export function ChatView({
       <div
         className="flex-1 p-4 overflow-y-auto"
         ref={chatContainerRef}
-        onScroll={handleScroll}
         style={{ scrollbarWidth: "thin", scrollbarColor: "#4b5563 transparent" }}
       >
         <div className="space-y-6">
@@ -317,40 +226,26 @@ export function ChatView({
       {/* 메시지 입력 영역 */}
       <div className="p-4 border-t dark:border-gray-700">
         <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <textarea
-              value={replyMessage}
-              onChange={(e) => setReplyMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="메시지를 입력하세요..."
-              className="w-full min-h-[60px] p-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-              ref={replyInputRef}
-              disabled={sendingReply}
-            />
-          </div>
+          <textarea
+            value={replyMessage}
+            onChange={(e) => setReplyMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="메시지를 입력하세요..."
+            className="flex-1 min-h-[60px] p-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            ref={replyInputRef}
+          />
           <button
-            onClick={throttledSendReply}
-            disabled={isDisabled}
-            className={`p-2 rounded-md flex items-center justify-center ${
-              isDisabled
+            onClick={handleSendReply}
+            disabled={!replyMessage.trim() || sendingReply}
+            className={`p-2 rounded-md ${
+              !replyMessage.trim() || sendingReply
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
                 : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
             }`}
           >
-            {sendingReply ? (
-              <RefreshCw className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
+            <Send className="h-5 w-5" />
           </button>
         </div>
-
-        {/* 쿨다운 상태 표시 */}
-        {cooldownActive && (
-          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400 text-right">
-            메시지를 너무 빠르게 보내고 있습니다. {cooldownSeconds}초 후에 다시 시도해주세요.
-          </div>
-        )}
       </div>
     </div>
   );
